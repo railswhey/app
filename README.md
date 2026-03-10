@@ -14,23 +14,25 @@
   <img src="/docs/assets/logo.png" alt="Rails Whey App" width="180" height="180">
 </p>
 
-A full-stack task management app built with Ruby on Rails. This branch applies `ActiveSupport::Concern` to the four fat controllers from `1A-fat-controller`. Fifteen concern modules extract the non-CRUD actions into focused files. The controllers shrink to 28–114 lines each. The class model doesn't change.
+15 concerns from `1B-extract-concerns` — 14 become standalone controllers, 1 folds back. The class boundary and the responsibility boundary are now the same thing. `before_action` rules become local. Method names drop entity prefixes. The rule serves the code, not the other way around.
 
 | | |
 |---|---|
-| **Branch** | `1B-extract-concerns` |
+| **Branch** | `2A-multi-controllers` |
 | **Ruby** | 4.0 |
 | **Rails** | 8.1 |
-| **Rubycritic** | 84.95 |
-| **LOC** | 1377 |
+| **Rubycritic** | 83.02 |
+| **LOC** | 1355 |
 
 **Table of contents:**
 
 - [🎯 The concept](#-the-concept)
-- [📊 The numbers](#-the-numbers)
-- [🔒 The split contract](#-the-split-contract)
+- [📊 The trade](#-the-trade)
 - [🔬 The evidence](#-the-evidence)
-- [🤖 The agent's paradox](#-the-agents-paradox)
+  - [`except:` becomes `only:`](#except-becomes-only)
+  - [Method names become conventional](#method-names-become-conventional)
+- [🤔 The catch](#-the-catch)
+- [🤖 The agent's view](#-the-agents-view)
 - [➡️ What comes next](#️-what-comes-next)
 - [🏛️ Thesis checkpoint](#️-thesis-checkpoint)
 - [🚀 Quick start](#-quick-start)
@@ -41,148 +43,216 @@ A full-stack task management app built with Ruby on Rails. This branch applies `
 
 ## 🎯 The concept
 
-> **One rule:** extract the file, keep the class.
+> **One rule:** one class per responsibility, not one class per entity. This is resource discovery's first phase — naming the obvious nouns that 1B's concerns already identified but couldn't isolate at runtime.
 
-1A left four controllers above 200 lines, each a catch-all for unrelated workflows. The boundaries were already visible — prefixed action names, clustered private methods, opposing filter lists — but the file system stored everything in one place.
+Branch `1B-extract-concerns` separated the source files but kept the runtime unchanged — 15 concerns mixed into 4 controllers, sharing `before_action` chains and private namespaces. The file system showed 19 focused units; Rails saw 4 monolithic classes.
 
-This branch gives each workflow its own file using `ActiveSupport::Concern`. Fifteen modules absorb the non-CRUD actions. Controllers keep only CRUD and `before_action` declarations.
-
-Tests pass without edits. No routes change. The behavioral contract is identical to 1A — the only thing that changed is which file you open.
-
----
-
-## 📊 The numbers
-
-Rubycritic: 79.48 → 84.95 — the largest single-branch gain in Families 1 and 2. But the tool evaluates per-file complexity and is blind to cross-file coupling. Splitting a 277-line controller into a 93-line controller and two concern modules reduces every per-file metric without changing the runtime architecture. The score improved because the files got smaller, not because the system got simpler.
-
-Total LOC grew from 1310 to 1377. The 67-line increase is boilerplate: fifteen `module ... extend ActiveSupport::Concern ... end` wrappers. Every extraction adds 3–4 lines of ceremony.
-
-Controllers shrank to 28, 51, 93, and 114 lines. The two largest concerns — `TaskListsTransfersConcern` (142 lines) and `AccountsInvitationsConcern` (130 lines) — are longer than the controllers they came from. The smallest, `UsersSettingsConcern`, is 9 lines.
-
-The house looks spotless. The metrics say so. But what happens when you open the closet?
-
----
-
-## 🔒 The split contract
-
-The concern moved the action. It didn't move the lock.
-
-`UsersSettingsConcern` — the smallest extracted file — is 9 lines:
-
-```ruby
-module UsersSettingsConcern
-  extend ActiveSupport::Concern
-
-  def settings
-    render :settings
-  end
-end
-```
-
-Does `settings` require authentication? The concern doesn't say. The answer lives in `UsersController`'s `before_action` list, in a different file. The action is in one room; the lock is on a completely different door.
-
-Multiply across 15 concerns. Every concern's access rules live in its parent controller. No concern file is self-contained in the security sense — each one is half a contract, with the other half defined elsewhere.
+This branch closes that gap. Each concern becomes its own controller class. Each class inherits from `ApplicationController` and declares its own filters. No `include` statements. No shared filter lists. The file count goes from 19 (4 controllers + 15 concerns) to 17 domain controllers — plus 4 infrastructure controllers (ApplicationController, ErrorsController, SearchController, ApiDocsController) for 21 total. The concerns directory is empty.
 
 ```mermaid
-flowchart TB
-  subgraph Controller["accounts_controller.rb"]
-    BA["before_action :authenticate_user!,<br/>except: [:show_invitation, :accept_invitation]"]
+flowchart TD
+  subgraph Before["1B: 4 classes, 15 concerns"]
+    UC[UsersController]
+    UC --> |include| C1[Registration]
+    UC --> |include| C2[Sessions]
+    UC --> |include| C3[Passwords]
+    UC --> |include| C4[Tokens]
+    UC --> |include| C5[Profile]
+    UC --> |include| C6[Notifications]
+    UC --> |include| C7[Deletion]
+    UC --> |include| C8[Settings]
   end
 
-  subgraph Concern["accounts_invitations_concern.rb"]
-    A1["show_invitation  →  🔓 public"]
-    A2["accept_invitation  →  🔓 public"]
-    A3["new_invitation  →  🔒 authenticated"]
-    A4["create_invitation  →  🔒 authenticated"]
-    A5["destroy_invitation  →  🔒 authenticated"]
+  subgraph After["2A: 17 classes, 0 concerns"]
+    R[UserRegistrations]
+    S[UserSessions]
+    P[UserPasswords]
+    T[UserTokens]
+    PR[UserProfiles]
+    N[UserNotifications]
+    D[UserAccountDeletions]
+    ST[UserSettings]
   end
 
-  BA -.->|"governs"| Concern
+  C1 -.->|"promoted"| R
+  C2 -.->|"promoted"| S
+  C3 -.->|"promoted"| P
+  C4 -.->|"promoted"| T
+  C5 -.->|"promoted"| PR
+  C6 -.->|"promoted"| N
+  C7 -.->|"promoted"| D
+  C8 -.->|"promoted"| ST
 
-  style Controller fill:#fde8e8
-  style Concern fill:#e8f4fd
+  style UC fill:#fde8e8
+  style R fill:#e8fde8
+  style S fill:#e8fde8
+  style P fill:#e8fde8
+  style T fill:#e8fde8
+  style PR fill:#e8fde8
+  style N fill:#e8fde8
+  style D fill:#e8fde8
+  style ST fill:#e8fde8
 ```
 
-This happens because `ActiveSupport::Concern` is a module mixin system. When you `include` a concern, Ruby copies its methods into the controller's method table. At runtime, it's one object — same instance variables, same callback chain, same private namespace. A concern is a file drawer in the same cabinet, not a separate cabinet.
+The red node is the 1B orchestrator — one class dispatching to 8 concerns. The green nodes are 2A — 8 independent classes, each owning its filter chain. The orchestrator disappears because there is nothing left to orchestrate.
+
+`UsersController` is gone. Its 8-concern manifest — 28 lines of `include` statements and shared filters — has no reason to exist when each concern owns its own class.
+
+**One concern did not promote.** `TaskItemsStateTransitionsConcern` folded back into `TaskItemsController` because `complete`, `incomplete`, and `move` share the same `set_task_item` finder, the same `before_action` chain, and the same `rescue_from` block as CRUD. When actions share their entire infrastructure, they belong in the same class.
+
+The boundary for this decision: does the action share the controller's infrastructure? `complete` shares `set_task_item`, `authenticate_user!`, and `rescue_from ActiveRecord::RecordNotFound`. Comments don't share any of those — they look up `@task_list` and `@comment` independently. That's why comments promote and state transitions fold back.
+
+---
+
+## 📊 The trade
+
+Rubycritic dropped from 84.95 to 83.02. That -1.93 is the most instructive metric in this branch.
+
+The tool evaluates per-file complexity. In 1B, concern files were modules — low overhead. In 2A, the same code wrapped in a full controller class carries more structural weight. `UserSettingsController` at 8 lines is 62% boilerplate. The score penalizes that ratio — and the score is right.
+
+The boilerplate is an architectural tax paid once per controller to buy class-level isolation. The premium is fixed: a class declaration, a filter line, an `end`. The protection is absolute: no silent method collisions, no leaked instance variables, no fractured security contracts.
+
+We trade per-file complexity for class-level isolation. The metric records the cost. The architecture holds the value.
 
 ---
 
 ## 🔬 The evidence
 
-The file system says 19 files. The runtime says 4 classes.
+### `except:` becomes `only:`
+
+This is the structural signal of the entire branch.
+
+In 1B, `TaskListsController` governed access for CRUD, transfers, and comments from one filter list:
+
+```ruby
+# 1B — TaskListsController (governing 3 concerns)
+before_action :authenticate_user!, except: %i[show_transfer update_transfer]
+before_action :set_task_list, except: %i[index new create new_transfer create_transfer
+  show_transfer update_transfer create_comment edit_comment update_comment destroy_comment]
+```
+
+Adding a comment action meant editing the CRUD controller's filter list. The `except:` lists span three different concerns.
+
+In 2A, each controller owns its own filters:
+
+```ruby
+# 2A — TaskListsController (CRUD only)
+before_action :authenticate_user!
+before_action :set_task_list, only: %i[show edit update destroy]
+```
+
+```ruby
+# 2A — TaskListCommentsController (comments only)
+before_action :authenticate_user!
+```
 
 ```mermaid
 flowchart LR
-  subgraph FileSystem["File system (19 files)"]
-    UC[users_controller.rb<br/>28 lines]
-    AC[accounts_controller.rb<br/>51 lines]
-    TC[task_lists_controller.rb<br/>93 lines]
-    IC[task_items_controller.rb<br/>114 lines]
-    C1[8 Users concerns]
-    C2[2 Accounts concerns]
-    C3[2 TaskLists concerns]
-    C4[3 TaskItems concerns]
+  subgraph B["1B: except — grows with every concern"]
+    BA["before_action :set_task_list,<br/>except: 10 actions across 3 concerns"]
   end
 
-  subgraph Runtime["Runtime (4 classes)"]
-    UCR[UsersController<br/>all 8 concerns mixed in]
-    ACR[AccountsController<br/>all 2 concerns mixed in]
-    TCR[TaskListsController<br/>all 2 concerns mixed in]
-    ICR[TaskItemsController<br/>all 3 concerns mixed in]
+  subgraph A["2A: only — stays constant"]
+    AA["before_action :set_task_list,<br/>only: 4 CRUD actions"]
   end
 
-  UC --> UCR
-  C1 --> UCR
-  AC --> ACR
-  C2 --> ACR
-  TC --> TCR
-  C3 --> TCR
-  IC --> ICR
-  C4 --> ICR
+  B -->|"promote concerns<br/>to classes"| A
 
-  style UC fill:#e8f4fd
-  style AC fill:#e8f4fd
-  style TC fill:#e8f4fd
-  style IC fill:#e8f4fd
-  style UCR fill:#fde8e8
-  style ACR fill:#fde8e8
-  style TCR fill:#fde8e8
-  style ICR fill:#fde8e8
+  style B fill:#fde8e8
+  style A fill:#e8fde8
 ```
 
-Blue is what you see browsing the codebase. Red is what Rails sees when a request arrives. The gap between these two views is the ceiling that concerns cannot raise.
+An `except:` list grows with every new action across every concern. An `only:` list stays constant unless the controller's own actions change.
 
-The runtime unity has teeth. `private` in a concern is a Ruby illusion — those methods mix into the controller and share the same namespace as every other concern's private methods. If two concerns both define `comment_params`, the last-included module wins silently. No warning, no error. Instance variables leak the same way: a concern setting `@account` exposes it to every other concern in the class.
+### Method names become conventional
 
-The file boundary suggests isolation. The runtime doesn't enforce it.
+In 1B, concern methods carried entity prefixes because they shared a controller namespace:
+
+```ruby
+# 1B — AccountsMembershipsConcern (inside AccountsController)
+def memberships ... end
+def destroy_membership ... end
+```
+
+In 2A, the class name carries the context:
+
+```ruby
+# 2A — AccountMembershipsController
+def index ... end
+def destroy ... end
+```
+
+`memberships` → `index`. `destroy_membership` → `destroy`. `create_comment` → `create`. `new_transfer` → `new`. The prefixes were compensating for a missing class boundary. Once the class exists, names revert to standard Rails vocabulary.
 
 ---
 
-## 🤖 The agent's paradox
+## 🤔 The catch
 
-For single-concern edits, the token cost dropped sharply. An agent fixing a comment bug loads 59 lines instead of 277 — a 4.7x reduction. The median concern file is 49 lines. File names encode the domain, so an agent finds invitation logic by name without reading any file.
+17 domain controllers, one flat directory:
 
-But here's the paradox: by optimizing files to be perfectly digestible for AI, we've created a structural blind spot.
+```
+account_invitations_controller.rb
+account_memberships_controller.rb
+accounts_controller.rb
+task_item_assigned_controller.rb
+task_item_comments_controller.rb
+task_items_controller.rb
+task_list_comments_controller.rb
+task_list_transfers_controller.rb
+task_lists_controller.rb
+user_account_deletions_controller.rb
+user_notifications_controller.rb
+user_passwords_controller.rb
+user_profiles_controller.rb
+user_registrations_controller.rb
+user_sessions_controller.rb
+user_settings_controller.rb
+user_tokens_controller.rb
+```
 
-An agent working inside `AccountsInvitationsConcern` sees the action methods but not the `before_action` chain — that lives in `AccountsController`. If it adds a new public action to the concern and doesn't update the controller's filter list, the action inherits the wrong access rule. The failure is silent.
+This is an organizational problem, not a modeling regression. The class-level improvement — local filter chains, per-class cohesion, eliminated `include` statements — holds regardless of where the files live. But a developer browsing the directory sees noise where there should be signal. It's like perfectly organizing every tool in a kitchen so they're isolated and clean — then throwing them all alphabetically into one giant box. The pizza cutter sits between the pastry brush and the potato peeler.
 
-In 1A, the agent loaded one 214-line file and had everything — actions, authorization, helpers — in a single buffer. In 1B, the same information splits across two files: fewer tokens, but a cognitive leap across an implicit boundary. Lower token count, higher reasoning complexity. The architecture is cheaper to load but harder to reason about correctly.
+Rails namespaces (`User::NotificationsController` → `app/controllers/user/`) solve this — but they change URL paths by default, adding routing complexity to solve a file-organization problem.
+
+This branch chose to fight one battle: class boundaries. The flat directory is the temporary cost of keeping the refactor focused. Namespaces arrive in `3A-namespaced-controllers`, where prefixes move from filenames into directory paths.
+
+---
+
+## 🤖 The agent's view
+
+The amount of code an AI needs to read to fix a specific issue drops from 214 lines to 54.
+
+`AccountMembershipsController` is 54 lines — all membership-related. In 1B, that same fix required `AccountsMembershipsConcern` (48 lines) plus `AccountsController` (51 lines) — 99 lines across 2 files. In 1A, it was `AccountsController` at 214 lines.
+
+```mermaid
+flowchart LR
+  A["1A: 214 lines<br/>1 file"] --> B["1B: 99 lines<br/>2 files"] --> C["2A: 54 lines<br/>1 file"]
+  style A fill:#fde8e8
+  style B fill:#e8f4fd
+  style C fill:#e8fde8
+```
+
+A 4x reduction in context for the same fix. And the authorization risk from 1B — where adding a concern action required updating a different file's `except:` list — is gone. Each controller declares its own `before_action`. The file is the class, and the class is the complete unit.
+
+The remaining cost is the flat directory. An agent scanning 17 filenames, parsing prefixes character by character to distinguish `task_item_` from `task_list_` — that's string matching where directory traversal would suffice. This drives the namespace refactoring in 3A.
 
 ---
 
 ## ➡️ What comes next
 
-Branch `2A-multi-controllers` takes the step concerns can't: it gives each workflow its own class. The 15 modules become standalone controllers — `UserNotificationsController`, `AccountInvitationsController`, `TaskListTransfersController`. Each owns its own `before_action`. No `except:` lists. No `only:` lists spanning concerns.
+The obvious nouns are named. Nine custom actions across five controllers still use custom verbs — `complete`, `incomplete`, `move` on `TaskItemsController`; `switch` on `AccountsController`; `mark_all_read` on `UserNotificationsController`; `my_tasks` on `TaskItemAssignedController` — and every custom verb is a resource that hasn't been named yet.
 
-Method names shed their prefixes. `create_comment` becomes `create`. `new_transfer` becomes `new`. The class name carries the context.
+`TaskItemsController#complete` is really `TaskItemCompletionsController#update`. `AccountsController#switch` is `AccountSwitchesController#create`.
 
-The split that 1B made at the file level now happens at the class level. The gap between file-system view and runtime view closes. ✌️
+This is resource discovery's second phase. Where 2A named the nouns hiding behind concerns, `2B-rest-actions-only` names the nouns hiding behind custom verbs. The constraint is the forcing function: when you only have 7 verbs to work with, you're forced to mint a new noun when you run out of actions. The controller count grows from 21 to 26. The action vocabulary shrinks to 7. ✌️
 
 ---
 
 ## 🏛️ Thesis checkpoint
 
-Principle 4 in action — but at its ceiling. `ActiveSupport::Concern` is a legitimate Rails tool used exactly as the framework intends. Principle 1 validates the extraction: zero test edits needed, because the tests couple to HTTP contracts, not to file organization. But the extraction reveals the tool's limit. The isolation is cosmetic — a file-system convenience the runtime does not enforce. Private methods collide silently, instance variables leak, the authorization contract fractures across files, and the Rubycritic jump measures smaller files, not simpler architecture. The real separation — giving each workflow its own class, its own callback chain, its own runtime identity — requires moving the boundary from the file to the class. That is the step concerns cannot take.
+Principle 1 enabled this. Four controllers became 23. Every route helper name changed. But the behavioral tests passed without rewriting a single assertion — because the route abstraction layer (Principle 2) absorbed the structural change. The controller count tripled while the test suite stayed identical. That is what structural freedom looks like when tests couple to behavior, not implementation.
+
+This is resource discovery's first phase — Principle 4 applied to the question of what deserves a class. The obvious nouns got their own controllers. The Rubycritic score dropped by 1.93 points, and the drop is honest: it is the fixed cost of class-level isolation, a tax we pay gladly. Nine custom verbs remain, each signaling a resource that hasn't been named yet.
 
 ---
 
@@ -191,8 +261,8 @@ Principle 4 in action — but at its ceiling. `ActiveSupport::Concern` is a legi
 Prerequisites: [mise](https://mise.jdx.dev/) (manages Ruby, Node, Mailpit)
 
 ```sh
-git clone git@github.com:railswhey/app.git -b 1B-extract-concerns 1B-extract-concerns
-cd 1B-extract-concerns
+git clone git@github.com:railswhey/app.git -b 2A-multi-controllers 2A-multi-controllers
+cd 2A-multi-controllers
 mise install                 # Ruby 4.0.1 + Node 22 + Mailpit 1.29.2
 bin/setup                    # bundle install, db:prepare, starts dev server
 ```

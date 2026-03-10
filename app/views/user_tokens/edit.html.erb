@@ -1,0 +1,14 @@
+<%= render("shared/tasks/header") %>
+
+<%= render("shared/topbar", title: "API Token", back_path: settings_path, back_label: "Settings") %>
+
+<h2>API token</h2>
+
+<p>Use tokens to authenticate API requests. Tokens are scoped to specific permissions and tied to your account. <%= link_to "View API docs →", api_docs_path %></p>
+
+<pre><%= cookies.encrypted[:user_token] || Current.user.user_token.value %></pre>
+
+<%= button_to("Refresh", user_tokens_path, {
+  method: :put,
+  data: { confirm: "Are you sure to generate a new API token?" }
+}) %>

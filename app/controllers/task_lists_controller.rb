@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 class TaskListsController < ApplicationController
-  before_action :authenticate_user!, except: %i[show_transfer update_transfer]
-  before_action :set_task_list, except: %i[index new create new_transfer create_transfer show_transfer update_transfer create_comment edit_comment update_comment destroy_comment]
+  before_action :authenticate_user!
+  before_action :set_task_list, only: %i[show edit update destroy]
   before_action only: [ :edit, :update, :destroy ], if: -> { @task_list.inbox? } do
     if request.format.json?
       render_json_with_failure(status: :forbidden, message: "Inbox cannot be updated or deleted")
@@ -10,9 +10,6 @@ class TaskListsController < ApplicationController
       redirect_to task_lists_url, alert: "You cannot edit or delete the inbox."
     end
   end
-
-  include TaskListsTransfersConcern
-  include TaskListsCommentsConcern
 
   rescue_from ActiveRecord::RecordNotFound do |exception|
     raise exception unless request.format.json?

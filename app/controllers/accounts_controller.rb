@@ -1,10 +1,7 @@
 # frozen_string_literal: true
 
 class AccountsController < ApplicationController
-  before_action :authenticate_user!, except: %i[show_invitation accept_invitation]
-
-  include AccountsMembershipsConcern
-  include AccountsInvitationsConcern
+  before_action :authenticate_user!
 
   def switch
     account = Current.user.accounts.find(params[:id])

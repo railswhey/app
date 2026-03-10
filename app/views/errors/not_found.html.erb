@@ -8,7 +8,7 @@
       <% if Current.user? %>
         <a href="<%= task_lists_path %>">My Lists</a>
       <% else %>
-        <a href="<%= new_session_users_path %>">Sign in</a>
+        <a href="<%= new_user_session_path %>">Sign in</a>
       <% end %>
     </nav>
   </header>
@@ -22,6 +22,6 @@
   <% if Current.user? %>
     <a href="<%= task_lists_path %>" class="button" style="width:auto;">← Back to My Lists</a>
   <% else %>
-    <a href="<%= new_session_users_path %>" class="button" style="width:auto;">← Go to Sign In</a>
+    <a href="<%= new_user_session_path %>" class="button" style="width:auto;">← Go to Sign In</a>
   <% end %>
 </div>
