@@ -1,0 +1,11 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  uuid: <%= SecureRandom.uuid %>
+  name: "one's workspace"
+  personal: true
+
+two:
+  uuid: <%= SecureRandom.uuid %>
+  name: "two's workspace"
+  personal: true

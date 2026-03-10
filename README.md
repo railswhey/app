@@ -1,9 +1,9 @@
 # Rails Whey App
 
-> Bare Rails skeleton — structural foundation and data layer.
+> Testing infrastructure, documentation, and development tooling on top of the Rails skeleton.
 
 | | |
 |---|---|
-| **Branch** | `01-skeleton` |
+| **Branch** | `02-tests-and-docs` |
 | **Ruby** | 4.0 |
 | **Rails** | 8.1 |

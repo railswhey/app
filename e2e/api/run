@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+# API Resource Tests — orchestrator
+# Usage: e2e/api/run [base_url]
+#
+# Requires: curl, jq, bin/rails (in project root)
+# Expects a running server (bin/dev) at BASE_URL
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# ── dependency check ───────────────────────────────────────────────────────────
+
+for cmd in curl jq; do
+  if ! command -v "$cmd" &>/dev/null; then
+    echo "ERROR: '$cmd' is required but not found. Please install it." >&2
+    exit 1
+  fi
+done
+
+# ── configuration ──────────────────────────────────────────────────────────────
+
+export BASE_URL="${1:-http://localhost:3000}"
+TEST_TIMESTAMP="$(date +%s)"
+export API_LOG_FILE="$PROJECT_ROOT/tmp/e2e-api-logs.md"
+
+USER_A_EMAIL="api-smoke-a-${TEST_TIMESTAMP}@example.com"
+USER_A_USERNAME="smokea${TEST_TIMESTAMP}"
+
+USER_B_EMAIL="api-smoke-b-${TEST_TIMESTAMP}@example.com"
+USER_B_USERNAME="smokeb${TEST_TIMESTAMP}"
+
+TEST_PASSWORD="SmokeTe5t!Pass"
+
+mkdir -p "$(dirname "$API_LOG_FILE")"
+printf "# API Calls — %s\n\nBase URL: %s\n\n---\n\n" \
+  "$(date '+%Y-%m-%d %H:%M:%S')" "$BASE_URL" > "$API_LOG_FILE"
+
+echo ""
+echo "API Smoke Tests"
+echo "==============="
+echo "Base URL: $BASE_URL"
+echo "User A:   $USER_A_EMAIL"
+echo "User B:   $USER_B_EMAIL"
+echo ""
+
+# ── setup: create test users and get tokens ────────────────────────────────────
+
+echo "Setting up test users..."
+
+TOKEN_A=$(cd "$PROJECT_ROOT" && bin/rails runner "
+  user = User.create!(
+    email: '$USER_A_EMAIL',
+    username: '$USER_A_USERNAME',
+    password: '$TEST_PASSWORD',
+    password_confirmation: '$TEST_PASSWORD'
+  )
+  print user.user_token.value
+" 2>/dev/null)
+
+if [ -z "$TOKEN_A" ]; then
+  echo "ERROR: Failed to create User A or retrieve token." >&2
+  exit 1
+fi
+
+TOKEN_B=$(cd "$PROJECT_ROOT" && bin/rails runner "
+  user = User.create!(
+    email: '$USER_B_EMAIL',
+    username: '$USER_B_USERNAME',
+    password: '$TEST_PASSWORD',
+    password_confirmation: '$TEST_PASSWORD'
+  )
+  print user.user_token.value
+" 2>/dev/null)
+
+if [ -z "$TOKEN_B" ]; then
+  echo "ERROR: Failed to create User B or retrieve token." >&2
+  exit 1
+fi
+
+export TOKEN_A TOKEN_B
+export TOKEN="$TOKEN_A"
+export USER_A_EMAIL USER_B_EMAIL
+export PROJECT_ROOT
+
+echo "Tokens acquired (User A + User B)."
+
+# ── source helpers ─────────────────────────────────────────────────────────────
+
+source "$SCRIPT_DIR/support/routes.sh"
+source "$SCRIPT_DIR/support/helpers.sh"
+
+# ── run endpoint tests ─────────────────────────────────────────────────────────
+
+for test_file in "$SCRIPT_DIR"/endpoints/0[0-9]_*.sh; do
+  source "$test_file"
+done
+
+# ── teardown: delete test users ────────────────────────────────────────────────
+
+echo ""
+echo "Cleaning up test users..."
+
+cd "$PROJECT_ROOT" && bin/rails runner "
+  User.find_by(email: '$USER_A_EMAIL')&.destroy!
+  User.find_by(email: '$USER_B_EMAIL')&.destroy!
+" 2>/dev/null
+
+echo "Done."
+
+# ── summary ────────────────────────────────────────────────────────────────────
+
+print_summary
+STATUS=$?
+
+echo "API call log: $API_LOG_FILE"
+echo ""
+
+exit $STATUS

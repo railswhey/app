@@ -1,0 +1,16 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+item_one:
+  commentable: one (TaskItem)
+  user: one
+  body: This is a comment on task item one
+
+item_two:
+  commentable: one (TaskItem)
+  user: two
+  body: Another comment on task item one
+
+list_one:
+  commentable: one_inbox (TaskList)
+  user: one
+  body: This is a comment on the inbox list

@@ -1,0 +1,14 @@
+{
+  "name": "rwa-e2e",
+  "version": "1.0.0",
+  "description": "Playwright E2E tests for Rails Whey App",
+  "scripts": {
+    "test": "playwright test",
+    "test:desktop": "playwright test --project=desktop-chrome",
+    "test:mobile": "playwright test --project=mobile-chrome"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.0",
+    "typescript": "^5.7.0"
+  }
+}

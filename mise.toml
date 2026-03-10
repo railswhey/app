@@ -1,0 +1,85 @@
+[tools]
+ruby = "4.0.1"
+node = "22"
+"aqua:axllent/mailpit" = "1.29.2"
+
+# ── dev: development workflow ─────────────────────────────────────────────────
+
+[tasks."dev:start"]
+description = "Start Rails server + Mailpit (via Procfile.dev)"
+run = "bin/dev"
+
+[tasks."dev:mailpit"]
+description = "Start Mailpit (SMTP :1025, Web UI :8025)"
+run = "mailpit --listen 0.0.0.0:8025 --smtp 0.0.0.0:1025"
+
+[tasks."dev:setup"]
+description = "Set up development environment"
+run = "bin/setup --skip-server"
+
+[tasks."dev:reset"]
+description = "Reset development environment"
+run = "bin/setup --reset"
+
+[tasks."dev:ci"]
+description = "Run full CI pipeline (setup, lint, security, tests)"
+run = "bin/ci"
+
+# ── rails: Rails commands ─────────────────────────────────────────────────────
+
+[tasks."rails:server"]
+description = "Start Rails server only"
+run = "bin/rails server -b 0.0.0.0"
+
+[tasks."rails:test"]
+description = "Run Rails integration tests (Minitest)"
+run = "bin/rails test"
+
+# ── check: code quality and security ─────────────────────────────────────────
+
+[tasks."check:rubocop"]
+description = "Lint Ruby code (RuboCop)"
+run = "bin/rubocop"
+
+[tasks."check:brakeman"]
+description = "Scan for security vulnerabilities (Brakeman)"
+run = "bin/brakeman --quiet --no-pager"
+
+[tasks."check:audit"]
+description = "Audit gem dependencies for known CVEs"
+run = "bin/bundler-audit check --update"
+
+# ── e2e: end-to-end tests ────────────────────────────────────────────────────
+
+[tasks."e2e:install"]
+description = "Install E2E dependencies and Playwright browsers"
+dir = "e2e/web"
+run = """
+npm install
+npx playwright install chromium
+"""
+
+[tasks."e2e:web"]
+description = "Run essential web E2E tests (navigation smoke test)"
+dir = "e2e/web"
+env = { CI = "1" }
+run = "npx playwright test tests/navigation.spec.ts tests/error-pages.spec.ts tests/guest-access.spec.ts"
+
+[tasks."e2e:web:full"]
+description = "Run all web E2E tests"
+dir = "e2e/web"
+env = { CI = "1" }
+run = "npx playwright test"
+
+[tasks."e2e:web:screenshots"]
+description = "Capture UI screenshots for docs/02_WEB_APP_SCREENSHOTS.md (requires running server)"
+dir = "e2e/web"
+run = "npx playwright test tests/screenshots.spec.ts --project=chrome"
+
+[tasks."e2e:api"]
+description = "Run API smoke tests (requires running server)"
+run = "e2e/api/run"
+
+[tasks."e2e:test"]
+description = "Run all E2E tests (web + API)"
+depends = ["e2e:web", "e2e:api"]

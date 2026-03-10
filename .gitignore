@@ -33,3 +33,10 @@
 
 # Ignore master key for decrypting credentials and more.
 /config/master.key
+
+/coverage/
+
+# E2E tests
+/e2e/web/node_modules/
+/e2e/**/test-results/
+/e2e/**/playwright-report/
