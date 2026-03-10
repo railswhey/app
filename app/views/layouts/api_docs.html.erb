@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+  <head>
+    <title>API Docs — Rails Whey App</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <%= csrf_meta_tags %>
+    <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <script>
+      (function() {
+        var t = localStorage.getItem('theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+      })();
+    </script>
+  </head>
+  <body class="auth-layout">
+    <header>
+      <h1><a href="<%= root_path %>"><%= app_name_with_logo %></a></h1>
+      <nav>
+        <%= link_to "← Back to App", root_path %>
+      </nav>
+    </header>
+
+    <main>
+      <div class="topbar" style="margin-bottom:1.5rem">
+        <nav class="topbar-breadcrumb" aria-label="breadcrumb">
+          <strong>📖 API Docs</strong>
+        </nav>
+      </div>
+
+      <nav class="settings-subnav" style="margin-bottom:1rem">
+        <% APIDocsController::SECTIONS.each do |s| %>
+          <% label = s == "index" ? "Overview" : s.tr("_", " ").split.map(&:capitalize).join(" ") %>
+          <% active = params[:section] == s || (s == "index" && params[:section].nil?) %>
+          <%= link_to label, api_docs_path(section: s),
+              class: "button #{active ? "" : "btn-secondary"}",
+              style: "font-size:0.82rem;padding:0.35rem 0.7rem" %>
+        <% end %>
+      </nav>
+
+      <p style="font-size:0.82rem;margin-bottom:1.5rem">
+        <%= link_to "📋 Raw Markdown", api_docs_raw_path %>
+      </p>
+
+      <article class="api-docs-content">
+        <%= yield %>
+      </article>
+    </main>
+
+    <footer>
+      <p><%= app_name_with_logo %> &copy; <%= Date.current.year %></p>
+    </footer>
+  </body>
+</html>

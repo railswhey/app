@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+  <head>
+    <title><%= content_for(:title) || "Rails Whey App" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="color-scheme" content="dark">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+    <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+    <script>
+      (function() {
+        var t = localStorage.getItem('theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+      })();
+    </script>
+  </head>
+
+  <body class="<%= content_for(:body_class) %>">
+    <div class="nav-backdrop" onclick="document.body.classList.remove('nav-open')"></div>
+    <%= yield :header %>
+    <main>
+      <% flash.each do |type, message| %>
+        <div class="notice <%= type == 'alert' ? 'error' : 'success' %>">
+          <span class="notice-text"><%= message %></span>
+          <button class="notice-close" onclick="this.parentElement.remove()" aria-label="Close">✕</button>
+        </div>
+      <% end %>
+
+      <%# Invitation alerts removed — handled by notifications now %>
+
+      <%= yield %>
+    </main>
+    <footer>
+      <p><%= app_name_with_logo %> v2.0 · 📖 <%= link_to "API Docs", api_docs_path, target: "_blank", rel: "noopener" %> · &copy; <%= Date.current.year %></p>
+    </footer>
+  </body>
+</html>

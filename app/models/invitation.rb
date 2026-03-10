@@ -1,0 +1,45 @@
+# frozen_string_literal: true
+
+class Invitation < ApplicationRecord
+  belongs_to :account
+  belongs_to :invited_by, class_name: "User"
+
+  has_secure_token :token
+
+  validates :email, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP }
+  validates :email, uniqueness: { scope: :account_id, message: "has already been invited to this account" }
+
+  normalizes :email, with: -> { _1.strip.downcase }
+
+  scope :pending,  -> { where(accepted_at: nil) }
+  scope :accepted, -> { where.not(accepted_at: nil) }
+
+  def accepted? = accepted_at.present?
+  def pending?  = accepted_at.nil?
+
+  def accept!(user)
+    return false if accepted?
+
+    transaction do
+      account.memberships.find_or_create_by!(user: user) do |m|
+        m.role = :collaborator
+      end
+      update_column(:accepted_at, Time.current)
+
+      Notification.create!(
+        user:       invited_by,
+        notifiable: self,
+        action:     "invitation_accepted"
+      )
+    end
+    true
+  end
+
+  def notify_invitee!(invitee_user)
+    Notification.create!(
+      user:       invitee_user,
+      notifiable: self,
+      action:     "invitation_received"
+    )
+  end
+end
