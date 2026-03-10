@@ -12,7 +12,7 @@ class WebTaskItemsMoveTest < ActionDispatch::IntegrationTest
 
     web_adapter.sign_in(user)
 
-    put web_adapter.move_task__item_url(source, task, target_list_id: target.id)
+    post web_adapter.move_task__item_url(source, task, target_list_id: target.id)
     assert_redirected_to web_adapter.task__items_url(source)
     follow_redirect!
     assert_select ".notice-text", /moved to "Target"/
@@ -26,7 +26,7 @@ class WebTaskItemsMoveTest < ActionDispatch::IntegrationTest
 
     web_adapter.sign_in(user)
 
-    put web_adapter.move_task__item_url(inbox, task, target_list_id: inbox.id)
+    post web_adapter.move_task__item_url(inbox, task, target_list_id: inbox.id)
     assert_redirected_to web_adapter.task__items_url(inbox)
     follow_redirect!
     assert_select ".notice-text", /already in that list/
@@ -39,7 +39,7 @@ class WebTaskItemsMoveTest < ActionDispatch::IntegrationTest
 
     web_adapter.sign_in(user)
 
-    put web_adapter.move_task__item_url(inbox, task, target_list_id: 999999)
+    post web_adapter.move_task__item_url(inbox, task, target_list_id: 999999)
     assert_redirected_to web_adapter.task__items_url(inbox)
     follow_redirect!
     assert_select ".notice-text", /not found/

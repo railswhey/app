@@ -88,7 +88,7 @@ class WebNotificationsTest < ActionDispatch::IntegrationTest
     n2 = create_notification(user, action: "invitation_received")
     web_adapter.sign_in(user)
 
-    put web_adapter.mark_all_read__notifications_url
+    post web_adapter.mark_all_read__notifications_url
     assert_redirected_to web_adapter.notifications__url
 
     assert n1.reload.read?

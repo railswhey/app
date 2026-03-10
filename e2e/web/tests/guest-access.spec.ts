@@ -19,7 +19,7 @@ test.describe('Guest Access', () => {
 
   test('guest can view API docs raw', async ({ page }) => {
     await page.goto(apiDocsRawPath());
-    await expect(page).toHaveURL(/\/api\/docs\/raw/);
+    await expect(page).toHaveURL(/\/api\/docs\.md/);
   });
 
   test('guest can view API docs invalid section falls back to default', async ({ page }) => {

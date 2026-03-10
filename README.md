@@ -14,23 +14,23 @@
   <img src="/docs/assets/logo.png" alt="Rails Whey App" width="180" height="180">
 </p>
 
-15 concerns from `1B-extract-concerns` — 14 become standalone controllers, 1 folds back. The class boundary and the responsibility boundary are now the same thing. `before_action` rules become local. Method names drop entity prefixes. The rule serves the code, not the other way around.
+Every controller action must be one of the 7 standard REST verbs — no exceptions. Nine custom actions from 2A are resolved through extraction, renaming, format negotiation, and consolidation. The verb constraint forces hidden nouns into the open: completion, switch, move, read — domain concepts that custom verbs had compressed into action names.
 
 | | |
 |---|---|
-| **Branch** | `2A-multi-controllers` |
+| **Branch** | `2B-rest-actions-only` |
 | **Ruby** | 4.0 |
 | **Rails** | 8.1 |
-| **Rubycritic** | 83.02 |
-| **LOC** | 1355 |
+| **Rubycritic** | 84.71 |
+| **LOC** | 1390 |
 
 **Table of contents:**
 
 - [🎯 The concept](#-the-concept)
-- [📊 The trade](#-the-trade)
+- [📊 The numbers](#-the-numbers)
 - [🔬 The evidence](#-the-evidence)
-  - [`except:` becomes `only:`](#except-becomes-only)
-  - [Method names become conventional](#method-names-become-conventional)
+  - [Extraction reveals a named resource](#extraction-reveals-a-named-resource)
+  - [Shared infrastructure stays infrastructure](#shared-infrastructure-stays-infrastructure)
 - [🤔 The catch](#-the-catch)
 - [🤖 The agent's view](#-the-agents-view)
 - [➡️ What comes next](#️-what-comes-next)
@@ -43,216 +43,144 @@
 
 ## 🎯 The concept
 
-> **One rule:** one class per responsibility, not one class per entity. This is resource discovery's first phase — naming the obvious nouns that 1B's concerns already identified but couldn't isolate at runtime.
+> **One rule:** if the action doesn't fit the 7 verbs, the resource model is wrong.
 
-Branch `1B-extract-concerns` separated the source files but kept the runtime unchanged — 15 concerns mixed into 4 controllers, sharing `before_action` chains and private namespaces. The file system showed 19 focused units; Rails saw 4 monolithic classes.
+Think of it as a seven-verb diet. If the factory machinery only knows how to stamp, cut, or weld, you can't invent a new motion called `complete`. You have to create a new part — a noun — that the existing machinery can work on.
 
-This branch closes that gap. Each concern becomes its own controller class. Each class inherits from `ApplicationController` and declares its own filters. No `include` statements. No shared filter lists. The file count goes from 19 (4 controllers + 15 concerns) to 17 domain controllers — plus 4 infrastructure controllers (ApplicationController, ErrorsController, SearchController, ApiDocsController) for 21 total. The concerns directory is empty.
+Branch 2A completed resource discovery's first phase: extracting obvious nouns from concerns into standalone classes. But nine actions still used custom verbs. Each one signaled a resource that hadn't been named yet.
 
-```mermaid
-flowchart TD
-  subgraph Before["1B: 4 classes, 15 concerns"]
-    UC[UsersController]
-    UC --> |include| C1[Registration]
-    UC --> |include| C2[Sessions]
-    UC --> |include| C3[Passwords]
-    UC --> |include| C4[Tokens]
-    UC --> |include| C5[Profile]
-    UC --> |include| C6[Notifications]
-    UC --> |include| C7[Deletion]
-    UC --> |include| C8[Settings]
-  end
+This branch names them. Four patterns handle all nine:
 
-  subgraph After["2A: 17 classes, 0 concerns"]
-    R[UserRegistrations]
-    S[UserSessions]
-    P[UserPasswords]
-    T[UserTokens]
-    PR[UserProfiles]
-    N[UserNotifications]
-    D[UserAccountDeletions]
-    ST[UserSettings]
-  end
+1. **Extract to a new controller** — `complete` → `CompleteTaskItemsController#update`; `switch` → `AccountSwitchesController#create`; `mark_all_read` → `UserNotificationReadsController#create`; `move` → `TaskItemMovesController#create`; `incomplete` → `IncompleteTaskItemsController#update`
+2. **Rename to the natural REST verb** — `accept` was always an `update`; `my_tasks` was always an `index`
+3. **Format negotiation** — `raw` merged into `show` via `respond_to` with a `.md` format
+4. **Consolidate** — three named error handlers became one `ErrorsController#show` with a lookup table
 
-  C1 -.->|"promoted"| R
-  C2 -.->|"promoted"| S
-  C3 -.->|"promoted"| P
-  C4 -.->|"promoted"| T
-  C5 -.->|"promoted"| PR
-  C6 -.->|"promoted"| N
-  C7 -.->|"promoted"| D
-  C8 -.->|"promoted"| ST
-
-  style UC fill:#fde8e8
-  style R fill:#e8fde8
-  style S fill:#e8fde8
-  style P fill:#e8fde8
-  style T fill:#e8fde8
-  style PR fill:#e8fde8
-  style N fill:#e8fde8
-  style D fill:#e8fde8
-  style ST fill:#e8fde8
-```
-
-The red node is the 1B orchestrator — one class dispatching to 8 concerns. The green nodes are 2A — 8 independent classes, each owning its filter chain. The orchestrator disappears because there is nothing left to orchestrate.
-
-`UsersController` is gone. Its 8-concern manifest — 28 lines of `include` statements and shared filters — has no reason to exist when each concern owns its own class.
-
-**One concern did not promote.** `TaskItemsStateTransitionsConcern` folded back into `TaskItemsController` because `complete`, `incomplete`, and `move` share the same `set_task_item` finder, the same `before_action` chain, and the same `rescue_from` block as CRUD. When actions share their entire infrastructure, they belong in the same class.
-
-The boundary for this decision: does the action share the controller's infrastructure? `complete` shares `set_task_item`, `authenticate_user!`, and `rescue_from ActiveRecord::RecordNotFound`. Comments don't share any of those — they look up `@task_list` and `@comment` independently. That's why comments promote and state transitions fold back.
+`CompleteTaskItemsController#update` says "completion is a resource that gets updated." `TaskItemsController#complete` just said "this thing does something."
 
 ---
 
-## 📊 The trade
+## 📊 The numbers
 
-Rubycritic dropped from 84.95 to 83.02. That -1.93 is the most instructive metric in this branch.
+Rubycritic climbed from 83.02 to 84.71 — recovering nearly all ground lost to 2A's boilerplate tax. As the resource model sharpens, each file does less and the overhead-to-logic ratio improves.
 
-The tool evaluates per-file complexity. In 1B, concern files were modules — low overhead. In 2A, the same code wrapped in a full controller class carries more structural weight. `UserSettingsController` at 8 lines is 62% boilerplate. The score penalizes that ratio — and the score is right.
+The biggest single change: `TaskItemsController` dropped from 160 to 79 lines. Its three custom actions became 3 new controllers + 1 shared concern. More files, but each with a single job.
 
-The boilerplate is an architectural tax paid once per controller to buy class-level isolation. The premium is fixed: a class declaration, a filter line, an `end`. The protection is absolute: no silent method collisions, no leaked instance variables, no fractured security contracts.
-
-We trade per-file complexity for class-level isolation. The metric records the cost. The architecture holds the value.
+LOC grew from 1355 to 1390 (+35 lines of extraction overhead). File count went from 21 to 27 (26 controllers + 1 concern).
 
 ---
 
 ## 🔬 The evidence
 
-### `except:` becomes `only:`
+### Extraction reveals a named resource
 
-This is the structural signal of the entire branch.
+`AccountsController#switch` in 2A changed the session, not the account record — different semantics hiding behind the same class. The 7-verb constraint forced the question: *what is being created?*
 
-In 1B, `TaskListsController` governed access for CRUD, transfers, and comments from one filter list:
-
-```ruby
-# 1B — TaskListsController (governing 3 concerns)
-before_action :authenticate_user!, except: %i[show_transfer update_transfer]
-before_action :set_task_list, except: %i[index new create new_transfer create_transfer
-  show_transfer update_transfer create_comment edit_comment update_comment destroy_comment]
-```
-
-Adding a comment action meant editing the CRUD controller's filter list. The `except:` lists span three different concerns.
-
-In 2A, each controller owns its own filters:
+Answer: an account switch. A session-level event.
 
 ```ruby
-# 2A — TaskListsController (CRUD only)
-before_action :authenticate_user!
-before_action :set_task_list, only: %i[show edit update destroy]
+# 2B — AccountSwitchesController (17 lines)
+class AccountSwitchesController < ApplicationController
+  before_action :authenticate_user!
+
+  def create
+    account = Current.user.accounts.find(params[:account_id])
+    session[:account_id] = account.id
+    session.delete(:task_list_id)
+    Current.member!(user_id: Current.user.id, account_id: account.id, task_list_id: nil)
+    self.current_task_list_id = Current.task_list_id
+    redirect_to home_path, notice: "Switched to #{account.name}."
+  end
+end
 ```
 
-```ruby
-# 2A — TaskListCommentsController (comments only)
-before_action :authenticate_user!
-```
+`AccountsController` shrank from 48 to 36 lines — only `show` and `update` remain.
+
+### Shared infrastructure stays infrastructure
+
+The `TaskItemsController` extraction is the largest — and it introduces the branch's one concern:
 
 ```mermaid
 flowchart LR
-  subgraph B["1B: except — grows with every concern"]
-    BA["before_action :set_task_list,<br/>except: 10 actions across 3 concerns"]
+  subgraph Before["2A: 1 controller, 9 actions"]
+    TI2A[TaskItemsController<br/>160 lines<br/>CRUD + complete + incomplete + move]
   end
 
-  subgraph A["2A: only — stays constant"]
-    AA["before_action :set_task_list,<br/>only: 4 CRUD actions"]
+  subgraph After["2B: 4 controllers + 1 concern"]
+    TC[TaskItemsConcern<br/>42 lines<br/>shared plumbing]
+    TI2B[TaskItemsController<br/>79 lines<br/>CRUD only]
+    CTI[CompleteTaskItems<br/>19 lines]
+    ITI[IncompleteTaskItems<br/>19 lines]
+    TIM[TaskItemMoves<br/>43 lines]
   end
 
-  B -->|"promote concerns<br/>to classes"| A
+  TI2A -.->|"CRUD stays"| TI2B
+  TI2A -.->|"complete extracts"| CTI
+  TI2A -.->|"incomplete extracts"| ITI
+  TI2A -.->|"move extracts"| TIM
 
-  style B fill:#fde8e8
-  style A fill:#e8fde8
+  TC --> TI2B
+  TC --> CTI
+  TC --> ITI
+  TC --> TIM
+
+  style TI2A fill:#fde8e8
+  style TC fill:#e8f4fd
+  style TI2B fill:#e8fde8
+  style CTI fill:#e8fde8
+  style ITI fill:#e8fde8
+  style TIM fill:#e8fde8
 ```
 
-An `except:` list grows with every new action across every concern. An `only:` list stays constant unless the controller's own actions change.
-
-### Method names become conventional
-
-In 1B, concern methods carried entity prefixes because they shared a controller namespace:
-
-```ruby
-# 1B — AccountsMembershipsConcern (inside AccountsController)
-def memberships ... end
-def destroy_membership ... end
-```
-
-In 2A, the class name carries the context:
-
-```ruby
-# 2A — AccountMembershipsController
-def index ... end
-def destroy ... end
-```
-
-`memberships` → `index`. `destroy_membership` → `destroy`. `create_comment` → `create`. `new_transfer` → `new`. The prefixes were compensating for a missing class boundary. Once the class exists, names revert to standard Rails vocabulary.
+`TaskItemsConcern` holds only plumbing — finders, URL helpers, redirect logic. Zero business logic. This is different from 1B's god-concerns: those aggregated unrelated behavior into a single class. This concern shares infrastructure across controllers that all operate on the same entity.
 
 ---
 
 ## 🤔 The catch
 
-17 domain controllers, one flat directory:
+27 files, one flat directory:
 
 ```
-account_invitations_controller.rb
-account_memberships_controller.rb
-accounts_controller.rb
-task_item_assigned_controller.rb
-task_item_comments_controller.rb
-task_items_controller.rb
-task_list_comments_controller.rb
-task_list_transfers_controller.rb
-task_lists_controller.rb
-user_account_deletions_controller.rb
-user_notifications_controller.rb
-user_passwords_controller.rb
-user_profiles_controller.rb
-user_registrations_controller.rb
-user_sessions_controller.rb
-user_settings_controller.rb
-user_tokens_controller.rb
+account_switches_controller.rb           ← new
+complete_task_items_controller.rb        ← new
+incomplete_task_items_controller.rb      ← new
+task_item_moves_controller.rb            ← new
+user_notification_reads_controller.rb    ← new
+...plus 22 existing controllers
 ```
 
-This is an organizational problem, not a modeling regression. The class-level improvement — local filter chains, per-class cohesion, eliminated `include` statements — holds regardless of where the files live. But a developer browsing the directory sees noise where there should be signal. It's like perfectly organizing every tool in a kitchen so they're isolated and clean — then throwing them all alphabetically into one giant box. The pizza cutter sits between the pastry brush and the potato peeler.
-
-Rails namespaces (`User::NotificationsController` → `app/controllers/user/`) solve this — but they change URL paths by default, adding routing complexity to solve a file-organization problem.
-
-This branch chose to fight one battle: class boundaries. The flat directory is the temporary cost of keeping the refactor focused. Namespaces arrive in `3A-namespaced-controllers`, where prefixes move from filenames into directory paths.
+Every action is REST. The verb vocabulary is clean. But `complete_task_items_controller.rb` sits between `accounts_controller.rb` and `errors_controller.rb` alphabetically — three domains, zero separation. Filename prefixes (`task_`, `account_`, `user_`) carry all the structural signal.
 
 ---
 
 ## 🤖 The agent's view
 
-The amount of code an AI needs to read to fix a specific issue drops from 214 lines to 54.
+Under the old setup, an AI hunting for task completion logic loaded 160 lines and parsed a custom action buried among 8 others. That's a literal token tax — it costs money, increases latency, and degrades reasoning quality.
 
-`AccountMembershipsController` is 54 lines — all membership-related. In 1B, that same fix required `AccountsMembershipsConcern` (48 lines) plus `AccountsController` (51 lines) — 99 lines across 2 files. In 1A, it was `AccountsController` at 214 lines.
+In 2B, the same fix loads a 19-line file. Even with the shared concern (42 lines), that's 61 lines across 2 files versus 160 in 1.
 
 ```mermaid
 flowchart LR
-  A["1A: 214 lines<br/>1 file"] --> B["1B: 99 lines<br/>2 files"] --> C["2A: 54 lines<br/>1 file"]
+  A["2A: 160 lines<br/>9 actions in 1 file"] --> B["2B: 19 lines<br/>1 action in 1 file"]
   style A fill:#fde8e8
-  style B fill:#e8f4fd
-  style C fill:#e8fde8
+  style B fill:#e8fde8
 ```
 
-A 4x reduction in context for the same fix. And the authorization risk from 1B — where adding a concern action required updating a different file's `except:` list — is gone. Each controller declares its own `before_action`. The file is the class, and the class is the complete unit.
+The REST vocabulary eliminates naming ambiguity entirely. Every controller uses the same 7 verbs — an agent can predict action names before reading the file. No custom semantics to reason about.
 
-The remaining cost is the flat directory. An agent scanning 17 filenames, parsing prefixes character by character to distinguish `task_item_` from `task_list_` — that's string matching where directory traversal would suffice. This drives the namespace refactoring in 3A.
+But the flat directory is the new bottleneck. 27 files where an agent must parse every prefix to distinguish `task_item_` from `task_list_`. Per-file cost is at its lowest. Per-search cost is at its highest. That tension drives 3A.
 
 ---
 
 ## ➡️ What comes next
 
-The obvious nouns are named. Nine custom actions across five controllers still use custom verbs — `complete`, `incomplete`, `move` on `TaskItemsController`; `switch` on `AccountsController`; `mark_all_read` on `UserNotificationsController`; `my_tasks` on `TaskItemAssignedController` — and every custom verb is a resource that hasn't been named yet.
-
-`TaskItemsController#complete` is really `TaskItemCompletionsController#update`. `AccountsController#switch` is `AccountSwitchesController#create`.
-
-This is resource discovery's second phase. Where 2A named the nouns hiding behind concerns, `2B-rest-actions-only` names the nouns hiding behind custom verbs. The constraint is the forcing function: when you only have 7 verbs to work with, you're forced to mint a new noun when you run out of actions. The controller count grows from 21 to 26. The action vocabulary shrinks to 7. ✌️
+Branch `3A-namespaced-controllers` turns filename prefixes into directories. `task_items_controller.rb` becomes `task/items_controller.rb`. 22 of 26 controllers move into three namespaces — `User::`, `Account::`, `Task::`. The domain structure becomes visible in the file system for the first time — and for agents, directory scope replaces string matching as the search mechanism. ✌️
 
 ---
 
 ## 🏛️ Thesis checkpoint
 
-Principle 1 enabled this. Four controllers became 23. Every route helper name changed. But the behavioral tests passed without rewriting a single assertion — because the route abstraction layer (Principle 2) absorbed the structural change. The controller count tripled while the test suite stayed identical. That is what structural freedom looks like when tests couple to behavior, not implementation.
-
-This is resource discovery's first phase — Principle 4 applied to the question of what deserves a class. The obvious nouns got their own controllers. The Rubycritic score dropped by 1.93 points, and the drop is honest: it is the fixed cost of class-level isolation, a tax we pay gladly. Nine custom verbs remain, each signaling a resource that hasn't been named yet.
+The 7-verb constraint is Principle 4: reach for the framework's own patterns first. It's not a limitation — it's a forcing function that completes the resource discovery 2A began. Principles 1 and 2 made it safe: route helpers changed names, the test suite absorbed it through the abstraction layer, zero test files edited. Principle 3 anchors the API side: every new resource controller produces responses through the same explicit envelope, so the contract holds even as the controller count grows. Rubycritic recovered to 84.71 — confirming that as the resource model sharpens, the architectural tax diminishes.
 
 ---
 
@@ -261,8 +189,8 @@ This is resource discovery's first phase — Principle 4 applied to the question
 Prerequisites: [mise](https://mise.jdx.dev/) (manages Ruby, Node, Mailpit)
 
 ```sh
-git clone git@github.com:railswhey/app.git -b 2A-multi-controllers 2A-multi-controllers
-cd 2A-multi-controllers
+git clone git@github.com:railswhey/app.git -b 2B-rest-actions-only 2B-rest-actions-only
+cd 2B-rest-actions-only
 mise install                 # Ruby 4.0.1 + Node 22 + Mailpit 1.29.2
 bin/setup                    # bundle install, db:prepare, starts dev server
 ```

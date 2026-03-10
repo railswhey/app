@@ -3,7 +3,7 @@
 class TaskItemAssignedController < ApplicationController
   before_action :authenticate_user!
 
-  def my_tasks
+  def index
     @filter = params[:filter]
     items = TaskItem
       .joins(:task_list)

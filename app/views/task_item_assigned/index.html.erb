@@ -21,11 +21,11 @@
         <tr style="<%= "opacity:0.7" if item.completed? %>">
           <td>
             <% toggle_url = item.completed? ?
-                incomplete_task_list_task_item_path(item.task_list, item, return_to: "my_tasks") :
-                complete_task_list_task_item_path(item.task_list, item, return_to: "my_tasks") %>
+                task_list_incomplete_task_item_path(item.task_list, item, return_to: "my_tasks") :
+                task_list_complete_task_item_path(item.task_list, item, return_to: "my_tasks") %>
             <input type="checkbox" <%= "checked" if item.completed? %> class="task-checkbox"
               title="<%= item.completed? ? "Mark as incomplete" : "Mark as complete" %>"
-              onclick="fetch('<%= toggle_url %>', {method:'PUT', headers:{'X-CSRF-Token':'<%= j form_authenticity_token %>','Accept':'text/html'}}).then(()=>location.reload())" />
+              onclick="fetch('<%= toggle_url %>', {method:'PATCH', headers:{'X-CSRF-Token':'<%= j form_authenticity_token %>','Accept':'text/html'}}).then(()=>location.reload())" />
           </td>
           <td style="width:100%">
             <%= link_to item.name,

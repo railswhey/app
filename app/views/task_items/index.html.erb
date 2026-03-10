@@ -54,11 +54,11 @@
           <tr style="<%= "opacity:0.7" if task_item.completed? %>">
             <td>
               <% toggle_url = task_item.completed? ?
-                  incomplete_task_list_task_item_path(Current.task_list_id, task_item, filter: params[:filter]) :
-                  complete_task_list_task_item_path(Current.task_list_id, task_item, filter: params[:filter]) %>
+                  task_list_incomplete_task_item_path(Current.task_list_id, task_item, filter: params[:filter]) :
+                  task_list_complete_task_item_path(Current.task_list_id, task_item, filter: params[:filter]) %>
               <input type="checkbox" <%= "checked" if task_item.completed? %> class="task-checkbox"
                 title="<%= task_item.completed? ? "Mark as incomplete" : "Mark as complete" %>"
-                onclick="fetch('<%= toggle_url %>', {method:'PUT', headers:{'X-CSRF-Token':'<%= j form_authenticity_token %>','Accept':'text/html'}}).then(()=>location.reload())" />
+                onclick="fetch('<%= toggle_url %>', {method:'PATCH', headers:{'X-CSRF-Token':'<%= j form_authenticity_token %>','Accept':'text/html'}}).then(()=>location.reload())" />
             </td>
             <td style="width:100%">
               <%= link_to task_item.name,
@@ -77,13 +77,13 @@
             </td>
             <td style="text-align:right">
               <% toggle_path = task_item.completed? ?
-                  incomplete_task_list_task_item_path(Current.task_list_id, task_item, filter: params[:filter]) :
-                  complete_task_list_task_item_path(Current.task_list_id, task_item, filter: params[:filter]) %>
+                  task_list_incomplete_task_item_path(Current.task_list_id, task_item, filter: params[:filter]) :
+                  task_list_complete_task_item_path(Current.task_list_id, task_item, filter: params[:filter]) %>
               <select class="action-combo" aria-label="Actions for <%= j(task_item.name) %>"
                 onchange="var v=this.value,base='<%= task_list_task_item_path(Current.task_list_id, task_item, filter: params[:filter]) %>',toggle='<%= toggle_path %>'; this.value='';
                   if(v==='toggle') {
                     var f=document.createElement('form');f.method='POST';f.action=toggle;
-                    var m=document.createElement('input');m.name='_method';m.value='put';f.appendChild(m);
+                    var m=document.createElement('input');m.name='_method';m.value='patch';f.appendChild(m);
                     var t=document.createElement('input');t.name='authenticity_token';t.value='<%= j form_authenticity_token %>';f.appendChild(t);
                     document.body.appendChild(f);f.submit(); }
                   if(v==='move') { document.getElementById('move-modal-<%= task_item.id %>').showModal(); }
@@ -120,8 +120,8 @@
           <div class="modal-body">
             <p class="modal-subtitle">Move "<%= truncate(task_item.name, length: 40) %>" to:</p>
             <% other_lists.each do |tl| %>
-              <%= link_to move_task_list_task_item_path(Current.task_list_id, task_item, target_list_id: tl.id),
-                    data: { turbo_method: :put } do %>
+              <%= link_to task_list_task_item_moves_path(Current.task_list_id, task_item_id: task_item.id, target_list_id: tl.id),
+                    data: { turbo_method: :post } do %>
                 <%= tl.inbox? ? "📥" : "📋" %> <%= tl.name %>
               <% end %>
             <% end %>

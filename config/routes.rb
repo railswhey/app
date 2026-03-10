@@ -32,7 +32,7 @@ Rails.application.routes.draw do
   put "users/profile", to: "user_profiles#update", as: :user_profiles
 
   # Account management
-  post "accounts/:id/switch", to: "accounts#switch", as: :switch_account
+  resources :account_switches, only: [ :create ]
 
   resource :account, only: [ :show, :update ] do
     get    "memberships",     to: "account_memberships#index",   as: :memberships
@@ -46,7 +46,7 @@ Rails.application.routes.draw do
 
   # Invitation acceptance (public token-based)
   get   "invitations/:token", to: "account_invitations#show",   as: :show_invitation
-  patch "invitations/:token", to: "account_invitations#accept", as: :accept_invitation
+  patch "invitations/:token", to: "account_invitations#update", as: :accept_invitation
 
   # Task lists + items
   resources :task_lists do
@@ -58,12 +58,6 @@ Rails.application.routes.draw do
     delete "comments/:id",      to: "task_list_comments#destroy"
 
     resources :task_items do
-      member do
-        put :complete
-        put :incomplete
-        put :move
-      end
-
       # Item comments
       post   "comments",          to: "task_item_comments#create",  as: :comments
       get    "comments/:id/edit", to: "task_item_comments#edit",    as: :edit_comment
@@ -71,6 +65,10 @@ Rails.application.routes.draw do
       put    "comments/:id",      to: "task_item_comments#update",  as: :comment
       delete "comments/:id",      to: "task_item_comments#destroy"
     end
+
+    resources :complete_task_items, only: [ :update ]
+    resources :incomplete_task_items, only: [ :update ]
+    resources :task_item_moves, only: [ :create ]
   end
 
   # Task list transfers
@@ -83,22 +81,21 @@ Rails.application.routes.draw do
 
   # Notifications
   get "notifications",               to: "user_notifications#index",         as: :notifications
-  put "notifications/mark_all_read", to: "user_notifications#mark_all_read", as: :mark_all_read_notifications
+  post "notifications/reads", to: "user_notification_reads#create", as: :user_notification_reads
   put "notifications/:id",           to: "user_notifications#update",        as: :notification
 
   # My tasks, search, settings
-  get "my_tasks", to: "task_item_assigned#my_tasks", as: :my_tasks
+  get "my_tasks", to: "task_item_assigned#index", as: :my_tasks
   get "search",   to: "search#show",                 as: :search
   get "settings", to: "user_settings#show",          as: :settings
 
   # API docs (public)
-  get "api/docs/raw",        to: "api_docs#raw",  as: :api_docs_raw
   get "api/docs(/:section)", to: "api_docs#show", as: :api_docs
 
   # Error pages
-  match "/404", to: "errors#not_found",            via: :all
-  match "/422", to: "errors#unprocessable_entity",  via: :all
-  match "/500", to: "errors#internal_server_error", via: :all
+  match "/404", to: "errors#show", defaults: { status: 404 }, via: :all
+  match "/422", to: "errors#show", defaults: { status: 422 }, via: :all
+  match "/500", to: "errors#show", defaults: { status: 500 }, via: :all
 
   root "user_sessions#new"
 end

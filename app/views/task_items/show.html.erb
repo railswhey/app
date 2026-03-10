@@ -12,17 +12,17 @@
     <% if @task_item.incomplete? %>
       <%= link_to(
         "✅ Complete",
-        complete_task_list_task_item_path(Current.task_list_id, @task_item, filter: "show"),
+        task_list_complete_task_item_path(Current.task_list_id, @task_item, filter: "show"),
         title: "Mark as complete",
-        data: { turbo_method: :put },
+        data: { turbo_method: :patch },
         class: "button btn-secondary"
       ) %>
     <% else %>
       <%= link_to(
         "↩ Incomplete",
-        incomplete_task_list_task_item_path(Current.task_list_id, @task_item, filter: "show"),
+        task_list_incomplete_task_item_path(Current.task_list_id, @task_item, filter: "show"),
         title: "Mark as incomplete",
-        data: { turbo_method: :put },
+        data: { turbo_method: :patch },
         class: "button btn-secondary"
       ) %>
     <% end %>
@@ -80,7 +80,8 @@
   <% if other_lists.any? %>
     <div class="card">
       <strong>Move to list:</strong>
-      <%= form_with url: move_task_list_task_item_path(Current.task_list_id, @task_item), method: :put do |f| %>
+      <%= form_with url: task_list_task_item_moves_path(Current.task_list_id), method: :post do |f| %>
+        <%= hidden_field_tag :task_item_id, @task_item.id %>
         <%= select_tag :target_list_id, options_from_collection_for_select(other_lists, "id", "name") %>
         <%= f.submit "Move" %>
       <% end %>

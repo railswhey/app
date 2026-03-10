@@ -19,7 +19,7 @@
             <% if acct.id == Current.account_id %>
               <span class="account-menu-current">✅ <%= acct.name %></span>
             <% else %>
-              <%= link_to "#{acct.name}", switch_account_path(acct), data: { turbo_method: :post } %>
+              <%= link_to "#{acct.name}", account_switches_path(account_id: acct.id), data: { turbo_method: :post } %>
             <% end %>
           <% end %>
           <hr>

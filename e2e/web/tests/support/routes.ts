@@ -56,7 +56,7 @@ export function settingsPath() { return '/settings'; }
 
 export function apiDocsPath() { return '/api/docs'; }
 export function apiDocsSectionPath(section: string) { return `/api/docs/${section}`; }
-export function apiDocsRawPath() { return '/api/docs/raw'; }
+export function apiDocsRawPath() { return '/api/docs.md'; }
 
 // ── Error Pages ──────────────────────────────────────────────────────────────
 

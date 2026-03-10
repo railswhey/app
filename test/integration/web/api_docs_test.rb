@@ -130,7 +130,7 @@ class WebApiDocsTest < ActionDispatch::IntegrationTest
 
   test "layout contains link to raw markdown" do
     get web_adapter.api__docs_url
-    assert_select "a[href$='/api/docs/raw']", minimum: 1
+    assert_select "a[href$='.md']", minimum: 1
   end
 
   # ── raw markdown endpoint ─────────────────────────────────────────────────

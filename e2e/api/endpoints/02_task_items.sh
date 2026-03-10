@@ -131,20 +131,20 @@ assert_status "404" "$RESPONSE_STATUS" "PUT /task_items/:bad_id/incomplete.json 
 
 # ── MOVE ─────────────────────────────────────────────────────────────────────
 
-api_put "$(task_item_move_path "$ITEMS_LIST_ID" "$ITEM_ID")" "{\"target_list_id\":${INBOX_ID}}"
-assert_status "200" "$RESPONSE_STATUS" "PUT /task_items/:id/move.json"
+api_post "$(task_item_move_path "$ITEMS_LIST_ID" "$ITEM_ID")" "{\"target_list_id\":${INBOX_ID}}"
+assert_status "200" "$RESPONSE_STATUS" "POST /task_item_moves.json"
 assert_success_envelope "$RESPONSE_BODY" "object" "task_items move"
 assert_json_field "$RESPONSE_BODY" ".data.task_list_id" "$INBOX_ID" "moved item belongs to target list"
 
 # ── MOVE — 422 target not found ──────────────────────────────────────────────
 
-api_put "$(task_item_move_path "$INBOX_ID" "$ITEM_ID")" '{"target_list_id":999999999}'
-assert_status "422" "$RESPONSE_STATUS" "PUT /task_items/:id/move.json (bad target → 422)"
+api_post "$(task_item_move_path "$INBOX_ID" "$ITEM_ID")" '{"target_list_id":999999999}'
+assert_status "422" "$RESPONSE_STATUS" "POST /task_item_moves.json (bad target → 422)"
 
 # ── MOVE — 422 same list ─────────────────────────────────────────────────────
 
-api_put "$(task_item_move_path "$INBOX_ID" "$ITEM_ID")" "{\"target_list_id\":${INBOX_ID}}"
-assert_status "422" "$RESPONSE_STATUS" "PUT /task_items/:id/move.json (same list → 422)"
+api_post "$(task_item_move_path "$INBOX_ID" "$ITEM_ID")" "{\"target_list_id\":${INBOX_ID}}"
+assert_status "422" "$RESPONSE_STATUS" "POST /task_item_moves.json (same list → 422)"
 
 # ── DELETE ───────────────────────────────────────────────────────────────────
 # The move above relocated the item to INBOX.

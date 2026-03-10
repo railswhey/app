@@ -73,7 +73,7 @@ class AccountInvitationsController < ApplicationController
     render :show
   end
 
-  def accept
+  def update
     current_member!
     @invitation = Invitation.find_by!(token: params[:token])
 

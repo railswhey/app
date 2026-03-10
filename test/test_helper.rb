@@ -120,18 +120,24 @@ class ActionDispatch::IntegrationTest
     def new_task__item_url(...) = test.new_task_list_task_item_url(...)
     def edit_task__item_url(...) = test.edit_task_list_task_item_url(...)
 
-    def complete_task__item_url(...) = test.complete_task_list_task_item_url(...)
-    def incomplete_task__item_url(...) = test.incomplete_task_list_task_item_url(...)
-    def move_task__item_url(...) = test.move_task_list_task_item_url(...)
+    def complete_task__item_url(...) = test.task_list_complete_task_item_url(...)
+    def incomplete_task__item_url(...) = test.task_list_incomplete_task_item_url(...)
+    def move_task__item_url(task_list, task_item, **params)
+      id = task_item.respond_to?(:id) ? task_item.id : task_item
+      test.task_list_task_item_moves_url(task_list, task_item_id: id, **params)
+    end
 
     def settings__url = test.settings_url
     def account__url = test.account_url
-    def switch__account_url(...) = test.switch_account_url(...)
+    def switch__account_url(account)
+      id = account.respond_to?(:id) ? account.id : account
+      test.account_switches_url(account_id: id)
+    end
 
     def search__url = test.search_url
     def my__tasks_url = test.my_tasks_url
     def api__docs_url(...) = test.api_docs_url(...)
-    def api__docs_raw_url = test.api_docs_raw_url
+    def api__docs_raw_url = test.api_docs_url(format: :md)
 
     def account__invitations_url = test.invitations_account_url
     def new_account__invitation_url = test.new_invitation_account_url
@@ -150,7 +156,7 @@ class ActionDispatch::IntegrationTest
 
     def notifications__url(...) = test.notifications_url(...)
     def notification__url(...) = test.notification_url(...)
-    def mark_all_read__notifications_url = test.mark_all_read_notifications_url
+    def mark_all_read__notifications_url = test.user_notification_reads_url
 
     # Comments on task lists
     def task_list__comments_url(task_list, ...) = test.task_list_comments_url(task_list, ...)
@@ -227,8 +233,8 @@ class ActionDispatch::IntegrationTest
 
     def task__item_url(...) = test.task_list_task_item_url(...)
     def task__items_url(...) = test.task_list_task_items_url(...)
-    def complete_task__item_url(...) = test.complete_task_list_task_item_url(...)
-    def incomplete_task__item_url(...) = test.incomplete_task_list_task_item_url(...)
+    def complete_task__item_url(...) = test.task_list_complete_task_item_url(...)
+    def incomplete_task__item_url(...) = test.task_list_incomplete_task_item_url(...)
 
     def account__invitation_url(...) = test.invitation_account_url(...)
     def account__invitations_url(...) = test.invitations_account_url(...)

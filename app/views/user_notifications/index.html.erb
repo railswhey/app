@@ -5,9 +5,9 @@
   <h1>🔔 Notifications</h1>
   <div style="display:flex;gap:0.5rem">
     <% if @notifications.any?(&:unread?) %>
-      <%= link_to "✓ Mark all read", mark_all_read_notifications_path,
+      <%= link_to "✓ Mark all read", user_notification_reads_path,
           class: "btn-secondary", style: "width:auto;font-size:0.82rem",
-          data: { turbo_method: :put } %>
+          data: { turbo_method: :post } %>
     <% end %>
   </div>
 </div>

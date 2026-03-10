@@ -11,9 +11,9 @@ task_list_path()            { echo "/task_lists/${1}.json"; }
 
 task_items_path()           { echo "/task_lists/${1}/task_items.json"; }
 task_item_path()            { echo "/task_lists/${1}/task_items/${2}.json"; }
-task_item_complete_path()   { echo "/task_lists/${1}/task_items/${2}/complete.json"; }
-task_item_incomplete_path() { echo "/task_lists/${1}/task_items/${2}/incomplete.json"; }
-task_item_move_path()       { echo "/task_lists/${1}/task_items/${2}/move.json"; }
+task_item_complete_path()   { echo "/task_lists/${1}/complete_task_items/${2}.json"; }
+task_item_incomplete_path() { echo "/task_lists/${1}/incomplete_task_items/${2}.json"; }
+task_item_move_path()       { echo "/task_lists/${1}/task_item_moves.json?task_item_id=${2}"; }
 
 # ── My Tasks ──────────────────────────────────────────────────────────────────
 
