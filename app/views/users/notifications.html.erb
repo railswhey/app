@@ -1,0 +1,52 @@
+<% content_for :title, "Notifications" %>
+<%= render "shared/tasks/header" %>
+
+<div class="page-title-row">
+  <h1>🔔 Notifications</h1>
+  <div style="display:flex;gap:0.5rem">
+    <% if @notifications.any?(&:unread?) %>
+      <%= link_to "✓ Mark all read", mark_all_read_notifications_path,
+          class: "btn-secondary", style: "width:auto;font-size:0.82rem",
+          data: { turbo_method: :put } %>
+    <% end %>
+  </div>
+</div>
+
+<div class="filter-tabs" style="margin:1rem 0">
+  <%= link_to "All",       notifications_path,                       class: @filter == "all"       ? "active" : nil %>
+  <%= link_to "Unread (#{@unread_count})", notifications_path(filter: "unread"), class: @filter == "unread" ? "active" : nil %>
+  <%= link_to "🔁 Transfers", notifications_path(filter: "transfers"), class: @filter == "transfers" ? "active" : nil %>
+  <%= link_to "✉️ Invites",  notifications_path(filter: "invites"),   class: @filter == "invites"   ? "active" : nil %>
+</div>
+
+<% if @notifications.any? %>
+  <div style="margin-top:0.5rem">
+    <% @notifications.each do |n| %>
+      <div class="notification-card<%= " notification-unread" if n.unread? %>">
+        <span class="notification-icon"><%= notification_icon(n) %></span>
+        <div class="notification-body">
+          <p class="notification-message<%= " notification-bold" if n.unread? %>">
+            <% link = notification_link(n) %>
+            <% if link %>
+              <a href="<%= link %>"><%= notification_message(n) %></a>
+            <% else %>
+              <%= notification_message(n) %>
+            <% end %>
+          </p>
+          <time class="notification-time"><%= time_ago_in_words(n.created_at) %> ago</time>
+        </div>
+        <div class="notification-actions">
+          <% if n.unread? %>
+            <%= link_to "✓", notification_path(n), data: { turbo_method: :put }, title: "Mark read", class: "btn-mark-read" %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% else %>
+  <div class="empty-state">
+    <p class="empty-icon">🔔</p>
+    <h3>All caught up!</h3>
+    <p><%= @filter != "all" ? "No #{@filter} notifications." : "No notifications yet." %></p>
+  </div>
+<% end %>

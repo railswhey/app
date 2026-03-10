@@ -1,0 +1,20 @@
+<% if Current.user %>
+  <% pending = Invitation.pending.where(email: Current.user.email) %>
+  <% if pending.any? %>
+    <% pending.each do |invitation| %>
+      <div class="notice" style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;flex-wrap:wrap">
+        <span>
+          📩 <strong><%= invitation.invited_by.email %></strong> invited you to join
+          <strong><%= invitation.account.name %></strong>
+        </span>
+        <span style="display:flex;gap:0.5rem;flex-shrink:0">
+          <%= link_to "Accept →", accept_invitation_path(invitation.token),
+              data: { turbo_method: :patch },
+              class: "button", style: "font-size:0.82rem;padding:0.3rem 0.7rem;width:auto" %>
+          <%= link_to "View", show_invitation_path(invitation.token),
+              class: "button btn-secondary", style: "font-size:0.82rem;padding:0.3rem 0.7rem;width:auto" %>
+        </span>
+      </div>
+    <% end %>
+  <% end %>
+<% end %>

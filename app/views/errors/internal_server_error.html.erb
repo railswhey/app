@@ -1,0 +1,19 @@
+<% content_for :title, "Server Error — Rails Whey App" %>
+<% content_for :body_class, "auth-layout" %>
+
+<% content_for :header do %>
+  <header>
+    <h1><a href="<%= root_path %>"><%= app_name_with_logo %></a></h1>
+    <nav>
+      <a href="<%= root_path %>">Home</a>
+    </nav>
+  </header>
+<% end %>
+
+<div class="auth-card" style="text-align:center;">
+  <p style="font-size:4.5rem;font-weight:700;color:var(--accent);line-height:1;margin:0 0 0.25rem;">500</p>
+  <h2>Something went wrong</h2>
+  <p class="auth-subtitle">An unexpected error occurred on our end. Try refreshing — if it keeps happening, come back in a few minutes.</p>
+
+  <a href="<%= root_path %>" class="button" style="width:auto;">← Go to Home</a>
+</div>

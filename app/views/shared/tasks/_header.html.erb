@@ -1,0 +1,90 @@
+<% content_for :header do %>
+  <header>
+    <h1>
+      <button class="hamburger" onclick="document.body.classList.toggle('nav-open')" aria-label="Toggle menu">☰</button>
+      <a href="<%= home_path %>"><%= app_name_with_logo %></a>
+      <span class="mobile-toolbar">
+        <%= link_to "🔍", search_path, title: "Search", class: "mobile-toolbar-btn" %>
+        <a href="<%= notifications_path %>" class="mobile-toolbar-btn" title="Notifications">🔔<% if unread_notification_count > 0 %><span class="notification-badge"><%= unread_notification_count %></span><% end %></a>
+        <a href="<%= settings_path %>" class="topbar-avatar" title="<%= Current.user&.email %>">
+          <%= user_initials %>
+        </a>
+      </span>
+    </h1>
+
+    <nav>
+      <details class="account-switcher">
+        <summary>🏢 <%= Current.account&.name || "Account" %> ▾</summary>
+        <div class="account-menu">
+          <% Current.user.accounts.each do |acct| %>
+            <% if acct.id == Current.account_id %>
+              <span class="account-menu-current">✅ <%= acct.name %></span>
+            <% else %>
+              <%= link_to "#{acct.name}", switch_account_path(acct), data: { turbo_method: :post } %>
+            <% end %>
+          <% end %>
+          <hr>
+          <%= link_to "⚙️ Account settings", account_path %>
+        </div>
+      </details>
+
+      <hr>
+
+      <% if Current.task_list_id? %>
+        <%= link_to(task_list_task_items_path(Current.task_list_id)) do %>
+          <% if current_resource?(controller: "task_items", action: {not: /new|create/}) %>
+            <strong>🗂️ <%= truncate(Current.task_list&.name || "Items", length: 18) %></strong>
+          <% else %>
+            🗂️ <%= truncate(Current.task_list&.name || "Items", length: 18) %>
+          <% end %>
+        <% end %>
+      <% end %>
+
+      <%= link_to(task_lists_path) do %>
+        <% if current_resource?(controller: "task_lists", action: {not: /new|create/}) %>
+          <strong>📋 Lists</strong>
+        <% else %>
+          📋 Lists
+        <% end %>
+      <% end %>
+
+      <%= link_to(my_tasks_path) do %>
+        <% if current_resource?(controller: "my_tasks") %>
+          <strong>👤 My Tasks</strong>
+        <% else %>
+          👤 My Tasks
+        <% end %>
+      <% end %>
+
+      <%= link_to(search_path) do %>
+        <% if current_resource?(controller: "search") %>
+          <strong>🔍 Search</strong>
+        <% else %>
+          🔍 Search
+        <% end %>
+      <% end %>
+
+      <%= link_to(notifications_path) do %>
+        <% if current_resource?(controller: "notifications") %>
+          <strong>🔔 Notifications<% if unread_notification_count > 0 %> <span class="notification-badge"><%= unread_notification_count %></span><% end %></strong>
+        <% else %>
+          🔔 Notifications<% if unread_notification_count > 0 %> <span class="notification-badge"><%= unread_notification_count %></span><% end %>
+        <% end %>
+      <% end %>
+
+      <hr>
+
+      <%= link_to(settings_path) do %>
+        <% if current_resource?(controller: /\A(settings|accounts|memberships|invitations)\z/) || (current_resource?(controller: "users") && current_resource?(action: /edit_profile|update_profile|edit_token|update_token|edit_password|update_password/)) %>
+          <strong>⚙️ Settings</strong>
+        <% else %>
+          ⚙️ Settings
+        <% end %>
+      <% end %>
+
+      <span class="nav-spacer"></span>
+
+      <%= link_to "👋 Log out", session_users_path, data: { turbo_method: :delete }, class: "nav-logout" %>
+    </nav>
+  </header>
+<% end %>

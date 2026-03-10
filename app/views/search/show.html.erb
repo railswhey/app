@@ -1,0 +1,91 @@
+<%= render("shared/tasks/header") %>
+
+<%= render("shared/topbar", title: "Search") %>
+
+<h2>Search</h2>
+
+<%= form_with url: search_path, method: :get do %>
+  <input type="text" name="q" value="<%= @query %>" placeholder="Search tasks and lists..." autofocus />
+  <button type="submit">Search</button>
+<% end %>
+
+<% if @query.length >= 2 %>
+  <% total = @task_items.size + @task_lists.size + @comments.size %>
+
+  <% if total > 0 %>
+    <p class="text-muted" style="margin-bottom:1.25rem">
+      <%= total %> result<%= total == 1 ? "" : "s" %> for &ldquo;<%= @query %>&rdquo;
+    </p>
+  <% end %>
+
+  <% if @task_items.any? %>
+    <div class="search-section">
+      <p class="section-label">✅ Tasks (<%= @task_items.size %>)</p>
+      <% @task_items.each do |item| %>
+        <a href="<%= task_list_task_item_path(item.task_list, item) %>" class="search-result-card">
+          <span class="search-result-icon"><%= item.completed? ? "☑" : "☐" %></span>
+          <span class="search-result-body">
+            <span class="search-result-title<%= " search-result-done" if item.completed? %>"><%= item.name %><% if item.description.present? %> <span class="search-result-desc">— <%= truncate(item.description, length: 60) %></span><% end %></span>
+            <span class="search-result-meta">
+              in <strong><%= item.task_list.name %></strong>
+              <% if item.assigned_user %>
+                · 👤 <%= item.assigned_user.username %>
+              <% end %>
+            </span>
+          </span>
+          <span class="search-result-arrow">›</span>
+        </a>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if @task_lists.any? %>
+    <div class="search-section">
+      <p class="section-label">📋 Lists (<%= @task_lists.size %>)</p>
+      <% @task_lists.each do |list| %>
+        <a href="<%= task_list_path(list) %>" class="search-result-card">
+          <span class="search-result-icon"><%= list.inbox? ? "📥" : "📋" %></span>
+          <span class="search-result-body">
+            <span class="search-result-title"><%= list.name %></span>
+            <% if list.description.present? %>
+              <span class="search-result-meta"><%= truncate(list.description, length: 80) %></span>
+            <% end %>
+          </span>
+          <span class="search-result-arrow">›</span>
+        </a>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if @comments.any? %>
+    <div class="search-section">
+      <p class="section-label">💬 Comments (<%= @comments.size %>)</p>
+      <% @comments.each do |comment| %>
+        <% comment_path = comment.commentable_type == "TaskItem" ?
+              task_list_task_item_path(comment.commentable.task_list, comment.commentable) :
+              task_list_path(comment.commentable) %>
+        <a href="<%= comment_path %>" class="search-result-card">
+          <span class="search-result-icon">💬</span>
+          <span class="search-result-body">
+            <span class="search-result-quote">&ldquo;<%= truncate(comment.body, length: 120) %>&rdquo;</span>
+            <span class="search-result-meta">
+              by <strong><%= comment.user.username %></strong>
+              on <strong><%= comment.commentable.name %></strong>
+              · <%= comment.created_at.strftime("%b %-d") %>
+            </span>
+          </span>
+          <span class="search-result-arrow">›</span>
+        </a>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if total == 0 %>
+    <div class="empty-state">
+      <span class="empty-icon">🔍</span>
+      <p>No results for &ldquo;<%= @query %>&rdquo;</p>
+    </div>
+  <% end %>
+<% elsif @query.present? %>
+  <p class="text-muted">Type at least 2 characters to search.</p>
+<% end %>

@@ -1,0 +1,9 @@
+<%= render("shared/tasks/header") %>
+
+<%= render("shared/topbar", title: "Edit task list", back_path: task_list_path(@task_list), back_label: @task_list.name) %>
+
+<h2>Editing task list</h2>
+
+<div class="card">
+  <%= render "form", task_list: @task_list %>
+</div>

@@ -1,0 +1,26 @@
+<%= render("shared/tasks/header") %>
+
+<% back_path = @task_item.present? ?
+    task_list_task_item_path(@task_list, @task_item) :
+    task_list_path(@task_list) %>
+<% update_url = @task_item.present? ?
+    task_list_task_item_comment_path(@task_list, @task_item, @comment) :
+    task_list_comment_path(@task_list, @comment) %>
+
+<%= render("shared/topbar", title: "Edit Comment", back_path:, back_label: "Back") %>
+
+<div class="detail-card">
+  <%= form_with model: @comment, url: update_url, method: :patch do |f| %>
+    <% if @comment.errors.any? %>
+      <div class="notice notice--alert" style="margin-bottom:1rem">
+        <%= @comment.errors.full_messages.to_sentence %>
+      </div>
+    <% end %>
+    <%= f.text_area :body, rows: 5, required: true,
+        style: "width:100%;resize:vertical;margin-bottom:0.75rem" %>
+    <div class="action-group">
+      <%= f.submit "Update Comment", class: "button btn-secondary" %>
+      <%= link_to "Cancel", back_path, class: "button btn-secondary" %>
+    </div>
+  <% end %>
+</div>

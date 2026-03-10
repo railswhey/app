@@ -1,0 +1,9 @@
+<%= render("shared/tasks/header") %>
+
+<%= render("shared/topbar", title: "New task list", back_path: task_lists_path, back_label: "Lists") %>
+
+<h2>New task list</h2>
+
+<div class="card">
+  <%= render "form", task_list: @task_list %>
+</div>

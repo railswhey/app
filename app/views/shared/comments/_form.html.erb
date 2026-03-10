@@ -1,0 +1,8 @@
+<%= form_with model: comment, url: url, class: "comment-form" do |f| %>
+  <%= f.text_area :body, placeholder: "Write a comment...", rows: 3, required: true,
+      style: "width:100%;resize:vertical" %>
+  <div style="margin-top:0.5rem">
+    <%= f.submit submit_label, class: "button btn-secondary",
+        style: "width:auto;padding:0.35rem 1rem;font-size:0.875rem" %>
+  </div>
+<% end %>

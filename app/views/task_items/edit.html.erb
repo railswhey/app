@@ -1,0 +1,17 @@
+<%= render("shared/tasks/header") %>
+
+<%= render("shared/topbar",
+  title: "Edit task item",
+  breadcrumbs: [
+    { label: Current.task_list.name, path: task_list_path(Current.task_list_id) },
+    { label: "Items", path: task_list_task_items_path(Current.task_list_id, filter: params[:filter]) }
+  ]) %>
+
+<h2>Editing task item</h2>
+
+<div class="card">
+  <%= render(
+    "form",
+    task_item: @task_item,
+    url: task_list_task_item_path(Current.task_list_id, @task_item, filter: params[:filter])) %>
+</div>

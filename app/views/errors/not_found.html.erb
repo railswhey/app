@@ -1,0 +1,27 @@
+<% content_for :title, "Page Not Found — Rails Whey App" %>
+<% content_for :body_class, "auth-layout" %>
+
+<% content_for :header do %>
+  <header>
+    <h1><a href="<%= root_path %>"><%= app_name_with_logo %></a></h1>
+    <nav>
+      <% if Current.user? %>
+        <a href="<%= task_lists_path %>">My Lists</a>
+      <% else %>
+        <a href="<%= new_session_users_path %>">Sign in</a>
+      <% end %>
+    </nav>
+  </header>
+<% end %>
+
+<div class="auth-card" style="text-align:center;">
+  <p style="font-size:4.5rem;font-weight:700;color:var(--accent);line-height:1;margin:0 0 0.25rem;">404</p>
+  <h2>Page not found</h2>
+  <p class="auth-subtitle">The page you're looking for doesn't exist or may have been moved.</p>
+
+  <% if Current.user? %>
+    <a href="<%= task_lists_path %>" class="button" style="width:auto;">← Back to My Lists</a>
+  <% else %>
+    <a href="<%= new_session_users_path %>" class="button" style="width:auto;">← Go to Sign In</a>
+  <% end %>
+</div>
