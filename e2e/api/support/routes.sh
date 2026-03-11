@@ -4,16 +4,16 @@
 
 # ── Task Lists ────────────────────────────────────────────────────────────────
 
-task_lists_path()           { echo "/task_lists.json"; }
-task_list_path()            { echo "/task_lists/${1}.json"; }
+task_lists_path()           { echo "/task/lists.json"; }
+task_list_path()            { echo "/task/lists/${1}.json"; }
 
 # ── Task Items (nested under task list) ───────────────────────────────────────
 
-task_items_path()           { echo "/task_lists/${1}/task_items.json"; }
-task_item_path()            { echo "/task_lists/${1}/task_items/${2}.json"; }
-task_item_complete_path()   { echo "/task_lists/${1}/complete_task_items/${2}.json"; }
-task_item_incomplete_path() { echo "/task_lists/${1}/incomplete_task_items/${2}.json"; }
-task_item_move_path()       { echo "/task_lists/${1}/task_item_moves.json?task_item_id=${2}"; }
+task_items_path()           { echo "/task/lists/${1}/items.json"; }
+task_item_path()            { echo "/task/lists/${1}/items/${2}.json"; }
+task_item_complete_path()   { echo "/task/lists/${1}/complete_items/${2}.json"; }
+task_item_incomplete_path() { echo "/task/lists/${1}/incomplete_items/${2}.json"; }
+task_item_move_path()       { echo "/task/lists/${1}/item_moves.json?task_item_id=${2}"; }
 
 # ── My Tasks ──────────────────────────────────────────────────────────────────
 
@@ -36,14 +36,14 @@ invitation_path()           { echo "/invitations/${1}.json"; }
 
 # ── Users ─────────────────────────────────────────────────────────────────────
 
-users_path()                { echo "/users.json"; }
-user_session_path()         { echo "/users/session.json"; }
-user_token_path()           { echo "/users/token.json"; }
-user_profile_path()         { echo "/users/profile.json"; }
-user_password_path()        { echo "/users/password.json"; }
-user_password_reset_path()  { echo "/users/${1}/password.json"; }
+users_path()                { echo "/user/registrations.json"; }
+user_session_path()         { echo "/user/session.json"; }
+user_token_path()           { echo "/user/token.json"; }
+user_profile_path()         { echo "/user/profile.json"; }
+user_password_path()        { echo "/user/passwords.json"; }
+user_password_reset_path()  { echo "/user/passwords/${1}.json"; }
 
 # ── Transfers ─────────────────────────────────────────────────────────────────
 
-transfer_create_path()      { echo "/task_lists/${1}/transfer.json"; }
+transfer_create_path()      { echo "/task/lists/${1}/transfer.json"; }
 transfer_path()             { echo "/transfers/${1}.json"; }

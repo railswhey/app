@@ -31,7 +31,7 @@ async function setupCollaborator(
   const invitationUrl = extractLink(body, '/invitations/');
   await collabPage.goto(invitationUrl);
   await collabPage.getByRole('button', { name: /accept invitation/i }).click();
-  await collabPage.waitForURL(/\/(task_lists|$)/, { timeout: 15_000 });
+  await collabPage.waitForURL(/\/(task\/lists|$)/, { timeout: 15_000 });
 
   // Collaborator switches to owner's account
   await collabPage.locator('.account-switcher summary').click();

@@ -8,10 +8,10 @@
     <% if Current.user && comment.user_id == Current.user.id %>
       <span class="comment-actions">
         <% edit_path = task_item.present? ?
-            task_list_task_item_edit_comment_path(task_list, task_item, comment) :
-            task_list_edit_comment_path(task_list, comment) %>
+            edit_task_list_item_comment_path(task_list, task_item, comment) :
+            edit_task_list_comment_path(task_list, comment) %>
         <% delete_path = task_item.present? ?
-            task_list_task_item_comment_path(task_list, task_item, comment) :
+            task_list_item_comment_path(task_list, task_item, comment) :
             task_list_comment_path(task_list, comment) %>
         <%= link_to "Edit", edit_path, class: "comment-action" %>
         <%= link_to "Delete", delete_path,

@@ -31,6 +31,6 @@ test.describe('Navigation & Layout', () => {
     // Click the inbox link in nav (open sidebar first on mobile)
     await openNav(page);
     await page.locator('nav a', { hasText: 'Inbox' }).first().click();
-    await page.waitForURL(/\/task_items/, { timeout: 10_000 });
+    await page.waitForURL(/\/items/, { timeout: 10_000 });
   });
 });

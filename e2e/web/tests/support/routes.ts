@@ -7,30 +7,30 @@ export function rootPath() { return '/'; }
 
 // ── Users / Auth ─────────────────────────────────────────────────────────────
 
-export function newUserPath() { return '/users/new'; }
-export function userSessionPath() { return '/users/session'; }
-export function userProfilePath() { return '/users/profile'; }
-export function userPasswordPath() { return '/users/password'; }
-export function userPasswordResetPath(token: string) { return `/users/${token}/password`; }
-export function userTokenPath() { return '/users/token'; }
+export function newUserPath() { return '/user/registrations/new'; }
+export function userSessionPath() { return '/user/session'; }
+export function userProfilePath() { return '/user/profile'; }
+export function userPasswordPath() { return '/user/passwords'; }
+export function userPasswordResetPath(token: string) { return `/user/passwords/${token}/edit`; }
+export function userTokenPath() { return '/user/token'; }
 
 // ── Task Lists ───────────────────────────────────────────────────────────────
 
-export function taskListsPath() { return '/task_lists'; }
-export function newTaskListPath() { return '/task_lists/new'; }
-export function taskListPath(id: string) { return `/task_lists/${id}`; }
-export function editTaskListPath(id: string) { return `/task_lists/${id}/edit`; }
+export function taskListsPath() { return '/task/lists'; }
+export function newTaskListPath() { return '/task/lists/new'; }
+export function taskListPath(id: string) { return `/task/lists/${id}`; }
+export function editTaskListPath(id: string) { return `/task/lists/${id}/edit`; }
 
 // ── Task Items (nested under task list) ──────────────────────────────────────
 
-export function taskItemsPath(listId: string) { return `/task_lists/${listId}/task_items`; }
-export function newTaskItemPath(listId: string) { return `/task_lists/${listId}/task_items/new`; }
-export function taskItemPath(listId: string, id: string) { return `/task_lists/${listId}/task_items/${id}`; }
-export function editTaskItemPath(listId: string, id: string) { return `/task_lists/${listId}/task_items/${id}/edit`; }
+export function taskItemsPath(listId: string) { return `/task/lists/${listId}/items`; }
+export function newTaskItemPath(listId: string) { return `/task/lists/${listId}/items/new`; }
+export function taskItemPath(listId: string, id: string) { return `/task/lists/${listId}/items/${id}`; }
+export function editTaskItemPath(listId: string, id: string) { return `/task/lists/${listId}/items/${id}/edit`; }
 
 // ── Transfers ────────────────────────────────────────────────────────────────
 
-export function newTransferPath(listId: string) { return `/task_lists/${listId}/transfer/new`; }
+export function newTransferPath(listId: string) { return `/task/lists/${listId}/transfer/new`; }
 
 // ── My Tasks ─────────────────────────────────────────────────────────────────
 
@@ -42,7 +42,7 @@ export function searchPath() { return '/search'; }
 
 // ── Notifications ────────────────────────────────────────────────────────────
 
-export function notificationsPath() { return '/notifications'; }
+export function notificationsPath() { return '/user/notifications'; }
 
 // ── Account ──────────────────────────────────────────────────────────────────
 

@@ -69,7 +69,7 @@ test.describe('Guest Access', () => {
     const guestPage = await guestCtx.newPage();
     await guestPage.goto(invitationUrl);
     await guestPage.getByRole('link', { name: /sign in/i }).click();
-    await expect(guestPage).toHaveURL(/users\/session/);
+    await expect(guestPage).toHaveURL(/user\/session/);
     await guestCtx.close();
   });
 
@@ -89,8 +89,8 @@ test.describe('Guest Access', () => {
     await page.goto(newTaskListPath());
     await page.getByLabel('Name').fill('TransferGuest');
     await page.getByRole('button', { name: /create task list/i }).click();
-    await page.waitForURL(/\/task_lists\/\d+$/, { timeout: 10_000 });
-    const listId = page.url().match(/\/task_lists\/(\d+)/)?.[1] ?? '';
+    await page.waitForURL(/\/task\/lists\/\d+$/, { timeout: 10_000 });
+    const listId = page.url().match(/\/task\/lists\/(\d+)/)?.[1] ?? '';
 
     await page.getByRole('link', { name: /transfer/i }).click();
     await page.waitForURL(/\/transfer/, { timeout: 10_000 });

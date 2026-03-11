@@ -37,8 +37,8 @@ async function createList(page: Page, name: string, description = ''): Promise<s
   await page.getByLabel('Name').fill(name);
   if (description) await page.getByLabel('Description').fill(description);
   await page.getByRole('button', { name: /create task list/i }).click();
-  await page.waitForURL(/\/task_lists\/\d+$/, { timeout: 10_000 });
-  return page.url().match(/\/task_lists\/(\d+)/)?.[1] ?? '';
+  await page.waitForURL(/\/task\/lists\/\d+$/, { timeout: 10_000 });
+  return page.url().match(/\/task\/lists\/(\d+)/)?.[1] ?? '';
 }
 
 async function createItem(page: Page, listId: string, name: string, description = ''): Promise<string> {
@@ -46,7 +46,7 @@ async function createItem(page: Page, listId: string, name: string, description 
   await page.getByLabel('Name').fill(name);
   if (description) await page.getByLabel('Description').fill(description);
   await page.getByRole('button', { name: /create task item/i }).click();
-  await page.waitForURL(/\/task_lists\/\d+\/task_items($|\?)/, { timeout: 10_000 });
+  await page.waitForURL(/\/task\/lists\/\d+\/items($|\?)/, { timeout: 10_000 });
   const links = page.getByRole('link', { name });
   await links.first().waitFor({ timeout: 5_000 });
   return page.url();
@@ -114,12 +114,12 @@ test('capture documentation screenshots', async ({ page }) => {
 
   // ── Task item show page ─────────────────────────────────────────────────────
   await page.getByRole('link', { name: 'Write unit tests' }).first().click();
-  await page.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+  await page.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
   await shot(page, '022_task_item_show.png');
 
   // ── Complete a task ─────────────────────────────────────────────────────────
   await page.getByRole('link', { name: '✅ Complete' }).click();
-  await page.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+  await page.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
   await page.getByRole('link', { name: '↩ Incomplete' }).waitFor();
   await shot(page, '023_task_item_completed.png');
 

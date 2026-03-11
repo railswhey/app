@@ -96,7 +96,7 @@ test.describe('Settings', () => {
       await page.getByPlaceholder('At least 8 characters').fill(user2.password);
       await page.getByPlaceholder('Same again').fill(user2.password);
       await page.getByRole('button', { name: /create account/i }).click();
-      await page.waitForURL(/\/(task_lists|inbox|dashboard|$)/, { timeout: 10_000 });
+      await page.waitForURL(/\/(task\/lists|inbox|dashboard|$)/, { timeout: 10_000 });
 
       // Try to change user2's username to user1's
       await page.goto(userProfilePath());

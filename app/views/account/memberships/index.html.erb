@@ -1,0 +1,37 @@
+<%= render("shared/tasks/header") %>
+
+<%= render("shared/topbar", title: "Members", back_path: account_management_path, back_label: "Account") %>
+
+<h2>👥 Members</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>User</th>
+      <th>Role</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @memberships.each do |membership| %>
+      <tr>
+        <td>
+          <strong><%= membership.user.username %></strong>
+          <div><small><%= membership.user.email %></small></div>
+        </td>
+        <td>
+          <span class="chip <%= membership.owner? ? 'chip-success' : 'chip-neutral' %>">
+            <%= membership.role %>
+          </span>
+        </td>
+        <td>
+          <% unless membership.owner? || membership.user == Current.user %>
+            <%= link_to "Remove", account_membership_path(membership),
+                  data: { turbo_method: :delete, turbo_confirm: "Remove #{membership.user.username}?" },
+                  class: "button btn-danger" %>
+          <% end %>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

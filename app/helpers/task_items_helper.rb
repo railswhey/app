@@ -8,7 +8,7 @@ module TaskItemsHelper
         "task_list",
         options_from_collection_for_select(Current.task_lists, "id", "name", Current.task_list_id),
         style: "width: 97%;",
-        onchange: "Turbo.visit(`/task_lists/${this.value}/task_items`)"
+        onchange: "Turbo.visit(`/task/lists/${this.value}/items`)"
       )
     ])
   end
@@ -16,9 +16,9 @@ module TaskItemsHelper
   def link_to_task_item_filters
     style = "color: var(--text) !important;"
 
-    all = { title: "All", path: task_list_task_items_path(Current.task_list_id), style: }
-    completed = { title: "Completed", path: task_list_task_items_path(Current.task_list_id, filter: "completed"), style: }
-    incomplete = { title: "Incomplete", path: task_list_task_items_path(Current.task_list_id, filter: "incomplete"), style: }
+    all = { title: "All", path: task_list_items_path(Current.task_list_id), style: }
+    completed = { title: "Completed", path: task_list_items_path(Current.task_list_id, filter: "completed"), style: }
+    incomplete = { title: "Incomplete", path: task_list_items_path(Current.task_list_id, filter: "incomplete"), style: }
 
     case params[:filter]
     when "incomplete" then set_current_task_items_filter(incomplete)
@@ -50,7 +50,7 @@ module TaskItemsHelper
         content_tag(:div, data[:icon], class: "empty-state-icon"),
         content_tag(:h3, data[:title] % { list: list_name }),
         content_tag(:p, data[:message]),
-        (link_to("+ Add Your First Task", new_task_list_task_item_path(Current.task_list_id), class: "button") if filter.nil?)
+        (link_to("+ Add Your First Task", new_task_list_item_path(Current.task_list_id), class: "button") if filter.nil?)
       ].compact)
     end
   end

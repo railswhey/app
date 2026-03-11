@@ -5,89 +5,54 @@ Rails.application.routes.draw do
   get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
   get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
 
-  # User registrations
-  get  "users/new",  to: "user_registrations#new",    as: :new_user_registration
-  post "users",      to: "user_registrations#create", as: :user_registrations
+  namespace :user do
+    resources :registrations, only: [ :new, :create ]
+    delete "registrations", to: "account_deletions#destroy"
+    resource :session, only: [ :new, :create, :destroy ]
+    resources :passwords, only: [ :new, :create, :edit, :update ]
+    resource :token, only: [ :edit, :update ]
+    resource :profile, only: [ :edit, :update ]
+    resources :notifications, only: [ :index, :update ]
+    resources :notification_reads, only: [ :create ]
+  end
+  get "settings", to: "user/settings#show", as: :settings
 
-  # User account deletion
-  delete "users", to: "user_account_deletions#destroy"
-
-  # User sessions
-  get    "users/session", to: "user_sessions#new",    as: :new_user_session
-  post   "users/session", to: "user_sessions#create", as: :user_sessions
-  delete "users/session", to: "user_sessions#destroy"
-
-  # User passwords
-  get  "users/password",     to: "user_passwords#new",    as: :new_user_password
-  post "users/password",     to: "user_passwords#create", as: :user_passwords
-  get  "users/:id/password", to: "user_passwords#edit",   as: :edit_user_password
-  put  "users/:id/password", to: "user_passwords#update", as: :user_password
-
-  # User tokens
-  get "users/token", to: "user_tokens#edit",   as: :edit_user_token
-  put "users/token", to: "user_tokens#update", as: :user_tokens
-
-  # User profiles
-  get "users/profile", to: "user_profiles#edit",   as: :edit_user_profile
-  put "users/profile", to: "user_profiles#update", as: :user_profiles
-
-  # Account management
-  resources :account_switches, only: [ :create ]
-
-  resource :account, only: [ :show, :update ] do
-    get    "memberships",     to: "account_memberships#index",   as: :memberships
-    delete "memberships/:id", to: "account_memberships#destroy", as: :membership
-
-    get    "invitations",     to: "account_invitations#index",   as: :invitations
-    get    "invitations/new", to: "account_invitations#new",     as: :new_invitation
-    post   "invitations",     to: "account_invitations#create"
-    delete "invitations/:id", to: "account_invitations#destroy", as: :invitation
+  namespace :account do
+    resources :switches, only: [ :create ]
+    resource :management, only: [ :show, :update ], path: "", controller: "management"
+    resources :memberships, only: [ :index, :destroy ]
+    resources :invitations, only: [ :index, :new, :create, :destroy ]
   end
 
   # Invitation acceptance (public token-based)
-  get   "invitations/:token", to: "account_invitations#show",   as: :show_invitation
-  patch "invitations/:token", to: "account_invitations#update", as: :accept_invitation
+  get   "invitations/:token", to: "account/invitations#show",   as: :show_invitation
+  patch "invitations/:token", to: "account/invitations#update", as: :accept_invitation
 
-  # Task lists + items
-  resources :task_lists do
-    # List comments
-    post   "comments",          to: "task_list_comments#create",  as: :comments
-    get    "comments/:id/edit", to: "task_list_comments#edit",    as: :edit_comment
-    patch  "comments/:id",      to: "task_list_comments#update"
-    put    "comments/:id",      to: "task_list_comments#update",  as: :comment
-    delete "comments/:id",      to: "task_list_comments#destroy"
-
-    resources :task_items do
-      # Item comments
-      post   "comments",          to: "task_item_comments#create",  as: :comments
-      get    "comments/:id/edit", to: "task_item_comments#edit",    as: :edit_comment
-      patch  "comments/:id",      to: "task_item_comments#update"
-      put    "comments/:id",      to: "task_item_comments#update",  as: :comment
-      delete "comments/:id",      to: "task_item_comments#destroy"
+  namespace :task do
+    resources :lists do
+      resources :items do
+        resources :comments, controller: "item_comments", only: [ :create, :edit, :update, :destroy ]
+      end
+      resources :complete_items, only: [ :update ]
+      resources :incomplete_items, only: [ :update ]
+      resources :item_moves, only: [ :create ]
+      resources :comments, controller: "list_comments", only: [ :create, :edit, :update, :destroy ]
     end
-
-    resources :complete_task_items, only: [ :update ]
-    resources :incomplete_task_items, only: [ :update ]
-    resources :task_item_moves, only: [ :create ]
   end
 
-  # Task list transfers
-  get  "task_lists/:task_list_id/transfer/new", to: "task_list_transfers#new",    as: :new_task_list_transfer
-  post "task_lists/:task_list_id/transfer",     to: "task_list_transfers#create", as: :task_list_transfer_form
+  # Task list transfers (custom routes to avoid helper name conflicts)
+  get  "task/lists/:list_id/transfer/new", to: "task/list_transfers#new",    as: :new_task_list_transfer
+  post "task/lists/:list_id/transfer",     to: "task/list_transfers#create", as: :task_list_transfer_form
 
   # Transfer approval (public token-based)
-  get   "transfers/:token", to: "task_list_transfers#show",   as: :show_task_list_transfer
-  patch "transfers/:token", to: "task_list_transfers#update", as: :task_list_transfer
+  get   "transfers/:token", to: "task/list_transfers#show",   as: :show_task_list_transfer
+  patch "transfers/:token", to: "task/list_transfers#update", as: :task_list_transfer
 
-  # Notifications
-  get "notifications",               to: "user_notifications#index",         as: :notifications
-  post "notifications/reads", to: "user_notification_reads#create", as: :user_notification_reads
-  put "notifications/:id",           to: "user_notifications#update",        as: :notification
+  get "my_tasks", to: "task/item_assigned#index", as: :my_tasks
+  get "search",   to: "search#show",              as: :search
 
-  # My tasks, search, settings
-  get "my_tasks", to: "task_item_assigned#index", as: :my_tasks
-  get "search",   to: "search#show",                 as: :search
-  get "settings", to: "user_settings#show",          as: :settings
+  # Password reset email links (URL format expected by mailers and tests)
+  get "users/:id/password", to: "user/passwords#edit", as: :user_password_reset_link
 
   # API docs (public)
   get "api/docs(/:section)", to: "api_docs#show", as: :api_docs
@@ -97,5 +62,5 @@ Rails.application.routes.draw do
   match "/422", to: "errors#show", defaults: { status: 422 }, via: :all
   match "/500", to: "errors#show", defaults: { status: 500 }, via: :all
 
-  root "user_sessions#new"
+  root "user/sessions#new"
 end

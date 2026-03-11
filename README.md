@@ -14,11 +14,11 @@
   <img src="/docs/assets/logo.png" alt="Rails Whey App" width="180" height="180">
 </p>
 
-Every controller action must be one of the 7 standard REST verbs — no exceptions. Nine custom actions from 2A are resolved through extraction, renaming, format negotiation, and consolidation. The verb constraint forces hidden nouns into the open: completion, switch, move, read — domain concepts that custom verbs had compressed into action names.
+Twenty-two controllers move from a flat directory into three domain namespaces (`User::`, `Account::`, `Task::`). The controller count stays at 26. The flat directory becomes three subdirectories. No logic changes — the same code, reorganized so the file system reflects domain groupings that were previously encoded only in names.
 
 | | |
 |---|---|
-| **Branch** | `2B-rest-actions-only` |
+| **Branch** | `3A-namespaced-controllers` |
 | **Ruby** | 4.0 |
 | **Rails** | 8.1 |
 | **Rubycritic** | 84.71 |
@@ -28,10 +28,8 @@ Every controller action must be one of the 7 standard REST verbs — no exceptio
 
 - [🎯 The concept](#-the-concept)
 - [📊 The numbers](#-the-numbers)
+- [🤔 The problem](#-the-problem)
 - [🔬 The evidence](#-the-evidence)
-  - [Extraction reveals a named resource](#extraction-reveals-a-named-resource)
-  - [Shared infrastructure stays infrastructure](#shared-infrastructure-stays-infrastructure)
-- [🤔 The catch](#-the-catch)
 - [🤖 The agent's view](#-the-agents-view)
 - [➡️ What comes next](#️-what-comes-next)
 - [🏛️ Thesis checkpoint](#️-thesis-checkpoint)
@@ -43,144 +41,143 @@ Every controller action must be one of the 7 standard REST verbs — no exceptio
 
 ## 🎯 The concept
 
-> **One rule:** if the action doesn't fit the 7 verbs, the resource model is wrong.
+> **One rule:** the prefix becomes the folder.
 
-Think of it as a seven-verb diet. If the factory machinery only knows how to stamp, cut, or weld, you can't invent a new motion called `complete`. You have to create a new part — a noun — that the existing machinery can work on.
+Branch `2B-rest-actions-only` left 26 controllers in a flat directory — a junk drawer where the only domain signal was a naming convention. Nine `user_` controllers, nine `task_`, four `account_`, and four standalone infrastructure files shared a single folder with no structural grouping.
 
-Branch 2A completed resource discovery's first phase: extracting obvious nouns from concerns into standalone classes. But nine actions still used custom verbs. Each one signaled a resource that hadn't been named yet.
+This branch turns those prefixes into directories. `user_sessions_controller.rb` moves to `user/sessions_controller.rb`. `TaskItemsController` becomes `Task::ItemsController`. Twenty-two controllers move into three namespace directories. Four stay at the root (`ApplicationController`, `ErrorsController`, `SearchController`, `APIDocsController`) because they serve cross-cutting concerns.
 
-This branch names them. Four patterns handle all nine:
+```mermaid
+flowchart LR
+  subgraph Before["2B: flat directory"]
+    FLAT["26 files in one folder<br/>prefixes carry all signal"]
+  end
 
-1. **Extract to a new controller** — `complete` → `CompleteTaskItemsController#update`; `switch` → `AccountSwitchesController#create`; `mark_all_read` → `UserNotificationReadsController#create`; `move` → `TaskItemMovesController#create`; `incomplete` → `IncompleteTaskItemsController#update`
-2. **Rename to the natural REST verb** — `accept` was always an `update`; `my_tasks` was always an `index`
-3. **Format negotiation** — `raw` merged into `show` via `respond_to` with a `.md` format
-4. **Consolidate** — three named error handlers became one `ErrorsController#show` with a lookup table
+  subgraph After["3A: namespaced"]
+    ROOT["root/ — 4 infrastructure files"]
+    USER["user/ — 9 files"]
+    ACCOUNT["account/ — 4 files"]
+    TASK["task/ — 9 files"]
+  end
 
-`CompleteTaskItemsController#update` says "completion is a resource that gets updated." `TaskItemsController#complete` just said "this thing does something."
+  FLAT --> ROOT
+  FLAT --> USER
+  FLAT --> ACCOUNT
+  FLAT --> TASK
+
+  style Before fill:#fde8e8
+  style ROOT fill:#f5f5f5
+  style USER fill:#e8f4fd
+  style ACCOUNT fill:#e8fde8
+  style TASK fill:#fff3e0
+```
+
+That is both the strength and the limitation. The move is safe precisely because no behavior changed — but the underlying responsibilities inside each controller remain untouched. A namespaced file that still mixes two authorization lifecycles is a well-filed mess.
 
 ---
 
 ## 📊 The numbers
 
-Rubycritic climbed from 83.02 to 84.71 — recovering nearly all ground lost to 2A's boilerplate tax. As the resource model sharpens, each file does less and the overhead-to-logic ratio improves.
+Rubycritic: 84.71 (unchanged). LOC: 1390 (unchanged). A pure structural reorganization — the quality score measures code, not organization, and the code didn't change.
 
-The biggest single change: `TaskItemsController` dropped from 160 to 79 lines. Its three custom actions became 3 new controllers + 1 shared concern. More files, but each with a single job.
+The migration cost is the real number. Every `namespace` block renames its route helpers. `task_list_task_items_path` becomes `task_list_items_path`. Over 40 `_path` and `_url` references change across controllers, views, and mailers. The route abstraction layer in `test/test_helper.rb` absorbs test-side changes, but application-side references are manual. One-time cost, zero behavioral change.
 
-LOC grew from 1355 to 1390 (+35 lines of extraction overhead). File count went from 21 to 27 (26 controllers + 1 concern).
+One rename isn't a pure move: `AccountsController` became `Account::ManagementController`. The original name collided with the `Account` namespace module — Ruby's constant lookup found `Account` the model instead of `Account` the namespace. Renaming to `Management` avoids the ambiguity and better describes its job: showing and updating the current account. This is the first signal that deep namespacing interacts with Ruby's runtime in ways directory reorganization alone cannot predict. Branch 3B will encounter a worse version of this same mechanism.
+
+---
+
+## 🤔 The problem
+
+The `task/` directory inherited the flat pattern one level deeper:
+
+```
+task/
+  complete_items_controller.rb
+  incomplete_items_controller.rb
+  item_assigned_controller.rb
+  item_comments_controller.rb
+  item_moves_controller.rb
+  items_controller.rb
+  list_comments_controller.rb
+  list_transfers_controller.rb
+  lists_controller.rb
+```
+
+Nine files. Six with `item_` prefixes. Two with `list_`. Prefixes doing the work of directories — the exact problem namespaces were supposed to solve.
+
+`user/` is cleaner — most controllers map to distinct concepts — but `notification_reads_controller.rb` sitting next to `notifications_controller.rb` signals a sub-domain relationship the flat namespace doesn't express.
+
+Namespaces group files without enforcing anything about the files inside. The controllers in `task/` share a directory but have no shared base class, no shared concern, no common interface. The directory is a filing convention, not a behavioral boundary. That evolution starts at 3F, where controllers split by authorization lifecycle rather than by entity name.
 
 ---
 
 ## 🔬 The evidence
 
-### Extraction reveals a named resource
-
-`AccountsController#switch` in 2A changed the session, not the account record — different semantics hiding behind the same class. The 7-verb constraint forced the question: *what is being created?*
-
-Answer: an account switch. A session-level event.
+**Routes gain structure without changing behavior**
 
 ```ruby
-# 2B — AccountSwitchesController (17 lines)
-class AccountSwitchesController < ApplicationController
-  before_action :authenticate_user!
+# 2B (flat)
+get  "users/session", to: "user_sessions#new"
+post "users/session", to: "user_sessions#create"
+resources :account_switches, only: [:create]
+resource  :account, only: [:show, :update]
 
-  def create
-    account = Current.user.accounts.find(params[:account_id])
-    session[:account_id] = account.id
-    session.delete(:task_list_id)
-    Current.member!(user_id: Current.user.id, account_id: account.id, task_list_id: nil)
-    self.current_task_list_id = Current.task_list_id
-    redirect_to home_path, notice: "Switched to #{account.name}."
-  end
+# 3A (namespaced)
+namespace :user do
+  resource :session, only: [:new, :create, :destroy]
+  resources :passwords, only: [:new, :create, :edit, :update]
+  # ...
+end
+
+namespace :account do
+  resources :switches, only: [:create]
+  resource :management, only: [:show, :update], path: ""
+  # ...
 end
 ```
 
-`AccountsController` shrank from 48 to 36 lines — only `show` and `update` remain.
+The route file went from a flat list to a three-section document. Opening `config/routes.rb` shows the domain structure at a glance. The `account/management` route uses `path: ""` to keep the URL at `/account` while routing to `Account::ManagementController`.
 
-### Shared infrastructure stays infrastructure
+**A boundary decision reveals a domain judgment**
 
-The `TaskItemsController` extraction is the largest — and it introduces the branch's one concern:
+`User::AccountDeletionsController` deletes account data but lives in `user/` — because the action is initiated by the user, requires user authentication, and the primary record destroyed is the `User`. The placement is a judgment about who owns the action, not about which tables it touches.
 
-```mermaid
-flowchart LR
-  subgraph Before["2A: 1 controller, 9 actions"]
-    TI2A[TaskItemsController<br/>160 lines<br/>CRUD + complete + incomplete + move]
-  end
-
-  subgraph After["2B: 4 controllers + 1 concern"]
-    TC[TaskItemsConcern<br/>42 lines<br/>shared plumbing]
-    TI2B[TaskItemsController<br/>79 lines<br/>CRUD only]
-    CTI[CompleteTaskItems<br/>19 lines]
-    ITI[IncompleteTaskItems<br/>19 lines]
-    TIM[TaskItemMoves<br/>43 lines]
-  end
-
-  TI2A -.->|"CRUD stays"| TI2B
-  TI2A -.->|"complete extracts"| CTI
-  TI2A -.->|"incomplete extracts"| ITI
-  TI2A -.->|"move extracts"| TIM
-
-  TC --> TI2B
-  TC --> CTI
-  TC --> ITI
-  TC --> TIM
-
-  style TI2A fill:#fde8e8
-  style TC fill:#e8f4fd
-  style TI2B fill:#e8fde8
-  style CTI fill:#e8fde8
-  style ITI fill:#e8fde8
-  style TIM fill:#e8fde8
-```
-
-`TaskItemsConcern` holds only plumbing — finders, URL helpers, redirect logic. Zero business logic. This is different from 1B's god-concerns: those aggregated unrelated behavior into a single class. This concern shares infrastructure across controllers that all operate on the same entity.
-
----
-
-## 🤔 The catch
-
-27 files, one flat directory:
-
-```
-account_switches_controller.rb           ← new
-complete_task_items_controller.rb        ← new
-incomplete_task_items_controller.rb      ← new
-task_item_moves_controller.rb            ← new
-user_notification_reads_controller.rb    ← new
-...plus 22 existing controllers
-```
-
-Every action is REST. The verb vocabulary is clean. But `complete_task_items_controller.rb` sits between `accounts_controller.rb` and `errors_controller.rb` alphabetically — three domains, zero separation. Filename prefixes (`task_`, `account_`, `user_`) carry all the structural signal.
+In the flat directory, the file was `user_account_deletions_controller.rb` — the prefix hinted at the same placement, but no one had to defend it. Namespaces force these calls to be explicit.
 
 ---
 
 ## 🤖 The agent's view
 
-Under the old setup, an AI hunting for task completion logic loaded 160 lines and parsed a custom action buried among 8 others. That's a literal token tax — it costs money, increases latency, and degrades reasoning quality.
+In the flat directory, finding user-related controllers meant scanning 26 entries and filtering by `user_` — 9 matches among 17 non-matches. Signal-to-noise: **35%**.
 
-In 2B, the same fix loads a 19-line file. Even with the shared concern (42 lines), that's 61 lines across 2 files versus 160 in 1.
+After namespacing, `ls user/` returns exactly 9 files. Signal-to-noise: **100%**.
 
 ```mermaid
 flowchart LR
-  A["2A: 160 lines<br/>9 actions in 1 file"] --> B["2B: 19 lines<br/>1 action in 1 file"]
+  A["Flat: 9/26 — 35% signal"] --> B["Namespaced: 9/9 — 100% signal"]
   style A fill:#fde8e8
   style B fill:#e8fde8
 ```
 
-The REST vocabulary eliminates naming ambiguity entirely. Every controller uses the same 7 verbs — an agent can predict action names before reading the file. No custom semantics to reason about.
+Same math for every domain. Task: 9/26 → 9/9. Account: 4/26 → 4/4. The file path itself acts as a filter before the search even begins.
 
-But the flat directory is the new bottleneck. 27 files where an agent must parse every prefix to distinguish `task_item_` from `task_list_`. Per-file cost is at its lowest. Per-search cost is at its highest. That tension drives 3A.
+The migration is the most expensive one-time agent task — renaming 40+ route helpers across the codebase with no behavioral difference. But every future controller addition to a namespace is cheaper to locate and requires no helper migration.
 
 ---
 
 ## ➡️ What comes next
 
-Branch `3A-namespaced-controllers` turns filename prefixes into directories. `task_items_controller.rb` becomes `task/items_controller.rb`. 22 of 26 controllers move into three namespaces — `User::`, `Account::`, `Task::`. The domain structure becomes visible in the file system for the first time — and for agents, directory scope replaces string matching as the search mechanism. ✌️
+The namespace solved top-level grouping, but `task/` recreated the prefix problem internally — six `item_` files, two `list_` files.
+
+Branch `3B-nested-namespaces` recurses the pattern deeper. `Task::ItemCommentsController` becomes `Task::Item::CommentsController`. `Task::ListTransfersController` becomes `Task::List::TransfersController`. Eleven controllers reorganize into four sub-namespaces: `Task::Item::`, `Task::List::`, `User::Notification::`, `User::Settings::`. The file count stays at 26. The directory depth goes from 2 to 3.
+
+Deeper nesting brings smaller directories but also new costs: Ruby constant lookup collisions and a placement decision for every new controller. ✌️
 
 ---
 
 ## 🏛️ Thesis checkpoint
 
-The 7-verb constraint is Principle 4: reach for the framework's own patterns first. It's not a limitation — it's a forcing function that completes the resource discovery 2A began. Principles 1 and 2 made it safe: route helpers changed names, the test suite absorbed it through the abstraction layer, zero test files edited. Principle 3 anchors the API side: every new resource controller produces responses through the same explicit envelope, so the contract holds even as the controller count grows. Rubycritic recovered to 84.71 — confirming that as the resource model sharpens, the architectural tax diminishes.
+Structure alone is not architecture. The namespaces are a filing convention — necessary for navigability, insufficient for isolation. When controllers gained namespaces, views gained matching directories (Principle 6). The massive renaming changed zero test assertions because the tests never referenced controller class names or view template paths (Principle 1). Behavioral decoupling — splitting controllers by authorization lifecycle, by domain actor, by operation — begins at 3F. The structural foundation laid here makes that work possible.
 
 ---
 
@@ -189,8 +186,8 @@ The 7-verb constraint is Principle 4: reach for the framework's own patterns fir
 Prerequisites: [mise](https://mise.jdx.dev/) (manages Ruby, Node, Mailpit)
 
 ```sh
-git clone git@github.com:railswhey/app.git -b 2B-rest-actions-only 2B-rest-actions-only
-cd 2B-rest-actions-only
+git clone git@github.com:railswhey/app.git -b 3A-namespaced-controllers 3A-namespaced-controllers
+cd 3A-namespaced-controllers
 mise install                 # Ruby 4.0.1 + Node 22 + Mailpit 1.29.2
 bin/setup                    # bundle install, db:prepare, starts dev server
 ```

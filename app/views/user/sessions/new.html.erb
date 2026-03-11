@@ -1,0 +1,28 @@
+<%= render("shared/users/header") %>
+
+<div class="auth-card">
+  <h2>Welcome back</h2>
+  <p class="auth-subtitle">Sign in to your workspace</p>
+
+  <%= form_with(model: @user, url: user_session_path) do |f| %>
+    <%= hidden_field_tag :return_to, params[:return_to] if params[:return_to].present? %>
+    <div>
+      <%= f.label :email, "Email address", style: "display: block" %>
+      <%= f.email_field :email, required: true, autofocus: true, autocomplete: "email", placeholder: "you@example.com" %>
+    </div>
+
+    <div>
+      <%= f.label :password, style: "display: block" %>
+      <%= f.password_field :password, required: true, autocomplete: "current-password", placeholder: "Your password" %>
+    </div>
+
+    <div>
+      <%= f.submit "Sign in →" %>
+    </div>
+  <% end %>
+
+  <p class="auth-links">
+    <%= render("shared/users/reset_password_link") %><br>
+    No account? <%= render("shared/users/sign_up_link") %>
+  </p>
+</div>

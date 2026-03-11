@@ -19,8 +19,8 @@ test.describe('Transfer Email', () => {
     await page.goto(newTaskListPath());
     await page.getByLabel('Name').fill('EmailTestList');
     await page.getByRole('button', { name: /create task list/i }).click();
-    await page.waitForURL(/\/task_lists\/\d+$/, { timeout: 10_000 });
-    const listId = page.url().match(/\/task_lists\/(\d+)/)?.[1] ?? '';
+    await page.waitForURL(/\/task\/lists\/\d+$/, { timeout: 10_000 });
+    const listId = page.url().match(/\/task\/lists\/(\d+)/)?.[1] ?? '';
 
     // Clear mailbox before transfer
     await clearMailbox();
@@ -61,8 +61,8 @@ test.describe('Transfer Email', () => {
     await page.goto(newTaskListPath());
     await page.getByLabel('Name').fill('LinkTestList');
     await page.getByRole('button', { name: /create task list/i }).click();
-    await page.waitForURL(/\/task_lists\/\d+$/, { timeout: 10_000 });
-    const listId = page.url().match(/\/task_lists\/(\d+)/)?.[1] ?? '';
+    await page.waitForURL(/\/task\/lists\/\d+$/, { timeout: 10_000 });
+    const listId = page.url().match(/\/task\/lists\/(\d+)/)?.[1] ?? '';
 
     await clearMailbox();
 

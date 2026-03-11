@@ -93,7 +93,7 @@ class ActionDispatch::IntegrationTest
       test.assert_select(".notice-text", "You need to sign in or sign up before continuing.")
     end
 
-    def user__sessions_url = test.user_sessions_url
+    def user__sessions_url = test.user_session_url
     def new_user__session_url = test.new_user_session_url
 
     def user__registrations_url = test.user_registrations_url
@@ -104,10 +104,10 @@ class ActionDispatch::IntegrationTest
     def new_user__password_url = test.new_user_password_url
     def edit_user__password_url(...) = test.edit_user_password_url(...)
 
-    def user__tokens_url = test.user_tokens_url
+    def user__tokens_url = test.user_token_url
     def edit_user__token_url = test.edit_user_token_url
 
-    def user__profiles_url = test.user_profiles_url
+    def user__profiles_url = test.user_profile_url
     def edit_user__profile_url = test.edit_user_profile_url
 
     def task__list_url(...) = test.task_list_url(...)
@@ -115,20 +115,20 @@ class ActionDispatch::IntegrationTest
     def new_task__list_url = test.new_task_list_url
     def edit_task__list_url(...) = test.edit_task_list_url(...)
 
-    def task__item_url(...) = test.task_list_task_item_url(...)
-    def task__items_url(...) = test.task_list_task_items_url(...)
-    def new_task__item_url(...) = test.new_task_list_task_item_url(...)
-    def edit_task__item_url(...) = test.edit_task_list_task_item_url(...)
+    def task__item_url(...) = test.task_list_item_url(...)
+    def task__items_url(...) = test.task_list_items_url(...)
+    def new_task__item_url(...) = test.new_task_list_item_url(...)
+    def edit_task__item_url(...) = test.edit_task_list_item_url(...)
 
-    def complete_task__item_url(...) = test.task_list_complete_task_item_url(...)
-    def incomplete_task__item_url(...) = test.task_list_incomplete_task_item_url(...)
+    def complete_task__item_url(...) = test.task_list_complete_item_url(...)
+    def incomplete_task__item_url(...) = test.task_list_incomplete_item_url(...)
     def move_task__item_url(task_list, task_item, **params)
       id = task_item.respond_to?(:id) ? task_item.id : task_item
-      test.task_list_task_item_moves_url(task_list, task_item_id: id, **params)
+      test.task_list_item_moves_url(task_list, task_item_id: id, **params)
     end
 
     def settings__url = test.settings_url
-    def account__url = test.account_url
+    def account__url = test.account_management_url
     def switch__account_url(account)
       id = account.respond_to?(:id) ? account.id : account
       test.account_switches_url(account_id: id)
@@ -139,14 +139,14 @@ class ActionDispatch::IntegrationTest
     def api__docs_url(...) = test.api_docs_url(...)
     def api__docs_raw_url = test.api_docs_url(format: :md)
 
-    def account__invitations_url = test.invitations_account_url
-    def new_account__invitation_url = test.new_invitation_account_url
-    def account__invitation_url(...) = test.invitation_account_url(...)
+    def account__invitations_url = test.account_invitations_url
+    def new_account__invitation_url = test.new_account_invitation_url
+    def account__invitation_url(...) = test.account_invitation_url(...)
     def show__invitation_url(...) = test.show_invitation_url(...)
     def accept__invitation_url(...) = test.accept_invitation_url(...)
 
-    def account__memberships_url = test.memberships_account_url
-    def account__membership_url(...) = test.membership_account_url(...)
+    def account__memberships_url = test.account_memberships_url
+    def account__membership_url(...) = test.account_membership_url(...)
 
     def new_task__list_transfer_url(...) = test.new_task_list_transfer_url(...)
     def task__list_transfer_form_url(...) = test.task_list_transfer_form_url(...)
@@ -154,19 +154,19 @@ class ActionDispatch::IntegrationTest
     def show_task__list_transfer_url(...) = test.show_task_list_transfer_url(...)
     def show_task__list_transfer_path(...) = test.show_task_list_transfer_path(...)
 
-    def notifications__url(...) = test.notifications_url(...)
-    def notification__url(...) = test.notification_url(...)
+    def notifications__url(...) = test.user_notifications_url(...)
+    def notification__url(...) = test.user_notification_url(...)
     def mark_all_read__notifications_url = test.user_notification_reads_url
 
     # Comments on task lists
     def task_list__comments_url(task_list, ...) = test.task_list_comments_url(task_list, ...)
     def task_list__comment_url(task_list, comment, ...) = test.task_list_comment_url(task_list, comment, ...)
-    def edit_task_list__comment_url(task_list, comment, ...) = test.task_list_edit_comment_url(task_list, comment, ...)
+    def edit_task_list__comment_url(task_list, comment, ...) = test.edit_task_list_comment_url(task_list, comment, ...)
 
     # Comments on task items
-    def task__item__comments_url(task_list, task_item, ...) = test.task_list_task_item_comments_url(task_list, task_item, ...)
-    def task__item__comment_url(task_list, task_item, comment, ...) = test.task_list_task_item_comment_url(task_list, task_item, comment, ...)
-    def edit_task__item__comment_url(task_list, task_item, comment, ...) = test.task_list_task_item_edit_comment_url(task_list, task_item, comment, ...)
+    def task__item__comments_url(task_list, task_item, ...) = test.task_list_item_comments_url(task_list, task_item, ...)
+    def task__item__comment_url(task_list, task_item, comment, ...) = test.task_list_item_comment_url(task_list, task_item, comment, ...)
+    def edit_task__item__comment_url(task_list, task_item, comment, ...) = test.edit_task_list_item_comment_url(task_list, task_item, comment, ...)
   end
 
   class APIV1Adapter
@@ -217,30 +217,30 @@ class ActionDispatch::IntegrationTest
       json_data
     end
 
-    def user__sessions_url = test.user_sessions_url(format: :json)
+    def user__sessions_url = test.user_session_url(format: :json)
 
     def user__registrations_url = test.user_registrations_url(format: :json)
 
     def user__password_url(...) = test.user_password_url(...)
     def user__passwords_url = test.user_passwords_url(format: :json)
 
-    def user__tokens_url = test.user_tokens_url(format: :json)
+    def user__tokens_url = test.user_token_url(format: :json)
 
-    def user__profiles_url = test.user_profiles_url(format: :json)
+    def user__profiles_url = test.user_profile_url(format: :json)
 
     def task__list_url(...) = test.task_list_url(...)
     def task__lists_url = test.task_lists_url(format: :json)
 
-    def task__item_url(...) = test.task_list_task_item_url(...)
-    def task__items_url(...) = test.task_list_task_items_url(...)
-    def complete_task__item_url(...) = test.task_list_complete_task_item_url(...)
-    def incomplete_task__item_url(...) = test.task_list_incomplete_task_item_url(...)
+    def task__item_url(...) = test.task_list_item_url(...)
+    def task__items_url(...) = test.task_list_items_url(...)
+    def complete_task__item_url(...) = test.task_list_complete_item_url(...)
+    def incomplete_task__item_url(...) = test.task_list_incomplete_item_url(...)
 
-    def account__invitation_url(...) = test.invitation_account_url(...)
-    def account__invitations_url(...) = test.invitations_account_url(...)
+    def account__invitation_url(...) = test.account_invitation_url(...)
+    def account__invitations_url(...) = test.account_invitations_url(...)
     def accept__invitation_url(...) = test.accept_invitation_url(...)
 
-    def account__membership_url(...) = test.membership_account_url(...)
+    def account__membership_url(...) = test.account_membership_url(...)
 
     def new_task__list_transfer_url(...) = test.new_task_list_transfer_url(...)
     def task__list_transfer_form_url(...) = test.task_list_transfer_form_url(...)

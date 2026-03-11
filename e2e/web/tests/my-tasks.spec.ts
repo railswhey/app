@@ -6,8 +6,8 @@ async function createList(page: import('@playwright/test').Page, name: string): 
   await page.goto(newTaskListPath());
   await page.getByLabel('Name').fill(name);
   await page.getByRole('button', { name: /create task list/i }).click();
-  await page.waitForURL(/\/task_lists\/\d+/, { timeout: 10_000 });
-  return page.url().match(/\/task_lists\/(\d+)/)?.[1] ?? '';
+  await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
+  return page.url().match(/\/task\/lists\/(\d+)/)?.[1] ?? '';
 }
 
 /** Create a task item assigned to current user. Returns on the task items index. */
@@ -32,7 +32,7 @@ async function createAssignedItem(
   }
 
   await page.getByRole('button', { name: /create task item/i }).click();
-  await page.waitForURL(/\/task_items($|\?)/, { timeout: 10_000 });
+  await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 }
 
 test.describe('My Tasks', () => {
@@ -42,7 +42,7 @@ test.describe('My Tasks', () => {
 
     await openNav(page);
     await page.getByRole('link', { name: /👤.*my tasks/i }).click();
-    await page.waitForURL(/\/my.tasks|\/task_items.*assigned/, { timeout: 10_000 });
+    await page.waitForURL(/\/my.tasks|\/items.*assigned/, { timeout: 10_000 });
     await expect(page).not.toHaveURL(/users\/session/);
   });
 
@@ -55,7 +55,7 @@ test.describe('My Tasks', () => {
 
     await openNav(page);
     await page.getByRole('link', { name: /👤.*my tasks/i }).click();
-    await page.waitForURL(/\/my.tasks|\/task_items.*assigned/, { timeout: 10_000 });
+    await page.waitForURL(/\/my.tasks|\/items.*assigned/, { timeout: 10_000 });
     await expect(page.getByText('Self Assigned Task')).toBeVisible();
   });
 
@@ -68,7 +68,7 @@ test.describe('My Tasks', () => {
 
     await openNav(page);
     await page.getByRole('link', { name: /👤.*my tasks/i }).click();
-    await page.waitForURL(/\/my.tasks|\/task_items.*assigned/, { timeout: 10_000 });
+    await page.waitForURL(/\/my.tasks|\/items.*assigned/, { timeout: 10_000 });
     await expect(page.getByText('My Incomplete Task')).toBeVisible();
   });
 
@@ -82,14 +82,14 @@ test.describe('My Tasks', () => {
 
     // Navigate to the item and mark it complete
     await page.getByRole('link', { name: 'My Completed Task' }).click();
-    await page.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+    await page.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
     await page.getByRole('link', { name: '✅ Complete' }).click();
     await expect(page.getByRole('link', { name: '↩ Incomplete' })).toBeVisible({ timeout: 10_000 });
 
     // Navigate to My Tasks with completed filter
     await openNav(page);
     await page.getByRole('link', { name: /👤.*my tasks/i }).click();
-    await page.waitForURL(/\/my.tasks|\/task_items.*assigned/, { timeout: 10_000 });
+    await page.waitForURL(/\/my.tasks|\/items.*assigned/, { timeout: 10_000 });
 
     const currentUrl = page.url();
     const filterUrl = currentUrl.includes('?')
@@ -108,11 +108,11 @@ test.describe('My Tasks', () => {
     await page.goto(newTaskItemPath(listId));
     await page.getByLabel('Name').fill('NoAssignItem');
     await page.getByRole('button', { name: /create task item/i }).click();
-    await page.waitForURL(/\/task_items($|\?)/, { timeout: 10_000 });
+    await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 
     await openNav(page);
     await page.getByRole('link', { name: /👤.*my tasks/i }).click();
-    await page.waitForURL(/\/my.tasks|\/task_items.*assigned/, { timeout: 10_000 });
+    await page.waitForURL(/\/my.tasks|\/items.*assigned/, { timeout: 10_000 });
     await expect(page.getByText('NoAssignItem')).not.toBeVisible();
   });
 
@@ -122,7 +122,7 @@ test.describe('My Tasks', () => {
 
     await openNav(page);
     await page.getByRole('link', { name: /👤.*my tasks/i }).click();
-    await page.waitForURL(/\/my.tasks|\/task_items.*assigned/, { timeout: 10_000 });
+    await page.waitForURL(/\/my.tasks|\/items.*assigned/, { timeout: 10_000 });
     await expect(page).not.toHaveURL(/users\/session/);
     await expect(page.locator('body')).toBeVisible();
   });
@@ -136,13 +136,13 @@ test.describe('My Tasks', () => {
     await page.goto(newTaskItemPath(listId));
     await page.getByLabel('Name').fill('Assign Via Edit Task');
     await page.getByRole('button', { name: /create task item/i }).click();
-    await page.waitForURL(/\/task_items($|\?)/, { timeout: 10_000 });
+    await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 
     // Navigate to show page then edit
     await page.getByRole('link', { name: 'Assign Via Edit Task' }).click();
-    await page.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+    await page.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
     await page.getByRole('link', { name: '✏️ Edit' }).click();
-    await page.waitForURL(/\/task_items\/\d+\/edit/, { timeout: 10_000 });
+    await page.waitForURL(/\/items\/\d+\/edit/, { timeout: 10_000 });
 
     const assigneeSelect = page.locator('#assignee-select');
     if (await assigneeSelect.isVisible()) {
@@ -157,11 +157,11 @@ test.describe('My Tasks', () => {
     }
 
     await page.getByRole('button', { name: /update task item/i }).click();
-    await page.waitForURL(/\/task_items($|\?)/, { timeout: 10_000 });
+    await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 
     await openNav(page);
     await page.getByRole('link', { name: /👤.*my tasks/i }).click();
-    await page.waitForURL(/\/my.tasks|\/task_items.*assigned/, { timeout: 10_000 });
+    await page.waitForURL(/\/my.tasks|\/items.*assigned/, { timeout: 10_000 });
     await expect(page.getByText('Assign Via Edit Task')).toBeVisible();
   });
 
@@ -176,16 +176,16 @@ test.describe('My Tasks', () => {
     // Verify it appears in My Tasks
     await openNav(page);
     await page.getByRole('link', { name: /👤.*my tasks/i }).click();
-    await page.waitForURL(/\/my.tasks|\/task_items.*assigned/, { timeout: 10_000 });
+    await page.waitForURL(/\/my.tasks|\/items.*assigned/, { timeout: 10_000 });
     await expect(page.getByText('Task To Unassign')).toBeVisible();
 
     // Now edit to remove the assignee
     await page.goto(taskItemsPath(listId));
     await page.getByRole('link', { name: /Task To Unassign/ }).click();
-    await page.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+    await page.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
 
     await page.getByRole('link', { name: '✏️ Edit' }).click();
-    await page.waitForURL(/\/task_items\/\d+\/edit/, { timeout: 10_000 });
+    await page.waitForURL(/\/items\/\d+\/edit/, { timeout: 10_000 });
 
     const editAssigneeSelect = page.locator('#assignee-select');
     if (await editAssigneeSelect.isVisible()) {
@@ -193,11 +193,11 @@ test.describe('My Tasks', () => {
     }
 
     await page.getByRole('button', { name: /update task item/i }).click();
-    await page.waitForURL(/\/task_items($|\?)/, { timeout: 10_000 });
+    await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 
     await openNav(page);
     await page.getByRole('link', { name: /👤.*my tasks/i }).click();
-    await page.waitForURL(/\/my.tasks|\/task_items.*assigned/, { timeout: 10_000 });
+    await page.waitForURL(/\/my.tasks|\/items.*assigned/, { timeout: 10_000 });
     await expect(page.getByText('Task To Unassign')).not.toBeVisible();
   });
 
@@ -209,14 +209,14 @@ test.describe('My Tasks', () => {
     // Create a task assigned to self, then mark complete
     await createAssignedItem(page, listId, 'My Completed Assigned Task');
     await page.getByRole('link', { name: 'My Completed Assigned Task' }).click();
-    await page.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+    await page.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
     await page.getByRole('link', { name: '✅ Complete' }).click();
     await expect(page.getByRole('link', { name: '↩ Incomplete' })).toBeVisible({ timeout: 10_000 });
 
     // Navigate to My Tasks completed filter
     await openNav(page);
     await page.getByRole('link', { name: /👤.*my tasks/i }).click();
-    await page.waitForURL(/\/my.tasks|\/task_items.*assigned/, { timeout: 10_000 });
+    await page.waitForURL(/\/my.tasks|\/items.*assigned/, { timeout: 10_000 });
 
     const completedFilter = page.locator('.filter-tabs').getByRole('link', { name: /completed/i });
     if (await completedFilter.isVisible()) {
@@ -242,7 +242,7 @@ test.describe('My Tasks', () => {
     // Navigate to My Tasks and click incomplete filter
     await openNav(page);
     await page.getByRole('link', { name: /👤.*my tasks/i }).click();
-    await page.waitForURL(/\/my.tasks|\/task_items.*assigned/, { timeout: 10_000 });
+    await page.waitForURL(/\/my.tasks|\/items.*assigned/, { timeout: 10_000 });
 
     const incompleteFilter = page.locator('.filter-tabs').getByRole('link', { name: /incomplete/i });
     if (await incompleteFilter.isVisible()) {

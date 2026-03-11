@@ -1,0 +1,52 @@
+<%= render("shared/tasks/header") %>
+
+<%= render("shared/topbar", title: "My Tasks") %>
+
+<p class="filter-tabs">
+  <%= link_to "All (#{@item_counts[:all]})",
+      my_tasks_path,
+      class: @filter.nil? ? "active" : nil %>
+  <%= link_to "Incomplete (#{@item_counts[:incomplete]})",
+      my_tasks_path(filter: "incomplete"),
+      class: @filter == "incomplete" ? "active" : nil %>
+  <%= link_to "Completed (#{@item_counts[:completed]})",
+      my_tasks_path(filter: "completed"),
+      class: @filter == "completed" ? "active" : nil %>
+</p>
+
+<% if @task_items.any? %>
+  <table>
+    <tbody>
+      <% @task_items.each do |item| %>
+        <tr style="<%= "opacity:0.7" if item.completed? %>">
+          <td>
+            <% toggle_url = item.completed? ?
+                task_list_incomplete_item_path(item.task_list, item, return_to: "my_tasks") :
+                task_list_complete_item_path(item.task_list, item, return_to: "my_tasks") %>
+            <input type="checkbox" <%= "checked" if item.completed? %> class="task-checkbox"
+              title="<%= item.completed? ? "Mark as incomplete" : "Mark as complete" %>"
+              onclick="fetch('<%= toggle_url %>', {method:'PATCH', headers:{'X-CSRF-Token':'<%= j form_authenticity_token %>','Accept':'text/html'}}).then(()=>location.reload())" />
+          </td>
+          <td style="width:100%">
+            <%= link_to item.name,
+                task_list_item_path(item.task_list, item),
+                style: item.completed? ? "text-decoration:line-through;color:var(--text-light)" : "font-weight:500" %><% if item.description.present? %>
+              <small class="text-muted"> — <%= truncate(item.description, length: 60) %></small><% end %>
+            <div><small class="text-muted">in <%= link_to item.task_list.name, task_list_path(item.task_list) %></small></div>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% else %>
+  <div class="empty-state">
+    <span class="empty-icon">📋</span>
+    <% if @filter == "completed" %>
+      <p>No completed tasks.</p>
+    <% elsif @filter == "incomplete" %>
+      <p>No incomplete tasks.</p>
+    <% else %>
+      <p>No tasks assigned to you yet.</p>
+    <% end %>
+  </div>
+<% end %>

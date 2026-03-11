@@ -1,0 +1,4 @@
+json.status :success
+json.type :array
+json.data { json.array!(@task_items, partial: "task/items/task_item", as: :task_item) }
+json.url task_list_items_url(Current.task_list_id, format: :json)

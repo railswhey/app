@@ -6,8 +6,8 @@ async function createList(page: import('@playwright/test').Page, name: string): 
   await page.goto(newTaskListPath());
   await page.getByLabel('Name').fill(name);
   await page.getByRole('button', { name: /create task list/i }).click();
-  await page.waitForURL(/\/task_lists\/\d+/, { timeout: 10_000 });
-  return page.url().match(/\/task_lists\/(\d+)/)?.[1] ?? '';
+  await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
+  return page.url().match(/\/task\/lists\/(\d+)/)?.[1] ?? '';
 }
 
 async function search(page: import('@playwright/test').Page, query: string): Promise<void> {
@@ -53,7 +53,7 @@ test.describe('Search', () => {
     await page.goto(newTaskItemPath(listId));
     await page.getByLabel('Name').fill(uniqueTask);
     await page.getByRole('button', { name: /create task item/i }).click();
-    await page.waitForURL(/\/task_items($|\?)/, { timeout: 10_000 });
+    await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 
     await search(page, uniqueTask);
     await expect(page.locator('.search-result-title', { hasText: uniqueTask })).toBeVisible();
@@ -69,7 +69,7 @@ test.describe('Search', () => {
     await page.getByLabel('Name').fill('Task With Unique Desc');
     await page.getByLabel('Description').fill(uniqueDesc);
     await page.getByRole('button', { name: /create task item/i }).click();
-    await page.waitForURL(/\/task_items($|\?)/, { timeout: 10_000 });
+    await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 
     // Search by task name instead (descriptions may not be indexed)
     await search(page, 'Task With Unique Desc');
@@ -95,11 +95,11 @@ test.describe('Search', () => {
     await page.goto(newTaskItemPath(listId));
     await page.getByLabel('Name').fill('Commented Task');
     await page.getByRole('button', { name: /create task item/i }).click();
-    await page.waitForURL(/\/task_items($|\?)/, { timeout: 10_000 });
+    await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 
     // Navigate to show page to add comment
     await page.getByRole('link', { name: 'Commented Task' }).click();
-    await page.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+    await page.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
 
     const uniqueComment = `searchcomment_${Date.now()}`;
     const commentBody = page.locator("textarea[name='comment[body]']");

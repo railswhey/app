@@ -7,8 +7,8 @@ async function createList(page: import('@playwright/test').Page, name: string): 
   await page.goto(newTaskListPath());
   await page.getByLabel('Name').fill(name);
   await page.getByRole('button', { name: /create task list/i }).click();
-  await page.waitForURL(/\/task_lists\/\d+/, { timeout: 10_000 });
-  return page.url().match(/\/task_lists\/(\d+)/)?.[1] ?? '';
+  await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
+  return page.url().match(/\/task\/lists\/(\d+)/)?.[1] ?? '';
 }
 
 test.describe('Notifications', () => {
@@ -112,7 +112,7 @@ test.describe('Notifications', () => {
     await inviteePage.goto(invitationUrl);
     await inviteePage.waitForURL(/\/invitations\//, { timeout: 10_000 });
     await inviteePage.getByRole('button', { name: /accept invitation/i }).click();
-    await inviteePage.waitForURL(/\/(task_lists|$)/, { timeout: 15_000 });
+    await inviteePage.waitForURL(/\/(task\/lists|$)/, { timeout: 15_000 });
     await inviteeContext.close();
 
     // Owner reloads — notification link should still be visible (badge or link)

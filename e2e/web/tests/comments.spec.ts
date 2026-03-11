@@ -6,8 +6,8 @@ async function createList(page: import('@playwright/test').Page, name: string): 
   await page.goto(newTaskListPath());
   await page.getByLabel('Name').fill(name);
   await page.getByRole('button', { name: /create task list/i }).click();
-  await page.waitForURL(/\/task_lists\/\d+/, { timeout: 10_000 });
-  return page.url().match(/\/task_lists\/(\d+)/)?.[1] ?? '';
+  await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
+  return page.url().match(/\/task\/lists\/(\d+)/)?.[1] ?? '';
 }
 
 async function createTaskItem(
@@ -19,11 +19,11 @@ async function createTaskItem(
   await page.getByLabel('Name').fill(name);
   await page.getByRole('button', { name: /create task item/i }).click();
   // Create redirects to task items index
-  await page.waitForURL(/\/task_items($|\?)/, { timeout: 10_000 });
+  await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
   // Navigate to the created item's show page
   await page.getByRole('link', { name }).click();
-  await page.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
-  return page.url().match(/\/task_items\/(\d+)/)?.[1] ?? '';
+  await page.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
+  return page.url().match(/\/items\/(\d+)/)?.[1] ?? '';
 }
 
 test.describe('Comments', () => {
@@ -42,7 +42,7 @@ test.describe('Comments', () => {
         await page.getByLabel(/body/i).fill('This is my comment');
       }
       await page.getByRole('button', { name: /add comment/i }).click();
-      await page.waitForURL(/\/task_lists\/\d+\/task_items\/\d+/, { timeout: 10_000 });
+      await page.waitForURL(/\/task\/lists\/\d+\/items\/\d+/, { timeout: 10_000 });
       await expect(page.getByText('This is my comment')).toBeVisible();
     });
 
@@ -75,7 +75,7 @@ test.describe('Comments', () => {
 
       await page.getByRole('button', { name: /add comment/i }).click();
       // Should stay on the same page or show error
-      await expect(page).toHaveURL(/\/task_lists\/\d+\/task_items\/\d+/);
+      await expect(page).toHaveURL(/\/task\/lists\/\d+\/items\/\d+/);
     });
 
     test('edit own comment on task item', async ({ page }) => {
@@ -91,7 +91,7 @@ test.describe('Comments', () => {
         await page.getByLabel(/body/i).fill('Original comment text');
       }
       await page.getByRole('button', { name: /add comment/i }).click();
-      await page.waitForURL(/\/task_lists\/\d+\/task_items\/\d+/, { timeout: 10_000 });
+      await page.waitForURL(/\/task\/lists\/\d+\/items\/\d+/, { timeout: 10_000 });
       await expect(page.getByText('Original comment text')).toBeVisible();
 
       // Click edit link for the comment
@@ -103,7 +103,7 @@ test.describe('Comments', () => {
         const editBody = page.locator("textarea[name='comment[body]']");
         await editBody.fill('Updated comment text');
         await page.getByRole('button', { name: /update comment/i }).click();
-        await page.waitForURL(/\/task_lists\/\d+\/task_items\/\d+/, { timeout: 10_000 });
+        await page.waitForURL(/\/task\/lists\/\d+\/items\/\d+/, { timeout: 10_000 });
 
         await expect(page.getByText('Updated comment text')).toBeVisible();
         await expect(page.getByText('Original comment text')).not.toBeVisible();
@@ -123,7 +123,7 @@ test.describe('Comments', () => {
         await page.getByLabel(/body/i).fill('Comment to blank-edit');
       }
       await page.getByRole('button', { name: /add comment/i }).click();
-      await page.waitForURL(/\/task_lists\/\d+\/task_items\/\d+/, { timeout: 10_000 });
+      await page.waitForURL(/\/task\/lists\/\d+\/items\/\d+/, { timeout: 10_000 });
 
       const editLink = page.locator('.comment').last().getByRole('link', { name: /edit/i });
       if (await editLink.isVisible()) {
@@ -135,7 +135,7 @@ test.describe('Comments', () => {
         await page.getByRole('button', { name: /update comment/i }).click();
 
         // Should stay on edit page with error
-        await expect(page).not.toHaveURL(/\/task_lists\/\d+\/task_items\/\d+$/);
+        await expect(page).not.toHaveURL(/\/task\/lists\/\d+\/items\/\d+$/);
       }
     });
 
@@ -152,14 +152,14 @@ test.describe('Comments', () => {
         await page.getByLabel(/body/i).fill('Comment to be deleted');
       }
       await page.getByRole('button', { name: /add comment/i }).click();
-      await page.waitForURL(/\/task_lists\/\d+\/task_items\/\d+/, { timeout: 10_000 });
+      await page.waitForURL(/\/task\/lists\/\d+\/items\/\d+/, { timeout: 10_000 });
       await expect(page.getByText('Comment to be deleted')).toBeVisible();
 
       page.on('dialog', (dialog) => dialog.accept());
       const deleteBtn = page.locator('.comment').last().getByRole('link', { name: /delete/i });
       await expect(deleteBtn).toBeVisible();
       await deleteBtn.click();
-      await page.waitForURL(/\/task_lists\/\d+\/task_items\/\d+/, { timeout: 10_000 });
+      await page.waitForURL(/\/task\/lists\/\d+\/items\/\d+/, { timeout: 10_000 });
       await expect(page.getByText('Comment to be deleted')).not.toBeVisible();
     });
 
@@ -176,13 +176,13 @@ test.describe('Comments', () => {
         await page.getByLabel(/body/i).fill('Comment to delete');
       }
       await page.getByRole('button', { name: /add comment/i }).click();
-      await page.waitForURL(/\/task_lists\/\d+\/task_items\/\d+/, { timeout: 10_000 });
+      await page.waitForURL(/\/task\/lists\/\d+\/items\/\d+/, { timeout: 10_000 });
 
       page.on('dialog', (dialog) => dialog.accept());
       const deleteBtn = page.locator('.comment').last().getByRole('link', { name: /delete/i });
       if (await deleteBtn.isVisible()) {
         await deleteBtn.click();
-        await page.waitForURL(/\/task_lists\/\d+\/task_items\/\d+/, { timeout: 10_000 });
+        await page.waitForURL(/\/task\/lists\/\d+\/items\/\d+/, { timeout: 10_000 });
         await expect(page.getByText('Comment to delete')).not.toBeVisible();
       }
     });
@@ -200,7 +200,7 @@ test.describe('Comments', () => {
       if (await commentBody.isVisible()) {
         await commentBody.fill('List-level comment');
         await page.getByRole('button', { name: /add comment/i }).click();
-        await page.waitForURL(/\/task_lists\/\d+/, { timeout: 10_000 });
+        await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
         await expect(page.getByText('List-level comment')).toBeVisible();
       }
     });
@@ -215,7 +215,7 @@ test.describe('Comments', () => {
       if (await commentBody.isVisible()) {
         await page.getByRole('button', { name: /add comment/i }).click();
         // Should stay on list page or show error
-        await expect(page).toHaveURL(/\/task_lists\/\d+/);
+        await expect(page).toHaveURL(/\/task\/lists\/\d+/);
       }
     });
 
@@ -229,7 +229,7 @@ test.describe('Comments', () => {
       if (await commentBody.isVisible()) {
         await commentBody.fill('Original list comment');
         await page.getByRole('button', { name: /add comment/i }).click();
-        await page.waitForURL(/\/task_lists\/\d+/, { timeout: 10_000 });
+        await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
         await expect(page.getByText('Original list comment')).toBeVisible();
 
         const editLink = page.locator('.comment').last().getByRole('link', { name: /edit/i });
@@ -240,7 +240,7 @@ test.describe('Comments', () => {
           const editBody = page.locator("textarea[name='comment[body]']");
           await editBody.fill('Updated list comment');
           await page.getByRole('button', { name: /update comment/i }).click();
-          await page.waitForURL(/\/task_lists\/\d+/, { timeout: 10_000 });
+          await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
 
           await expect(page.getByText('Updated list comment')).toBeVisible();
           await expect(page.getByText('Original list comment')).not.toBeVisible();
@@ -258,14 +258,14 @@ test.describe('Comments', () => {
       if (await commentBody.isVisible()) {
         await commentBody.fill('List comment to delete');
         await page.getByRole('button', { name: /add comment/i }).click();
-        await page.waitForURL(/\/task_lists\/\d+/, { timeout: 10_000 });
+        await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
         await expect(page.getByText('List comment to delete')).toBeVisible();
 
         page.on('dialog', (dialog) => dialog.accept());
         const deleteBtn = page.locator('.comment').last().getByRole('link', { name: /delete/i });
         if (await deleteBtn.isVisible()) {
           await deleteBtn.click();
-          await page.waitForURL(/\/task_lists\/\d+/, { timeout: 10_000 });
+          await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
           await expect(page.getByText('List comment to delete')).not.toBeVisible();
         }
       }
@@ -282,22 +282,22 @@ test.describe('Comments', () => {
       if (await listCommentBody.isVisible()) {
         await listCommentBody.fill('List comment');
         await page.getByRole('button', { name: /add comment/i }).click();
-        await page.waitForURL(/\/task_lists\/\d+/, { timeout: 10_000 });
+        await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
       }
 
       // Add comment to task item
       await page.goto(newTaskItemPath(listId));
       await page.getByLabel('Name').fill('Item for Comments');
       await page.getByRole('button', { name: /create task item/i }).click();
-      await page.waitForURL(/\/task_items($|\?)/, { timeout: 10_000 });
+      await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
       await page.getByRole('link', { name: 'Item for Comments' }).click();
-      await page.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+      await page.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
 
       const itemCommentBody = page.locator("textarea[name='comment[body]']");
       if (await itemCommentBody.isVisible()) {
         await itemCommentBody.fill('Item comment');
         await page.getByRole('button', { name: /add comment/i }).click();
-        await page.waitForURL(/\/task_lists\/\d+\/task_items\/\d+/, { timeout: 10_000 });
+        await page.waitForURL(/\/task\/lists\/\d+\/items\/\d+/, { timeout: 10_000 });
 
         // List comment should not appear on item page
         await expect(page.getByText('List comment')).not.toBeVisible();

@@ -12,8 +12,8 @@ async function createList(page: Page, name: string): Promise<string> {
   await page.goto(newTaskListPath());
   await page.getByLabel('Name').fill(name);
   await page.getByRole('button', { name: /create task list/i }).click();
-  await page.waitForURL(/\/task_lists\/\d+$/, { timeout: 10_000 });
-  return page.url().match(/\/task_lists\/(\d+)/)?.[1] ?? '';
+  await page.waitForURL(/\/task\/lists\/\d+$/, { timeout: 10_000 });
+  return page.url().match(/\/task\/lists\/(\d+)/)?.[1] ?? '';
 }
 
 async function sendInvite(page: Page, email: string) {
@@ -37,7 +37,7 @@ async function inviteAndAccept(
   await signUp(inviteePage, invitee);
   await inviteePage.goto(invitationUrl);
   await inviteePage.getByRole('button', { name: /accept invitation/i }).click();
-  await inviteePage.waitForURL(/\/(task_lists|$)/, { timeout: 15_000 });
+  await inviteePage.waitForURL(/\/(task\/lists|$)/, { timeout: 15_000 });
   return inviteePage;
 }
 

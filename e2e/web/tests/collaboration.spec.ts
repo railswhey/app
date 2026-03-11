@@ -12,15 +12,15 @@ async function createList(page: Page, name: string): Promise<string> {
   await page.goto(newTaskListPath());
   await page.getByLabel('Name').fill(name);
   await page.getByRole('button', { name: /create task list/i }).click();
-  await page.waitForURL(/\/task_lists\/\d+$/, { timeout: 10_000 });
-  return page.url().match(/\/task_lists\/(\d+)/)?.[1] ?? '';
+  await page.waitForURL(/\/task\/lists\/\d+$/, { timeout: 10_000 });
+  return page.url().match(/\/task\/lists\/(\d+)/)?.[1] ?? '';
 }
 
 async function createItem(page: Page, listId: string, name: string) {
   await page.goto(newTaskItemPath(listId));
   await page.getByLabel('Name').fill(name);
   await page.getByRole('button', { name: /create task item/i }).click();
-  await page.waitForURL(/\/task_lists\/\d+\/task_items($|\?)/, { timeout: 10_000 });
+  await page.waitForURL(/\/task\/lists\/\d+\/items($|\?)/, { timeout: 10_000 });
 }
 
 async function addComment(page: Page, body: string) {
@@ -63,7 +63,7 @@ async function inviteAndAccept(
   await inviteePage.goto(invitationUrl);
   await inviteePage.waitForURL(/\/invitations\//, { timeout: 10_000 });
   await inviteePage.getByRole('button', { name: /accept invitation/i }).click();
-  await inviteePage.waitForURL(/\/(task_lists|$)/, { timeout: 15_000 });
+  await inviteePage.waitForURL(/\/(task\/lists|$)/, { timeout: 15_000 });
 
   return inviteePage;
 }
@@ -127,7 +127,7 @@ test.describe('Collaboration — Invitation Flow', () => {
     await signUp(inviteePage, invitee);
     await inviteePage.goto(invitationUrl);
     await inviteePage.getByRole('button', { name: /accept invitation/i }).click();
-    await inviteePage.waitForURL(/\/(task_lists|$)/, { timeout: 15_000 });
+    await inviteePage.waitForURL(/\/(task\/lists|$)/, { timeout: 15_000 });
 
     // Try accepting again → should redirect (already accepted)
     await inviteePage.goto(invitationUrl);
@@ -234,7 +234,7 @@ test.describe('Collaboration — Cross-User Visibility', () => {
     // Owner adds comment
     await page.goto(taskItemsPath(listId));
     await page.getByRole('link', { name: 'CommentTask' }).click();
-    await page.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+    await page.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
     await addComment(page, 'Owner says hello');
 
     const inviteePage = await inviteAndAccept(page, browser, invitee);
@@ -243,7 +243,7 @@ test.describe('Collaboration — Cross-User Visibility', () => {
     // Navigate to the same task item
     await inviteePage.goto(taskItemsPath(listId));
     await inviteePage.getByRole('link', { name: 'CommentTask' }).click();
-    await inviteePage.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+    await inviteePage.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
     await expect(inviteePage.getByText('Owner says hello')).toBeVisible();
   });
 
@@ -260,13 +260,13 @@ test.describe('Collaboration — Cross-User Visibility', () => {
     // Collaborator adds comment
     await inviteePage.goto(taskItemsPath(listId));
     await inviteePage.getByRole('link', { name: 'RevTask' }).click();
-    await inviteePage.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+    await inviteePage.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
     await addComment(inviteePage, 'Collab says hi');
 
     // Owner views the same item
     await page.goto(taskItemsPath(listId));
     await page.getByRole('link', { name: 'RevTask' }).click();
-    await page.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+    await page.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
     await expect(page.getByText('Collab says hi')).toBeVisible();
   });
 
@@ -293,14 +293,14 @@ test.describe('Collaboration — Cross-User Visibility', () => {
     await createItem(page, listId, 'NoEditTask');
     await page.goto(taskItemsPath(listId));
     await page.getByRole('link', { name: 'NoEditTask' }).click();
-    await page.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+    await page.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
     await addComment(page, 'Owner only comment');
 
     const inviteePage = await inviteAndAccept(page, browser, invitee);
     await switchAccount(inviteePage, owner.username);
     await inviteePage.goto(taskItemsPath(listId));
     await inviteePage.getByRole('link', { name: 'NoEditTask' }).click();
-    await inviteePage.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+    await inviteePage.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
 
     await expect(inviteePage.getByText('Owner only comment')).toBeVisible();
     // Edit/delete links should NOT be visible for other user's comment
@@ -316,14 +316,14 @@ test.describe('Collaboration — Cross-User Visibility', () => {
     await createItem(page, listId, 'NoDelTask');
     await page.goto(taskItemsPath(listId));
     await page.getByRole('link', { name: 'NoDelTask' }).click();
-    await page.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+    await page.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
     await addComment(page, 'Undeletable comment');
 
     const inviteePage = await inviteAndAccept(page, browser, invitee);
     await switchAccount(inviteePage, owner.username);
     await inviteePage.goto(taskItemsPath(listId));
     await inviteePage.getByRole('link', { name: 'NoDelTask' }).click();
-    await inviteePage.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+    await inviteePage.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
 
     const commentSection = inviteePage.locator('.comment', { hasText: 'Undeletable comment' });
     await expect(commentSection.getByRole('link', { name: /delete/i })).not.toBeVisible({ timeout: 2_000 });
@@ -354,7 +354,7 @@ test.describe('Collaboration — Cross-User Visibility', () => {
     // Assign task to owner
     await page.goto(taskItemsPath(listId));
     await page.getByRole('link', { name: 'OwnerTask' }).click();
-    await page.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+    await page.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
     await page.getByRole('link', { name: '✏️ Edit' }).click();
     await page.waitForURL(/\/edit/, { timeout: 10_000 });
     await page.locator('#assignee-select').selectOption({ label: owner.username });
@@ -400,7 +400,7 @@ test.describe('Collaboration — Collaborator CRUD', () => {
     // Collab completes from show page
     await inviteePage.goto(taskItemsPath(listId));
     await inviteePage.getByRole('link', { name: 'ToComplete' }).click();
-    await inviteePage.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+    await inviteePage.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
     await inviteePage.getByRole('link', { name: '✅ Complete' }).click();
     // Wait for the "Incomplete" button to appear (confirms completion)
     await expect(inviteePage.getByRole('link', { name: '↩ Incomplete' })).toBeVisible({ timeout: 10_000 });
@@ -437,10 +437,10 @@ test.describe('Collaboration — Collaborator CRUD', () => {
 
     await inviteePage.goto(taskItemsPath(listId));
     await inviteePage.getByRole('link', { name: 'GoneSoon' }).click();
-    await inviteePage.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+    await inviteePage.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
     inviteePage.on('dialog', (d) => d.accept());
     await inviteePage.getByRole('link', { name: '🗑 Delete' }).click();
-    await inviteePage.waitForURL(/\/task_items($|\?)/, { timeout: 10_000 });
+    await inviteePage.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 
     // Owner doesn't see it
     await page.goto(taskItemsPath(listId));
@@ -573,7 +573,7 @@ test.describe('Collaboration — Account Switching', () => {
 
     await page.goto(invUrl);
     await page.getByRole('button', { name: /accept invitation/i }).click();
-    await page.waitForURL(/\/(task_lists|$)/, { timeout: 15_000 });
+    await page.waitForURL(/\/(task\/lists|$)/, { timeout: 15_000 });
 
     // Owner should have 2 accounts
     await page.locator('.account-switcher summary').click();
@@ -590,7 +590,7 @@ test.describe('Collaboration — Account Switching', () => {
 
     // Click inbox link — should go to owner's inbox, not invitee's personal inbox
     await inviteePage.locator('nav a', { hasText: 'Inbox' }).first().click();
-    await inviteePage.waitForURL(/\/task_items/, { timeout: 10_000 });
+    await inviteePage.waitForURL(/\/items/, { timeout: 10_000 });
     // Verify we're in the owner's account context
     await expect(inviteePage.locator('.account-switcher summary')).toContainText(owner.username);
   });
@@ -638,12 +638,12 @@ test.describe('Collaboration — Additional Visibility', () => {
     // Assign to owner
     await page.goto(taskItemsPath(listId));
     await page.getByRole('link', { name: 'BadgeTask' }).click();
-    await page.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+    await page.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
     await page.getByRole('link', { name: '✏️ Edit' }).click();
     await page.waitForURL(/\/edit/, { timeout: 10_000 });
     await page.locator('#assignee-select').selectOption({ label: owner.username });
     await page.getByRole('button', { name: /update task item/i }).click();
-    await page.waitForURL(/\/task_items($|\?)/, { timeout: 10_000 });
+    await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 
     const inviteePage = await inviteAndAccept(page, browser, invitee);
     await switchAccount(inviteePage, owner.username);
@@ -731,12 +731,12 @@ test.describe('Collaboration — Additional CRUD', () => {
     // Collab edits the item
     await inviteePage.goto(taskItemsPath(listId));
     await inviteePage.getByRole('link', { name: 'OriginalName' }).click();
-    await inviteePage.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+    await inviteePage.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
     await inviteePage.getByRole('link', { name: '✏️ Edit' }).click();
     await inviteePage.waitForURL(/\/edit/, { timeout: 10_000 });
     await inviteePage.getByLabel('Name').fill('EditedByCollab');
     await inviteePage.getByRole('button', { name: /update task item/i }).click();
-    await inviteePage.waitForURL(/\/task_items($|\?)/, { timeout: 10_000 });
+    await inviteePage.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 
     // Owner sees the edit
     await page.goto(taskItemsPath(listId));
@@ -757,10 +757,10 @@ test.describe('Collaboration — Additional CRUD', () => {
     // Collab moves the item
     await inviteePage.goto(taskItemsPath(listId1));
     await inviteePage.getByRole('link', { name: 'MoveMe' }).click();
-    await inviteePage.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+    await inviteePage.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
     await inviteePage.locator('select[name="target_list_id"]').selectOption({ label: 'MoveDest' });
     await inviteePage.getByRole('button', { name: /move/i }).click();
-    await inviteePage.waitForURL(/\/task_items/, { timeout: 10_000 });
+    await inviteePage.waitForURL(/\/items/, { timeout: 10_000 });
 
     // Owner sees it in destination
     await page.goto(taskItemsPath(listId2));
@@ -781,7 +781,7 @@ test.describe('Collaboration — Additional CRUD', () => {
     await inviteePage.waitForURL(/\/edit/, { timeout: 10_000 });
     await inviteePage.getByLabel('Name').fill('RenamedByCollab');
     await inviteePage.getByRole('button', { name: /update task list/i }).click();
-    await inviteePage.waitForURL(/\/task_lists\/\d+$/, { timeout: 10_000 });
+    await inviteePage.waitForURL(/\/task\/lists\/\d+$/, { timeout: 10_000 });
 
     // Owner sees the rename
     await page.goto(taskListsPath());
@@ -800,7 +800,7 @@ test.describe('Collaboration — Additional CRUD', () => {
     await inviteePage.goto(taskListPath(listId));
     inviteePage.on('dialog', (d) => d.accept());
     await inviteePage.getByRole('link', { name: '🗑 Delete' }).click();
-    await inviteePage.waitForURL(/\/task_items/, { timeout: 10_000 });
+    await inviteePage.waitForURL(/\/items/, { timeout: 10_000 });
 
     // Owner doesn't see it
     await page.goto(taskListsPath());
@@ -820,7 +820,7 @@ test.describe('Collaboration — Additional CRUD', () => {
     // Collab adds comment
     await inviteePage.goto(taskItemsPath(listId));
     await inviteePage.getByRole('link', { name: 'EditCommentTask' }).click();
-    await inviteePage.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+    await inviteePage.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
     await addComment(inviteePage, 'Collab original comment');
 
     // Edit the comment (click Edit link within the comment section, not the task item's ✏️ Edit)
@@ -846,7 +846,7 @@ test.describe('Collaboration — Additional CRUD', () => {
     // Collab adds comment
     await inviteePage.goto(taskItemsPath(listId));
     await inviteePage.getByRole('link', { name: 'DelCommentTask' }).click();
-    await inviteePage.waitForURL(/\/task_items\/\d+/, { timeout: 10_000 });
+    await inviteePage.waitForURL(/\/items\/\d+/, { timeout: 10_000 });
     await addComment(inviteePage, 'Collab deletable comment');
 
     // Delete it

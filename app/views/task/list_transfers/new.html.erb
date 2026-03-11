@@ -1,0 +1,29 @@
+<%= render("shared/tasks/header") %>
+
+<%= render("shared/topbar",
+  title: "Transfer List",
+  back_path: task_list_items_path(@task_list),
+  back_label: @task_list.name) %>
+
+<h2>🔁 Transfer List</h2>
+
+<div class="card" style="max-width: 480px;">
+  <p style="margin-bottom: 1rem;">
+    Transfer <strong>"<%= @task_list.name %>"</strong> and all its tasks to another user's account.
+    They will need to accept the request.
+  </p>
+
+  <%= form_with url: task_list_transfer_form_path(@task_list), method: :post,
+        data: { turbo_confirm: "Are you sure you want to transfer \"#{@task_list.name}\"? The recipient will need to accept." } do |f| %>
+    <div style="margin-bottom: 1rem;">
+      <label for="to_email" style="display: block;">Recipient email address</label>
+      <input type="email" name="task_list_transfer[to_email]" id="to_email"
+             placeholder="colleague@example.com" required autofocus />
+    </div>
+
+    <div style="display: flex; gap: 0.75rem;">
+      <%= f.submit "Send Transfer Request 🔁" %>
+      <%= link_to "Cancel", task_list_items_path(@task_list), class: "button btn-secondary" %>
+    </div>
+  <% end %>
+</div>

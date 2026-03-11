@@ -34,7 +34,7 @@ export async function signUp(page: Page, user: UserCredentials): Promise<void> {
   await page.getByPlaceholder('At least 8 characters').fill(user.password);
   await page.getByPlaceholder('Same again').fill(user.password);
   await page.getByRole('button', { name: /create account/i }).click();
-  await page.waitForURL(/\/(task_lists|inbox|dashboard|$)/, { timeout: 10_000 });
+  await page.waitForURL(/\/(task\/lists|inbox|dashboard|$)/, { timeout: 10_000 });
 }
 
 /**
@@ -46,7 +46,7 @@ export async function signIn(page: Page, user: Pick<UserCredentials, 'email' | '
   await page.getByLabel('Email address').fill(user.email);
   await page.getByLabel('Password').fill(user.password);
   await page.getByRole('button', { name: /sign in/i }).click();
-  await page.waitForURL(/\/(task_lists|inbox|dashboard|$)/, { timeout: 10_000 });
+  await page.waitForURL(/\/(task\/lists|inbox|dashboard|$)/, { timeout: 10_000 });
 }
 
 /**
@@ -67,5 +67,5 @@ export async function openNav(page: Page): Promise<void> {
 export async function signOut(page: Page): Promise<void> {
   await openNav(page);
   await page.getByRole('link', { name: /log out/i }).click();
-  await page.waitForURL(/\/(users\/session|$)/, { timeout: 10_000 });
+  await page.waitForURL(/\/(user\/session|$)/, { timeout: 10_000 });
 }

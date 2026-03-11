@@ -1,0 +1,25 @@
+<%= render("shared/tasks/header") %>
+
+<%= render("shared/topbar", title: "Invite Member", back_path: account_management_path, back_label: "Account") %>
+
+<h2>📨 Invite Member</h2>
+
+<div class="card" style="max-width: 480px;">
+  <%= form_with model: @invitation, url: account_invitations_path do |f| %>
+    <% if @invitation.errors.any? %>
+      <div class="notice warn">
+        <span class="notice-text"><%= @invitation.errors.full_messages.join(", ") %></span>
+      </div>
+    <% end %>
+
+    <div style="margin-bottom: 1rem;">
+      <%= f.label :email, "Email address", style: "display: block" %>
+      <%= f.email_field :email, placeholder: "colleague@example.com", required: true, autofocus: true %>
+    </div>
+
+    <div style="display: flex; gap: 0.75rem;">
+      <%= f.submit "Send Invitation 📨" %>
+      <%= link_to "Cancel", account_management_path, class: "button btn-secondary" %>
+    </div>
+  <% end %>
+</div>
