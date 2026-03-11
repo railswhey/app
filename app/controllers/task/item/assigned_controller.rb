@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Task::ItemAssignedController < ApplicationController
+class Task::Item::AssignedController < ApplicationController
   before_action :authenticate_user!
 
   def index

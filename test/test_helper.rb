@@ -104,11 +104,11 @@ class ActionDispatch::IntegrationTest
     def new_user__password_url = test.new_user_password_url
     def edit_user__password_url(...) = test.edit_user_password_url(...)
 
-    def user__tokens_url = test.user_token_url
-    def edit_user__token_url = test.edit_user_token_url
+    def user__tokens_url = test.user_settings_token_url
+    def edit_user__token_url = test.edit_user_settings_token_url
 
-    def user__profiles_url = test.user_profile_url
-    def edit_user__profile_url = test.edit_user_profile_url
+    def user__profiles_url = test.user_settings_profile_url
+    def edit_user__profile_url = test.edit_user_settings_profile_url
 
     def task__list_url(...) = test.task_list_url(...)
     def task__lists_url = test.task_lists_url
@@ -120,8 +120,8 @@ class ActionDispatch::IntegrationTest
     def new_task__item_url(...) = test.new_task_list_item_url(...)
     def edit_task__item_url(...) = test.edit_task_list_item_url(...)
 
-    def complete_task__item_url(...) = test.task_list_complete_item_url(...)
-    def incomplete_task__item_url(...) = test.task_list_incomplete_item_url(...)
+    def complete_task__item_url(...) = test.task_list_item_complete_url(...)
+    def incomplete_task__item_url(...) = test.task_list_item_incomplete_url(...)
     def move_task__item_url(task_list, task_item, **params)
       id = task_item.respond_to?(:id) ? task_item.id : task_item
       test.task_list_item_moves_url(task_list, task_item_id: id, **params)
@@ -154,8 +154,8 @@ class ActionDispatch::IntegrationTest
     def show_task__list_transfer_url(...) = test.show_task_list_transfer_url(...)
     def show_task__list_transfer_path(...) = test.show_task_list_transfer_path(...)
 
-    def notifications__url(...) = test.user_notifications_url(...)
-    def notification__url(...) = test.user_notification_url(...)
+    def notifications__url(...) = test.user_notification_inbox_index_url(...)
+    def notification__url(...) = test.user_notification_inbox_url(...)
     def mark_all_read__notifications_url = test.user_notification_reads_url
 
     # Comments on task lists
@@ -224,17 +224,17 @@ class ActionDispatch::IntegrationTest
     def user__password_url(...) = test.user_password_url(...)
     def user__passwords_url = test.user_passwords_url(format: :json)
 
-    def user__tokens_url = test.user_token_url(format: :json)
+    def user__tokens_url = test.user_settings_token_url(format: :json)
 
-    def user__profiles_url = test.user_profile_url(format: :json)
+    def user__profiles_url = test.user_settings_profile_url(format: :json)
 
     def task__list_url(...) = test.task_list_url(...)
     def task__lists_url = test.task_lists_url(format: :json)
 
     def task__item_url(...) = test.task_list_item_url(...)
     def task__items_url(...) = test.task_list_items_url(...)
-    def complete_task__item_url(...) = test.task_list_complete_item_url(...)
-    def incomplete_task__item_url(...) = test.task_list_incomplete_item_url(...)
+    def complete_task__item_url(...) = test.task_list_item_complete_url(...)
+    def incomplete_task__item_url(...) = test.task_list_item_incomplete_url(...)
 
     def account__invitation_url(...) = test.account_invitation_url(...)
     def account__invitations_url(...) = test.account_invitations_url(...)

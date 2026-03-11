@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Task::ItemCommentsController < ApplicationController
+class Task::Item::CommentsController < ApplicationController
   before_action :authenticate_user!
 
   def create

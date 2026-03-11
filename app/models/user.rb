@@ -17,7 +17,7 @@ class User < ApplicationRecord
   has_many :assigned_task_items,  class_name: "TaskItem",         foreign_key: :assigned_user_id,  dependent: :nullify
   has_many :sent_invitations,     class_name: "Invitation",       foreign_key: :invited_by_id,     dependent: :destroy
   has_many :initiated_transfers,  class_name: "TaskListTransfer", foreign_key: :transferred_by_id, dependent: :destroy
-  has_many :notifications, dependent: :destroy
+  has_many :notifications, class_name: "::Notification", dependent: :destroy
   has_many :comments, dependent: :destroy
 
   with_options presence: true do

@@ -9,10 +9,10 @@ export function rootPath() { return '/'; }
 
 export function newUserPath() { return '/user/registrations/new'; }
 export function userSessionPath() { return '/user/session'; }
-export function userProfilePath() { return '/user/profile'; }
+export function userProfilePath() { return '/user/settings/profile'; }
 export function userPasswordPath() { return '/user/passwords'; }
 export function userPasswordResetPath(token: string) { return `/user/passwords/${token}/edit`; }
-export function userTokenPath() { return '/user/token'; }
+export function userTokenPath() { return '/user/settings/token'; }
 
 // ── Task Lists ───────────────────────────────────────────────────────────────
 
@@ -42,7 +42,7 @@ export function searchPath() { return '/search'; }
 
 // ── Notifications ────────────────────────────────────────────────────────────
 
-export function notificationsPath() { return '/user/notifications'; }
+export function notificationsPath() { return '/user/notification/inbox'; }
 
 // ── Account ──────────────────────────────────────────────────────────────────
 
@@ -61,3 +61,15 @@ export function apiDocsRawPath() { return '/api/docs.md'; }
 // ── Error Pages ──────────────────────────────────────────────────────────────
 
 export function errorPagePath(code: number) { return `/${code}`; }
+
+// ── Comments (task list) ─────────────────────────────────────────────────────
+
+export function taskListCommentsPath(listId: string) { return `/task/lists/${listId}/comments`; }
+export function taskListCommentPath(listId: string, id: string) { return `/task/lists/${listId}/comments/${id}`; }
+export function editTaskListCommentPath(listId: string, id: string) { return `/task/lists/${listId}/comments/${id}/edit`; }
+
+// ── Comments (task item) ─────────────────────────────────────────────────────
+
+export function taskListItemCommentsPath(listId: string, itemId: string) { return `/task/lists/${listId}/items/${itemId}/comments`; }
+export function taskListItemCommentPath(listId: string, itemId: string, id: string) { return `/task/lists/${listId}/items/${itemId}/comments/${id}`; }
+export function editTaskListItemCommentPath(listId: string, itemId: string, id: string) { return `/task/lists/${listId}/items/${itemId}/comments/${id}/edit`; }

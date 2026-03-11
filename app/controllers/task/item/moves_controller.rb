@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Task::ItemMovesController < ApplicationController
+class Task::Item::MovesController < ApplicationController
   include TaskItemsConcern
 
   before_action :authenticate_user!

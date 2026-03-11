@@ -5,7 +5,7 @@
 <h2>User profile</h2>
 
 <div class="card">
-  <%= form_with(model: Current.user, url: user_profile_path, method: :put) do |f| %>
+  <%= form_with(model: Current.user, url: user_settings_profile_path, method: :put) do |f| %>
     <% if f.object.errors.any? %>
       <div class="notice warn">
         <strong><%= pluralize(f.object.errors.count, "error") %> prohibited this user from being saved:</strong>

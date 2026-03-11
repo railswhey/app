@@ -19,7 +19,7 @@ class User::RegistrationsController < ApplicationController
 
           redirect_to(params[:return_to].presence || task_list_items_path(Current.task_list_id), notice: "You have successfully registered!")
         end
-        format.json { render "user/tokens/show", status: :created }
+        format.json { render "user/settings/tokens/show", status: :created }
       else
         format.html { render(:new, status: :unprocessable_entity) }
         format.json { render("errors/from_model", status: :unprocessable_entity, locals: { model: @user }) }

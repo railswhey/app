@@ -14,11 +14,11 @@
   <img src="/docs/assets/logo.png" alt="Rails Whey App" width="180" height="180">
 </p>
 
-Twenty-two controllers move from a flat directory into three domain namespaces (`User::`, `Account::`, `Task::`). The controller count stays at 26. The flat directory becomes three subdirectories. No logic changes — the same code, reorganized so the file system reflects domain groupings that were previously encoded only in names.
+Eleven controllers that accumulated prefixes inside `task/` and `user/` move into four sub-namespaces (`Task::Item::`, `Task::List::`, `User::Notification::`, `User::Settings::`). Controller count stays at 26. Directory depth goes from 2 to 3. The first structural refactoring in the arc that introduces a runtime bug.
 
 | | |
 |---|---|
-| **Branch** | `3A-namespaced-controllers` |
+| **Branch** | `3B-nested-namespaces` |
 | **Ruby** | 4.0 |
 | **Rails** | 8.1 |
 | **Rubycritic** | 84.71 |
@@ -41,54 +41,81 @@ Twenty-two controllers move from a flat directory into three domain namespaces (
 
 ## 🎯 The concept
 
-> **One rule:** the prefix becomes the folder.
+> **One rule:** if the prefix survived the namespace, the namespace isn't deep enough.
 
-Branch `2B-rest-actions-only` left 26 controllers in a flat directory — a junk drawer where the only domain signal was a naming convention. Nine `user_` controllers, nine `task_`, four `account_`, and four standalone infrastructure files shared a single folder with no structural grouping.
+3A solved the flat directory. But inside the namespaces, prefixes reappeared — `task/` had six `item_` files and two `list_` files sharing a single folder. This branch applies the same principle one level deeper:
 
-This branch turns those prefixes into directories. `user_sessions_controller.rb` moves to `user/sessions_controller.rb`. `TaskItemsController` becomes `Task::ItemsController`. Twenty-two controllers move into three namespace directories. Four stay at the root (`ApplicationController`, `ErrorsController`, `SearchController`, `APIDocsController`) because they serve cross-cutting concerns.
+| Before (3A) | After (3B) |
+|---|---|
+| `Task::ItemCommentsController` | `Task::Item::CommentsController` |
+| `Task::ListTransfersController` | `Task::List::TransfersController` |
+| `User::NotificationsController` | `User::Notification::InboxController` |
+| `User::ProfilesController` | `User::Settings::ProfilesController` |
 
 ```mermaid
 flowchart LR
-  subgraph Before["2B: flat directory"]
-    FLAT["26 files in one folder<br/>prefixes carry all signal"]
+  subgraph Before["3A: prefixes inside namespaces"]
+    TASK1["task/ — 9 files<br/>6 item_ + 2 list_ prefixes"]
+    USER1["user/ — flat<br/>notifications + settings mixed"]
   end
 
-  subgraph After["3A: namespaced"]
-    ROOT["root/ — 4 infrastructure files"]
-    USER["user/ — 9 files"]
-    ACCOUNT["account/ — 4 files"]
-    TASK["task/ — 9 files"]
+  subgraph After["3B: nested namespaces"]
+    TI["task/item/ — 5 files"]
+    TL["task/list/ — 2 files"]
+    UN["user/notification/ — 2 files"]
+    US["user/settings/ — 2 files"]
   end
 
-  FLAT --> ROOT
-  FLAT --> USER
-  FLAT --> ACCOUNT
-  FLAT --> TASK
+  TASK1 --> TI
+  TASK1 --> TL
+  USER1 --> UN
+  USER1 --> US
 
   style Before fill:#fde8e8
-  style ROOT fill:#f5f5f5
-  style USER fill:#e8f4fd
-  style ACCOUNT fill:#e8fde8
-  style TASK fill:#fff3e0
+  style TI fill:#e8f4fd
+  style TL fill:#e8f4fd
+  style UN fill:#fff3e0
+  style US fill:#fff3e0
 ```
 
-That is both the strength and the limitation. The move is safe precisely because no behavior changed — but the underlying responsibilities inside each controller remain untouched. A namespaced file that still mixes two authorization lifecycles is a well-filed mess.
+The four sub-namespaces group different things. `Task::Item` and `Task::List` mirror entity hierarchies — genuine sub-domains with distinct models and lifecycles. `User::Notification` groups a feature hub. `User::Settings` groups a UI page. Same trigger (shared prefix), different meaning. Structure before behavior is the right first step — but only if you recognize it as a first step.
 
 ---
 
 ## 📊 The numbers
 
-Rubycritic: 84.71 (unchanged). LOC: 1390 (unchanged). A pure structural reorganization — the quality score measures code, not organization, and the code didn't change.
+Rubycritic: 84.71 (unchanged). LOC: 1390 (unchanged). Static analysis measures what's inside files, not how files are organized. Structure that helps humans navigate is invisible to machines.
 
-The migration cost is the real number. Every `namespace` block renames its route helpers. `task_list_task_items_path` becomes `task_list_items_path`. Over 40 `_path` and `_url` references change across controllers, views, and mailers. The route abstraction layer in `test/test_helper.rb` absorbs test-side changes, but application-side references are manual. One-time cost, zero behavioral change.
+The cost that escapes metrics: a constant lookup bug. Creating the `User::Notification` namespace made Ruby's constant resolution silently bind to the wrong thing. Ruby searches inside-out — it finds the nearest match first, like yelling "Mom!" in a crowded store and having the closest stranger's kid respond:
 
-One rename isn't a pure move: `AccountsController` became `Account::ManagementController`. The original name collided with the `Account` namespace module — Ruby's constant lookup found `Account` the model instead of `Account` the namespace. Renaming to `Management` avoids the ambiguity and better describes its job: showing and updating the current account. This is the first signal that deep namespacing interacts with Ruby's runtime in ways directory reorganization alone cannot predict. Branch 3B will encounter a worse version of this same mechanism.
+```mermaid
+flowchart TD
+  A["Code: Current.user.notifications"] --> B{"Ruby resolves<br/>Notification constant"}
+  B --> C["1. Search current nesting:<br/>User::Notification"]
+  C --> D{"Found?"}
+  D -->|"Yes"| E["❌ Binds to User::Notification<br/>(namespace module, not model)"]
+  D -->|"No"| F["2. Search top-level:<br/>::Notification"]
+  F --> G["✅ Binds to Notification<br/>(the actual data model)"]
+
+  style E fill:#fde8e8
+  style G fill:#e8fde8
+```
+
+The fix — one line in `user.rb`:
+
+```ruby
+has_many :notifications, class_name: "::Notification", dependent: :destroy
+```
+
+No error. No exception. The code compiled, ran, and loaded the wrong constant. The first time in the arc that a structural refactoring introduced a semantic bug.
+
+Unlike the one-time route helper renaming at depth 1, constant lookup collisions are an ongoing cost — every future namespace that shares a name with a model risks the same silent failure.
 
 ---
 
 ## 🤔 The problem
 
-The `task/` directory inherited the flat pattern one level deeper:
+Inside `task/` before this branch:
 
 ```
 task/
@@ -103,81 +130,105 @@ task/
   lists_controller.rb
 ```
 
-Nine files. Six with `item_` prefixes. Two with `list_`. Prefixes doing the work of directories — the exact problem namespaces were supposed to solve.
+Six `item_` files, two `list_` — prefixes doing the work of directories inside a namespace. The exact problem namespaces were supposed to eliminate.
 
-`user/` is cleaner — most controllers map to distinct concepts — but `notification_reads_controller.rb` sitting next to `notifications_controller.rb` signals a sub-domain relationship the flat namespace doesn't express.
-
-Namespaces group files without enforcing anything about the files inside. The controllers in `task/` share a directory but have no shared base class, no shared concern, no common interface. The directory is a filing convention, not a behavioral boundary. That evolution starts at 3F, where controllers split by authorization lifecycle rather than by entity name.
+In `user/`, the pattern was subtler: `notifications_controller.rb` next to `notification_reads_controller.rb` shared a feature with no sub-directory. `profiles_controller.rb` and `tokens_controller.rb` belonged to a settings hub that existed in the UI but not in the file system.
 
 ---
 
 ## 🔬 The evidence
 
-**Routes gain structure without changing behavior**
+**`module:` vs `namespace:` — a routing position choice**
+
+Comment routes nest inside `resources :items`, already inside `namespace :task`. Adding `namespace :item` would double the segment: `task_list_item_item_comments_path`. The routing DSL offers `module:` instead:
 
 ```ruby
-# 2B (flat)
-get  "users/session", to: "user_sessions#new"
-post "users/session", to: "user_sessions#create"
-resources :account_switches, only: [:create]
-resource  :account, only: [:show, :update]
-
-# 3A (namespaced)
-namespace :user do
-  resource :session, only: [:new, :create, :destroy]
-  resources :passwords, only: [:new, :create, :edit, :update]
-  # ...
-end
-
-namespace :account do
-  resources :switches, only: [:create]
-  resource :management, only: [:show, :update], path: ""
-  # ...
+namespace :task do
+  resources :lists do
+    resources :items do
+      resources :comments, only: [:create, :edit, :update, :destroy], module: "item"
+    end
+    namespace :item do
+      resources :complete,   only: [:update]
+      resources :incomplete, only: [:update]
+      resources :moves,      only: [:create]
+    end
+    resources :comments, only: [:create, :edit, :update, :destroy], module: "list"
+  end
 end
 ```
 
-The route file went from a flat list to a three-section document. Opening `config/routes.rb` shows the domain structure at a glance. The `account/management` route uses `path: ""` to keep the URL at `/account` while routing to `Account::ManagementController`.
+`module: "item"` routes to `Task::Item::CommentsController` without adding an `/item/` URL segment. `namespace :item` appears for routes not nested inside `resources :items` — no doubling risk there. The choice is driven by routing position, not preference.
 
-**A boundary decision reveals a domain judgment**
+**The directory after reorganization**
 
-`User::AccountDeletionsController` deletes account data but lives in `user/` — because the action is initiated by the user, requires user authentication, and the primary record destroyed is the `User`. The placement is a judgment about who owns the action, not about which tables it touches.
+```mermaid
+flowchart TD
+  subgraph TaskNS["task/"]
+    TL[lists_controller.rb]
+    TI[items_controller.rb]
+    subgraph ItemNS["item/ — 5 files"]
+      TIA[assigned_controller.rb]
+      TIC[comments_controller.rb]
+      TICO[complete_controller.rb]
+      TIIN[incomplete_controller.rb]
+      TIM[moves_controller.rb]
+    end
+    subgraph ListNS["list/ — 2 files"]
+      TLC[comments_controller.rb]
+      TLT[transfers_controller.rb]
+    end
+  end
 
-In the flat directory, the file was `user_account_deletions_controller.rb` — the prefix hinted at the same placement, but no one had to defend it. Namespaces force these calls to be explicit.
+  subgraph UserNS["user/"]
+    US[sessions_controller.rb]
+    UP[passwords_controller.rb]
+    UR[registrations_controller.rb]
+    UAD[account_deletions_controller.rb]
+    USET[settings_controller.rb]
+    subgraph NotifNS["notification/ — 2 files"]
+      NI[inbox_controller.rb]
+      NR[reads_controller.rb]
+    end
+    subgraph SettNS["settings/ — 2 files"]
+      SP[profiles_controller.rb]
+      ST[tokens_controller.rb]
+    end
+  end
+
+  style ItemNS fill:#e8f4fd
+  style ListNS fill:#e8f4fd
+  style NotifNS fill:#fde8e8
+  style SettNS fill:#fde8e8
+```
+
+Blue = entity hierarchies (`Task::Item`, `Task::List`). Red = feature/UI groupings (`User::Notification`, `User::Settings`). Same principle, different semantics.
 
 ---
 
 ## 🤖 The agent's view
 
-In the flat directory, finding user-related controllers meant scanning 26 entries and filtering by `user_` — 9 matches among 17 non-matches. Signal-to-noise: **35%**.
+At depth 2, `task/` held 9 files. At depth 3, `task/item/` holds 5. A **44% reduction** in scan space for item-related searches.
 
-After namespacing, `ls user/` returns exactly 9 files. Signal-to-noise: **100%**.
+The constant lookup risk is a direct correctness hazard. An agent writing `has_many :notifications` inside `User::Notification::InboxController` produces silently wrong code — no error, no exception, just the wrong constant loaded at runtime. Every namespace that shares a name with a model is a potential collision.
 
-```mermaid
-flowchart LR
-  A["Flat: 9/26 — 35% signal"] --> B["Namespaced: 9/9 — 100% signal"]
-  style A fill:#fde8e8
-  style B fill:#e8fde8
-```
-
-Same math for every domain. Task: 9/26 → 9/9. Account: 4/26 → 4/4. The file path itself acts as a filter before the search even begins.
-
-The migration is the most expensive one-time agent task — renaming 40+ route helpers across the codebase with no behavioral difference. But every future controller addition to a namespace is cheaper to locate and requires no helper migration.
+The tradeoff: every new controller requires a placement decision — `task/`, `task/item/`, or `task/list/`? What if a feature applies to both an item and a list? Classification is simple for entities with clear ownership, ambiguous for cross-cutting concerns. An LLM doesn't browse a file tree visually; it deduces grouping rules from serialized path strings. Every nesting layer multiplies inference cost. Smaller haystacks, but the needles are now invisible.
 
 ---
 
 ## ➡️ What comes next
 
-The namespace solved top-level grouping, but `task/` recreated the prefix problem internally — six `item_` files, two `list_` files.
+Controller directories are organized. The view layer is not.
 
-Branch `3B-nested-namespaces` recurses the pattern deeper. `Task::ItemCommentsController` becomes `Task::Item::CommentsController`. `Task::ListTransfersController` becomes `Task::List::TransfersController`. Eleven controllers reorganize into four sub-namespaces: `Task::Item::`, `Task::List::`, `User::Notification::`, `User::Settings::`. The file count stays at 26. The directory depth goes from 2 to 3.
+`shared/tasks/` predates the `task/` namespace. Partials carry `_task_list` prefixes that duplicate what the path already says. Dead files sit in `shared/`, consuming attention.
 
-Deeper nesting brings smaller directories but also new costs: Ruby constant lookup collisions and a placement decision for every new controller. ✌️
+Branch `3C-context-views` catches the view layer up. Shared partials move into namespace directories. Domain prefixes drop. Dead files are deleted. `shared/` shrinks from 12 to 2 files. ✌️
 
 ---
 
 ## 🏛️ Thesis checkpoint
 
-Structure alone is not architecture. The namespaces are a filing convention — necessary for navigability, insufficient for isolation. When controllers gained namespaces, views gained matching directories (Principle 6). The massive renaming changed zero test assertions because the tests never referenced controller class names or view template paths (Principle 1). Behavioral decoupling — splitting controllers by authorization lifecycle, by domain actor, by operation — begins at 3F. The structural foundation laid here makes that work possible.
+Deeper nesting is still vanilla Rails (Principle 4). The namespace depth reflects domain relationships, not just entity grouping. But the constant lookup collision is the arc's first warning that structure and behavior can diverge — the directory tree looks pristine; Ruby's runtime disagrees. Principle 1 holds through the collision: the behavioral tests don't care about constant resolution order, only HTTP contracts. Resolving that tension — ensuring class boundaries reflect responsibility boundaries, not just filing conventions — begins at 3F.
 
 ---
 
@@ -186,8 +237,8 @@ Structure alone is not architecture. The namespaces are a filing convention — 
 Prerequisites: [mise](https://mise.jdx.dev/) (manages Ruby, Node, Mailpit)
 
 ```sh
-git clone git@github.com:railswhey/app.git -b 3A-namespaced-controllers 3A-namespaced-controllers
-cd 3A-namespaced-controllers
+git clone git@github.com:railswhey/app.git -b 3B-nested-namespaces 3B-nested-namespaces
+cd 3B-nested-namespaces
 mise install                 # Ruby 4.0.1 + Node 22 + Mailpit 1.29.2
 bin/setup                    # bundle install, db:prepare, starts dev server
 ```

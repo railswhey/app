@@ -13,10 +13,10 @@
 </div>
 
 <div class="filter-tabs" style="margin:1rem 0">
-  <%= link_to "All",       user_notifications_path,                       class: @filter == "all"       ? "active" : nil %>
-  <%= link_to "Unread (#{@unread_count})", user_notifications_path(filter: "unread"), class: @filter == "unread" ? "active" : nil %>
-  <%= link_to "🔁 Transfers", user_notifications_path(filter: "transfers"), class: @filter == "transfers" ? "active" : nil %>
-  <%= link_to "✉️ Invites",  user_notifications_path(filter: "invites"),   class: @filter == "invites"   ? "active" : nil %>
+  <%= link_to "All",       user_notification_inbox_index_path,                       class: @filter == "all"       ? "active" : nil %>
+  <%= link_to "Unread (#{@unread_count})", user_notification_inbox_index_path(filter: "unread"), class: @filter == "unread" ? "active" : nil %>
+  <%= link_to "🔁 Transfers", user_notification_inbox_index_path(filter: "transfers"), class: @filter == "transfers" ? "active" : nil %>
+  <%= link_to "✉️ Invites",  user_notification_inbox_index_path(filter: "invites"),   class: @filter == "invites"   ? "active" : nil %>
 </div>
 
 <% if @notifications.any? %>
@@ -37,7 +37,7 @@
         </div>
         <div class="notification-actions">
           <% if n.unread? %>
-            <%= link_to "✓", user_notification_path(n), data: { turbo_method: :put }, title: "Mark read", class: "btn-mark-read" %>
+            <%= link_to "✓", user_notification_inbox_path(n), data: { turbo_method: :put }, title: "Mark read", class: "btn-mark-read" %>
           <% end %>
         </div>
       </div>

@@ -20,7 +20,7 @@ class User::SessionsController < ApplicationController
 
           redirect_to(params[:return_to].presence || task_list_items_path(Current.task_list_id), notice: "You have successfully signed in!")
         end
-        format.json { render "user/tokens/show", status: :ok }
+        format.json { render "user/settings/tokens/show", status: :ok }
       else
         format.html do
           flash.now[:alert] = "Invalid email or password. Please try again."

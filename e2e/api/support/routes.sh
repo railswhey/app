@@ -11,9 +11,9 @@ task_list_path()            { echo "/task/lists/${1}.json"; }
 
 task_items_path()           { echo "/task/lists/${1}/items.json"; }
 task_item_path()            { echo "/task/lists/${1}/items/${2}.json"; }
-task_item_complete_path()   { echo "/task/lists/${1}/complete_items/${2}.json"; }
-task_item_incomplete_path() { echo "/task/lists/${1}/incomplete_items/${2}.json"; }
-task_item_move_path()       { echo "/task/lists/${1}/item_moves.json?task_item_id=${2}"; }
+task_item_complete_path()   { echo "/task/lists/${1}/item/complete/${2}.json"; }
+task_item_incomplete_path() { echo "/task/lists/${1}/item/incomplete/${2}.json"; }
+task_item_move_path()       { echo "/task/lists/${1}/item/moves.json?task_item_id=${2}"; }
 
 # ── My Tasks ──────────────────────────────────────────────────────────────────
 
@@ -38,8 +38,8 @@ invitation_path()           { echo "/invitations/${1}.json"; }
 
 users_path()                { echo "/user/registrations.json"; }
 user_session_path()         { echo "/user/session.json"; }
-user_token_path()           { echo "/user/token.json"; }
-user_profile_path()         { echo "/user/profile.json"; }
+user_token_path()           { echo "/user/settings/token.json"; }
+user_profile_path()         { echo "/user/settings/profile.json"; }
 user_password_path()        { echo "/user/passwords.json"; }
 user_password_reset_path()  { echo "/user/passwords/${1}.json"; }
 

@@ -5,7 +5,7 @@
       <a href="<%= home_path %>"><%= app_name_with_logo %></a>
       <span class="mobile-toolbar">
         <%= link_to "🔍", search_path, title: "Search", class: "mobile-toolbar-btn" %>
-        <a href="<%= user_notifications_path %>" class="mobile-toolbar-btn" title="Notifications">🔔<% if unread_notification_count > 0 %><span class="notification-badge"><%= unread_notification_count %></span><% end %></a>
+        <a href="<%= user_notification_inbox_index_path %>" class="mobile-toolbar-btn" title="Notifications">🔔<% if unread_notification_count > 0 %><span class="notification-badge"><%= unread_notification_count %></span><% end %></a>
         <a href="<%= settings_path %>" class="topbar-avatar" title="<%= Current.user&.email %>">
           <%= user_initials %>
         </a>
@@ -64,7 +64,7 @@
         <% end %>
       <% end %>
 
-      <%= link_to(user_notifications_path) do %>
+      <%= link_to(user_notification_inbox_index_path) do %>
         <% if current_resource?(controller: "notifications") %>
           <strong>🔔 Notifications<% if unread_notification_count > 0 %> <span class="notification-badge"><%= unread_notification_count %></span><% end %></strong>
         <% else %>

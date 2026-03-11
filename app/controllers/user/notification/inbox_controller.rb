@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class User::NotificationsController < ApplicationController
+class User::Notification::InboxController < ApplicationController
   before_action :authenticate_user!
 
   def index
@@ -19,6 +19,6 @@ class User::NotificationsController < ApplicationController
   def update
     @notification = Current.user.notifications.find(params[:id])
     @notification.mark_read!
-    redirect_to user_notifications_path, notice: "Marked as read."
+    redirect_to user_notification_inbox_index_path, notice: "Marked as read."
   end
 end

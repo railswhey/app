@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Task::ListTransfersController < ApplicationController
+class Task::List::TransfersController < ApplicationController
   before_action :authenticate_user!, only: %i[new create]
 
   def new

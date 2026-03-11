@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-class User::NotificationReadsController < ApplicationController
+class User::Notification::ReadsController < ApplicationController
   before_action :authenticate_user!
 
   def create
     Current.user.notifications.unread.update_all(read_at: Time.current)
-    redirect_to user_notifications_path, notice: "All notifications marked as read."
+    redirect_to user_notification_inbox_index_path, notice: "All notifications marked as read."
   end
 end

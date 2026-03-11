@@ -10,10 +10,14 @@ Rails.application.routes.draw do
     delete "registrations", to: "account_deletions#destroy"
     resource :session, only: [ :new, :create, :destroy ]
     resources :passwords, only: [ :new, :create, :edit, :update ]
-    resource :token, only: [ :edit, :update ]
-    resource :profile, only: [ :edit, :update ]
-    resources :notifications, only: [ :index, :update ]
-    resources :notification_reads, only: [ :create ]
+    namespace :settings do
+      resource :profile, only: [ :edit, :update ]
+      resource :token, only: [ :edit, :update ]
+    end
+    namespace :notification do
+      resources :inbox, only: [ :index, :update ]
+      resources :reads, only: [ :create ]
+    end
   end
   get "settings", to: "user/settings#show", as: :settings
 
@@ -31,24 +35,26 @@ Rails.application.routes.draw do
   namespace :task do
     resources :lists do
       resources :items do
-        resources :comments, controller: "item_comments", only: [ :create, :edit, :update, :destroy ]
+        resources :comments, only: [ :create, :edit, :update, :destroy ], module: "item"
       end
-      resources :complete_items, only: [ :update ]
-      resources :incomplete_items, only: [ :update ]
-      resources :item_moves, only: [ :create ]
-      resources :comments, controller: "list_comments", only: [ :create, :edit, :update, :destroy ]
+      namespace :item do
+        resources :complete, only: [ :update ]
+        resources :incomplete, only: [ :update ]
+        resources :moves, only: [ :create ]
+      end
+      resources :comments, only: [ :create, :edit, :update, :destroy ], module: "list"
     end
   end
 
   # Task list transfers (custom routes to avoid helper name conflicts)
-  get  "task/lists/:list_id/transfer/new", to: "task/list_transfers#new",    as: :new_task_list_transfer
-  post "task/lists/:list_id/transfer",     to: "task/list_transfers#create", as: :task_list_transfer_form
+  get  "task/lists/:list_id/transfer/new", to: "task/list/transfers#new",    as: :new_task_list_transfer
+  post "task/lists/:list_id/transfer",     to: "task/list/transfers#create", as: :task_list_transfer_form
 
   # Transfer approval (public token-based)
-  get   "transfers/:token", to: "task/list_transfers#show",   as: :show_task_list_transfer
-  patch "transfers/:token", to: "task/list_transfers#update", as: :task_list_transfer
+  get   "transfers/:token", to: "task/list/transfers#show",   as: :show_task_list_transfer
+  patch "transfers/:token", to: "task/list/transfers#update", as: :task_list_transfer
 
-  get "my_tasks", to: "task/item_assigned#index", as: :my_tasks
+  get "my_tasks", to: "task/item/assigned#index", as: :my_tasks
   get "search",   to: "search#show",              as: :search
 
   # Password reset email links (URL format expected by mailers and tests)

@@ -1,17 +1,17 @@
 # frozen_string_literal: true
 
-class Task::IncompleteItemsController < ApplicationController
+class Task::Item::CompleteController < ApplicationController
   include TaskItemsConcern
 
   before_action :authenticate_user!
   before_action :set_task_item
 
   def update
-    @task_item.incomplete!
+    @task_item.complete!
 
     respond_to do |format|
       format.html do
-        redirect_to(next_location, notice: "Task item was successfully marked as incomplete.")
+        redirect_to(next_location, notice: "Task item was successfully marked as completed.")
       end
       format.json { render "task/items/show", status: :ok, location: task_item_url(@task_item) }
     end

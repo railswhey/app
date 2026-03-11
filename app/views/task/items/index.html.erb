@@ -54,8 +54,8 @@
           <tr style="<%= "opacity:0.7" if task_item.completed? %>">
             <td>
               <% toggle_url = task_item.completed? ?
-                  task_list_incomplete_item_path(Current.task_list_id, task_item, filter: params[:filter]) :
-                  task_list_complete_item_path(Current.task_list_id, task_item, filter: params[:filter]) %>
+                  task_list_item_incomplete_path(Current.task_list_id, task_item, filter: params[:filter]) :
+                  task_list_item_complete_path(Current.task_list_id, task_item, filter: params[:filter]) %>
               <input type="checkbox" <%= "checked" if task_item.completed? %> class="task-checkbox"
                 title="<%= task_item.completed? ? "Mark as incomplete" : "Mark as complete" %>"
                 onclick="fetch('<%= toggle_url %>', {method:'PATCH', headers:{'X-CSRF-Token':'<%= j form_authenticity_token %>','Accept':'text/html'}}).then(()=>location.reload())" />
@@ -77,8 +77,8 @@
             </td>
             <td style="text-align:right">
               <% toggle_path = task_item.completed? ?
-                  task_list_incomplete_item_path(Current.task_list_id, task_item, filter: params[:filter]) :
-                  task_list_complete_item_path(Current.task_list_id, task_item, filter: params[:filter]) %>
+                  task_list_item_incomplete_path(Current.task_list_id, task_item, filter: params[:filter]) :
+                  task_list_item_complete_path(Current.task_list_id, task_item, filter: params[:filter]) %>
               <select class="action-combo" aria-label="Actions for <%= j(task_item.name) %>"
                 onchange="var v=this.value,base='<%= task_list_item_path(Current.task_list_id, task_item, filter: params[:filter]) %>',toggle='<%= toggle_path %>'; this.value='';
                   if(v==='toggle') {
