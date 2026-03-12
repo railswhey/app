@@ -19,7 +19,7 @@ test.describe('Settings', () => {
       await openNav(page);
       await page.getByRole('link', { name: /⚙️.*settings/i }).click();
       await page.waitForURL(/\/(account|settings)/, { timeout: 10_000 });
-      await expect(page).not.toHaveURL(/users\/session/);
+      await expect(page).not.toHaveURL(/user\/session/);
     });
 
     test('updates account name', async ({ page }) => {
@@ -57,7 +57,7 @@ test.describe('Settings', () => {
       await signUp(page, user);
 
       await page.goto(userProfilePath());
-      await expect(page).toHaveURL(/\/users\/profile/);
+      await expect(page).toHaveURL(/\/user\/settings\/profile/);
     });
 
     test('updates username in profile', async ({ page }) => {
@@ -74,7 +74,7 @@ test.describe('Settings', () => {
         await page.getByLabel('New password').fill(user.password);
         await page.getByLabel('Password confirmation').fill(user.password);
         await page.getByRole('button', { name: /update password/i }).click();
-        await page.waitForURL(/\/users\/profile/, { timeout: 10_000 });
+        await page.waitForURL(/\/user\/settings\/profile/, { timeout: 10_000 });
         await expect(page.getByLabel('Username')).toHaveValue(newUsername);
       }
     });
@@ -90,7 +90,7 @@ test.describe('Settings', () => {
       await signOut(page);
       await page.goto(userSessionPath());
       await page.getByRole('link', { name: /create one|sign up/i }).click();
-      await page.waitForURL(/\/users\/new/, { timeout: 10_000 });
+      await page.waitForURL(/\/user\/registrations\/new/, { timeout: 10_000 });
       await page.getByLabel('Username').fill(user2.username);
       await page.getByLabel('Email address').fill(user2.email);
       await page.getByPlaceholder('At least 8 characters').fill(user2.password);
@@ -108,7 +108,7 @@ test.describe('Settings', () => {
         await page.getByLabel('Password confirmation').fill(user2.password);
         await page.getByRole('button', { name: /update password/i }).click();
         // Should show validation error (stay on profile page)
-        await expect(page).toHaveURL(/\/users\/profile/);
+        await expect(page).toHaveURL(/\/user\/settings\/profile/);
       }
     });
   });
@@ -134,7 +134,7 @@ test.describe('Settings', () => {
       // Settings hub has API Token card
       await page.goto(settingsPath());
       await page.getByRole('link', { name: /api token/i }).click();
-      await page.waitForURL(/\/users\/token/, { timeout: 10_000 });
+      await page.waitForURL(/\/user\/settings\/token/, { timeout: 10_000 });
       await expect(page.getByRole('heading', { name: /api token/i })).toBeVisible();
     });
 
@@ -189,7 +189,7 @@ test.describe('Settings', () => {
         await page.getByLabel('Password confirmation').fill(user.password);
         await page.getByRole('button', { name: /update password/i }).click();
         // Should stay on profile page with validation error
-        await expect(page).toHaveURL(/\/users\/profile/);
+        await expect(page).toHaveURL(/\/user\/settings\/profile/);
       }
     });
   });

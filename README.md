@@ -14,15 +14,15 @@
   <img src="/docs/assets/logo.png" alt="Rails Whey App" width="180" height="180">
 </p>
 
-Two mailer classes gain domain prefixes, all three relocate view templates into `{namespace}/mailers/` directories, and every mailer declares `default template_path:` — replacing Rails' implicit path guessing with an explicit contract. Namespace discipline now spans controllers, views, and mailers.
+A full-stack task management app built with Ruby on Rails. This branch replaces every raw HTTP verb route with proper `resource`/`resources` DSL calls, deleting a controller that existed only as a routing artifact and correcting a misplaced token parameter.
 
 | | |
 |---|---|
-| **Branch** | `3D-context-mailers` |
+| **Branch** | `3E-singular-resources` |
 | **Ruby** | 4.0 |
 | **Rails** | 8.1 |
-| **Rubycritic** | 84.71 |
-| **LOC** | 1390 |
+| **Rubycritic** | 84.41 |
+| **LOC** | 1389 |
 
 **Table of contents:**
 
@@ -41,136 +41,179 @@ Two mailer classes gain domain prefixes, all three relocate view templates into 
 
 ## 🎯 The concept
 
-> **One rule:** declare the path; don't let Rails guess it from the class name. You outgrow convention-over-configuration the moment you fundamentally alter the architecture that convention was designed for.
+> **One rule:** express every route as a resource declaration; if it won't fit, the domain model is wrong.
 
-3A through 3C aligned controllers and views to domain namespaces. Each time, mailers were deferred. This branch closes the gap. Two classes gain domain prefixes: `InvitationMailer` → `Account::InvitationMailer`, `TransferMailer` → `Task::ListTransferMailer`. `UserMailer` keeps its name — it already identifies its domain. All three get one explicit line — `default template_path:` — that replaces the framework's implicit convention with a visible contract.
+`resource :password` says what `get "users/:id/password"` does not: a user has one password, the lookup needs no ID, and the helpers follow a naming convention any Rails developer can predict. Raw HTTP verb routes do the same routing but encode nothing about the domain — no cardinality, no helper convention, no declaration of what the resource is. Each raw route is a piece of domain information discarded.
+
+This branch recovers that information. Nine raw route declarations become four DSL calls. One controller that existed only as a routing artifact is deleted. A signed token misrepresented as an `:id` parameter moves to `?token=`, where its nature as a credential is visible.
 
 ---
 
 ## 📊 The numbers
 
-| | Before (3C) | After (3D) |
+| | Before (3D) | After (3E) |
 |---|---|---|
-| Mailer view directories at `app/views/` root | 3 | 0 |
-| Mailer files renamed/moved | — | 2 |
-| Mailer view files moved | — | 8 |
-| `default template_path:` declarations | 0 | 3 |
+| Raw HTTP verb route lines | 9 | 0 |
+| DSL replacements | — | 4 |
+| `resources :passwords` (plural) | yes | `resource :password` (singular) |
+| `AccountDeletionsController` | 18-line class | deleted |
+| Password token location | path param (`:id`) | query param (`?token=`) |
+| Controller files | 26 + 1 concern | 25 + 1 concern |
 
-Fifth consecutive branch where Rubycritic (84.71) and LOC (1390) hold flat. The entire 3-series is structural alignment — no method bodies changed, no new logic was written.
+Rubycritic: 84.71 → 84.41. LOC: 1390 → 1389. The 18-line controller deletion is partially offset by `destroy` moving into `RegistrationsController`. Sixth structural branch; metrics hold flat.
 
 ---
 
 ## 🤔 The problem
 
-After 3C, three mailer directories sat at the `app/views/` root:
+After 3D, `routes.rb` held nine standalone HTTP verb declarations outside any `resource` context:
 
-```
-app/views/
-  account/                  ← namespaced controller views
-  task/                     ← namespaced controller views
-  user/                     ← namespaced controller views
-  invitation_mailer/        ← flat mailer views (no namespace)
-  transfer_mailer/          ← flat mailer views (no namespace)
-  user_mailer/              ← flat mailer views (no namespace)
-  shared/
-  layouts/
-```
+```ruby
+# Registration deletion — lone delete line, own controller
+delete "registrations", to: "account_deletions#destroy"
 
-Same level, different kind of thing. `account/` holds namespaced controller views. `invitation_mailer/` holds email templates for the account domain — but nothing in the path says so. `InvitationMailer` is called exclusively from `Account::InvitationsController`. `TransferMailer` exclusively from `Task::List::TransfersController`. The call sites live in namespaced controllers. The mailers don't reflect that relationship.
+# Password reset — :id misrepresenting a signed token
+get "users/:id/password", to: "user/passwords#edit", as: :user_password_reset_link
 
-Rails auto-derives the view path from the class name. Rename `InvitationMailer` to `Account::InvitationMailer` without declaring a template path, and Rails silently looks for a directory that doesn't exist. No error at boot. Since mailers often run in background jobs, the failure explodes at runtime — when the email actually fires:
+# Invitations — ad hoc named helpers
+get   "invitations/:token", to: "account/invitations#show",   as: :show_invitation
+patch "invitations/:token", to: "account/invitations#update", as: :accept_invitation
 
-```mermaid
-flowchart TD
-  A["Rename: InvitationMailer → Account::InvitationMailer"] --> B{"Rails resolves<br/>template path"}
-  B --> C["Derives: account/invitation_mailer/"]
-  C --> D["❌ Directory doesn't exist"]
-  D --> E["Silent failure at runtime<br/>(not at boot)"]
+# Transfers — management routes with _form_ suffix to dodge helper collision
+get  "task/lists/:list_id/transfer/new", to: "task/list/transfers#new",    as: :new_task_list_transfer
+post "task/lists/:list_id/transfer",     to: "task/list/transfers#create", as: :task_list_transfer_form
 
-  style D fill:#fde8e8
-  style E fill:#fde8e8
+# Transfers — approval routes (public, token-keyed)
+get   "transfers/:token", to: "task/list/transfers#show",   as: :show_task_list_transfer
+patch "transfers/:token", to: "task/list/transfers#update", as: :task_list_transfer
 ```
 
-The implicit convention that worked for a flat architecture becomes a trap under namespacing. What was a cheap deferral in 3A becomes a maintenance trap by 3D — later branches (3E onward) operate under the assumption that namespace discipline is complete.
+Each workaround was the path of least resistance. `delete "registrations"` routed to an 18-line controller that survived three refactoring branches solely to receive one HTTP verb. `get "users/:id/password"` used `:id` for a signed token — misrepresenting authority as identity. The transfer helpers carried a `_form_` suffix purely to dodge a name collision — a helper name that tells you about a routing constraint, not about the domain.
 
 ---
 
 ## 🔬 The evidence
 
-**Pattern 1: Class naming follows a contextual rule**
+**Pattern 1: Singular resource recovers cardinality and token identity**
 
-Add a namespace prefix only when it adds meaningful domain signal:
-
-| Mailer | Rule | `template_path:` |
-|---|---|---|
-| `Account::InvitationMailer` | Prefix added — belongs to account domain | `account/mailers/invitation` |
-| `Task::ListTransferMailer` | Flattened — `Task::List::` compressed into name | `task/mailers/list_transfer` |
-| `UserMailer` | Unchanged — name already carries domain signal | `user/mailers` |
-
-All three declare `default template_path:`. One line per mailer, no boilerplate explosion — but the shift is significant. From "the framework guesses" to "the code declares":
+Before:
 
 ```ruby
-class Account::InvitationMailer < ApplicationMailer
-  default template_path: "account/mailers/invitation"
-
-  def invite(invitation)
-    @invitation = invitation
-    @accept_url = show_invitation_url(invitation.token)
-    mail(
-      to: invitation.email,
-      subject: "You've been invited to #{invitation.account.name}"
-    )
-  end
-end
+# 3D — plural resources, :id stands in for a token
+resources :passwords, only: [:new, :create, :edit, :update]
+# Generated: /user/passwords/:id/edit
 ```
 
-**Pattern 2: View templates move into namespace directories**
+After:
+
+```ruby
+# 3E — singular resource, token travels as query param
+resource :password, only: [:new, :create, :edit, :update]
+# Generated: /user/password/edit?token=...
+```
+
+The controller reflects this — `params[:id]` disappears; `params[:token]` takes its place. The standard helper `edit_user_password_url(token: ...)` replaces the custom `user_password_reset_link_url`.
 
 ```mermaid
 flowchart LR
-  subgraph Before["3C: app/views/ root"]
-    IM[invitation_mailer/]
-    TM[transfer_mailer/]
-    UM[user_mailer/]
+  subgraph Before["3D: token hidden in :id"]
+    P1["/user/passwords/:id/edit"] --> S1["Reads as: record identity"]
+    S1 --> R1["Actually: authorization credential"]
   end
 
-  subgraph After["3D: namespace-aligned"]
-    AIM[account/mailers/invitation/]
-    TTM[task/mailers/list_transfer/]
-    UMN[user/mailers/]
+  subgraph After["3E: token explicit in query"]
+    P2["/user/password/edit?token=..."] --> S2["Reads as: authorization credential"]
+    S2 --> R2["Actually: authorization credential ✓"]
   end
-
-  IM -->|"moved + renamed"| AIM
-  TM -->|"moved + renamed"| TTM
-  UM -->|"moved"| UMN
 
   style Before fill:#fde8e8
   style After fill:#e8fde8
 ```
 
-Three root-level directories disappear. The `mailers/` subdirectory within each namespace creates an unambiguous boundary between controller views and email templates.
+**Pattern 2: Singular resource absorbs a routing artifact**
+
+Before:
+
+```ruby
+# 3D — two declarations, two controllers
+resources :registrations, only: [:new, :create]
+delete "registrations", to: "account_deletions#destroy"
+```
+
+After:
+
+```ruby
+# 3E — two declarations, one controller
+resources :registrations, only: [:new, :create]
+resource :registration, only: [:destroy]
+```
+
+Both point to `User::RegistrationsController`. Plural handles collection actions (`new`, `create`). Singular handles a member action with no `:id` (`destroy`). `User::AccountDeletionsController` — 18 lines, one action, three branches of survival — is deleted entirely. Rails supports this plural/singular split in 8.1, though it is better understood as a framework accommodation than a documented pattern.
+
+```mermaid
+flowchart TD
+  subgraph Before["3D routes"]
+    RAW1["delete 'registrations' → AccountDeletionsController"]
+    RAW2["get 'users/:id/password' → custom helper"]
+    RAW3["get/patch 'invitations/:token' → ad hoc names"]
+    RAW4["get/post transfers (management) → _form_ suffix"]
+    RAW5["get/patch transfers (approval) → separate helpers"]
+  end
+
+  subgraph After["3E routes"]
+    DSL1["resource :registration, only: [:destroy]"]
+    DSL2["resource :password (singular)"]
+    DSL3["resources :invitations, param: :token"]
+    DSL4["resource :transfer + resources :transfers, param: :token"]
+  end
+
+  RAW1 -->|"absorbed"| DSL1
+  RAW2 -->|"replaced"| DSL2
+  RAW3 -->|"replaced"| DSL3
+  RAW4 -->|"replaced"| DSL4
+  RAW5 -->|"replaced"| DSL4
+
+  style Before fill:#fde8e8
+  style After fill:#e8fde8
+```
+
+Five workaround groups collapse into four DSL calls. Red: raw routes with no domain semantics. Green: DSL declarations that encode cardinality, lookup key type, and helper naming.
 
 ---
 
 ## 🤖 The agent's view
 
-Before: an agent modifying the invitation email had to know the Rails convention — class name underscored = view directory. The path was an invisible dot to connect. After: `Account::InvitationMailer` contains `default template_path: "account/mailers/invitation"`. The path is in the file. No convention to memorize, no guessing game.
+Agents navigate code by name. Before this branch, the route file produced non-standard helpers: `show_invitation_url`, `accept_invitation_url`, `task_list_transfer_form_url`, `user_password_reset_link_url`. None follow the naming pattern an agent trained on Rails convention would predict — the agent had to search the whole project or guess. After: `invitation_url(token)`, `transfer_url(token)`, `edit_user_password_url(token: ...)`. Standard names, derivable from the declaration. The agent can predict the route without reading the controller.
 
-The `{namespace}/mailers/` pattern creates a uniform lookup: an agent searching for email templates in any namespace knows to check `{namespace}/mailers/`. An agent renaming a class sees the `template_path:` line and knows to update it. The failure mode becomes visible in the code instead of hiding in the framework's unwritten rules.
+`param: :token` is explicit metadata. An agent reading `resources :invitations, param: :token` knows the lookup key before reading the controller. In 3D, the raw routes used `:token` as a path segment but nothing in the route declaration said "this is a token, not an ID." After 3E, the route declaration carries the information.
+
+The plural/singular registration split is the one pattern that remains non-obvious. `resources :registrations, only: [:new, :create]` alongside `resource :registration, only: [:destroy]` — both pointing to one controller. The two declarations generate different URL shapes (`/user/registrations` for collection actions, `/user/registration` for the member action). Narrow surface — one controller, three actions — but less predictable than any other route in the file.
 
 ---
 
 ## ➡️ What comes next
 
-Namespace discipline covers controllers, views, and mailers. The routing layer tells a different story — nine raw HTTP verb declarations bypass the `resource`/`resources` DSL.
+The raw routes are gone. But DSL overrides remain:
 
-Branch `3E-singular-resources` replaces all nine with proper DSL calls. The routing layer catches up. ✌️
+```ruby
+resources :invitations, only: [:show, :update],
+          controller: "account/invitations", param: :token
+
+resources :transfers, only: [:show, :update],
+          controller: "task/list/transfers", param: :token
+
+resource :transfer, only: [:new, :create], module: "list"
+```
+
+`controller:`, `param:`, `module:` — each says "the resource name doesn't match the controller that handles it." The raw verbs are gone; the naming mismatches that produced them are not.
+
+Branch `3F-resource-discipline` treats each override as a diagnostic: what naming or placement mismatch made it necessary? 3F resolves them — a `routes.rb` where every line is derivable from the resource name alone. ✌️
 
 ---
 
 ## 🏛️ Thesis checkpoint
 
-This branch introduces the first explicit interface declaration in the arc. `default template_path:` is a one-line contract that replaces an implicit convention — Principle 4 applied to making the framework's own conventions visible rather than importing external tools. The behavioral contract holds because tests assert on email delivery, not on template paths (Principle 1). The moment the application moved beyond a flat architecture, implicit conventions became liabilities. This branch begins paying them down.
+Routes now express whether a resource is a singleton or a collection — Principle 4 applied to route semantics. No test files were edited despite every singleton route changing its helper name — the abstraction layer absorbed the migration (Principle 2). This continues the shift from implicit to explicit that 3D began with `default template_path:` — raw verbs were implicit contracts (string-matched routing encoding no domain knowledge); DSL declarations are explicit contracts (cardinality, lookup key type, and helper naming in the route itself). But the `controller:` and `param:` overrides that remain are symptoms of deeper naming mismatches. 3F will trace each to its root cause.
 
 ---
 
@@ -179,8 +222,8 @@ This branch introduces the first explicit interface declaration in the arc. `def
 Prerequisites: [mise](https://mise.jdx.dev/) (manages Ruby, Node, Mailpit)
 
 ```sh
-git clone git@github.com:railswhey/app.git -b 3D-context-mailers 3D-context-mailers
-cd 3D-context-mailers
+git clone git@github.com:railswhey/app.git -b 3E-singular-resources 3E-singular-resources
+cd 3E-singular-resources
 mise install                 # Ruby 4.0.1 + Node 22 + Mailpit 1.29.2
 bin/setup                    # bundle install, db:prepare, starts dev server
 ```

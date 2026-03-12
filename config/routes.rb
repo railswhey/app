@@ -7,9 +7,9 @@ Rails.application.routes.draw do
 
   namespace :user do
     resources :registrations, only: [ :new, :create ]
-    delete "registrations", to: "account_deletions#destroy"
+    resource :registration, only: [ :destroy ]
     resource :session, only: [ :new, :create, :destroy ]
-    resources :passwords, only: [ :new, :create, :edit, :update ]
+    resource :password, only: [ :new, :create, :edit, :update ]
     namespace :settings do
       resource :profile, only: [ :edit, :update ]
       resource :token, only: [ :edit, :update ]
@@ -28,9 +28,8 @@ Rails.application.routes.draw do
     resources :invitations, only: [ :index, :new, :create, :destroy ]
   end
 
-  # Invitation acceptance (public token-based)
-  get   "invitations/:token", to: "account/invitations#show",   as: :show_invitation
-  patch "invitations/:token", to: "account/invitations#update", as: :accept_invitation
+  resources :invitations, only: [ :show, :update ],
+            controller: "account/invitations", param: :token
 
   namespace :task do
     resources :lists do
@@ -43,22 +42,15 @@ Rails.application.routes.draw do
         resources :moves, only: [ :create ]
       end
       resources :comments, only: [ :create, :edit, :update, :destroy ], module: "list"
+      resource :transfer, only: [ :new, :create ], module: "list"
     end
   end
-
-  # Task list transfers (custom routes to avoid helper name conflicts)
-  get  "task/lists/:list_id/transfer/new", to: "task/list/transfers#new",    as: :new_task_list_transfer
-  post "task/lists/:list_id/transfer",     to: "task/list/transfers#create", as: :task_list_transfer_form
-
-  # Transfer approval (public token-based)
-  get   "transfers/:token", to: "task/list/transfers#show",   as: :show_task_list_transfer
-  patch "transfers/:token", to: "task/list/transfers#update", as: :task_list_transfer
 
   get "my_tasks", to: "task/item/assigned#index", as: :my_tasks
   get "search",   to: "search#show",              as: :search
 
-  # Password reset email links (URL format expected by mailers and tests)
-  get "users/:id/password", to: "user/passwords#edit", as: :user_password_reset_link
+  resources :transfers, only: [ :show, :update ],
+            controller: "task/list/transfers", param: :token
 
   # API docs (public)
   get "api/docs(/:section)", to: "api_docs#show", as: :api_docs

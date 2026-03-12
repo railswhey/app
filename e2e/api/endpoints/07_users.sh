@@ -109,10 +109,10 @@ fi
 
 # ── DELETE ACCOUNT — 401 no auth ─────────────────────────────────────────────
 
-api_delete "$(users_path)" "none"
+api_delete "$(user_path)" "none"
 assert_status "401" "$RESPONSE_STATUS" "DELETE /users.json (no auth → 401)"
 
 # ── DELETE ACCOUNT — 204 success ─────────────────────────────────────────────
 
-api_delete "$(users_path)" "$REG_TOKEN"
+api_delete "$(user_path)" "$REG_TOKEN"
 assert_status "204" "$RESPONSE_STATUS" "DELETE /users.json (delete account)"

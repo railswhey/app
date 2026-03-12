@@ -64,15 +64,15 @@ class WebGuestResetPasswordTest < ActionDispatch::IntegrationTest
 
     assert_equal 1, emails.size
 
-    token = emails.first.parts.last.to_s.match(%r{users/(.*)/password})[1]
+    token = URI.decode_www_form_component(emails.first.text_part.decoded.match(%r{token=([^&\s]+)})[1])
 
-    get(web_adapter.edit_user__password_url(id: token))
+    get(web_adapter.edit_user__password_url(token))
 
     assert_response :ok
 
     params = { user: { password: "321", password_confirmation: "123" } }
 
-    put(web_adapter.user__password_url(id: token), params:)
+    put(web_adapter.user__password_url(token), params:)
 
     assert_response :unprocessable_entity
 
@@ -93,7 +93,7 @@ class WebGuestResetPasswordTest < ActionDispatch::IntegrationTest
 
     assert_equal 1, emails.size
 
-    token = emails.first.parts.last.to_s.match(%r{users/(.*)/password})[1]
+    token = URI.decode_www_form_component(emails.first.text_part.decoded.match(%r{token=([^&\s]+)})[1])
 
     get(web_adapter.edit_user__password_url(token))
 

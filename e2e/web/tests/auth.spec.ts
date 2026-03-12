@@ -107,7 +107,7 @@ test.describe('Authentication', () => {
       await signUp(page, user);
       await signOut(page);
       await signIn(page, user);
-      await expect(page).not.toHaveURL(/users\/session/);
+      await expect(page).not.toHaveURL(/user\/session/);
     });
 
     test('shows error for wrong password', async ({ page }) => {
@@ -119,7 +119,7 @@ test.describe('Authentication', () => {
       await page.getByLabel('Email address').fill(user.email);
       await page.getByLabel('Password').fill('wrongpassword');
       await page.getByRole('button', { name: /sign in/i }).click();
-      await expect(page).toHaveURL(/users\/session/);
+      await expect(page).toHaveURL(/user\/session/);
     });
 
     test('shows error for non-existent email', async ({ page }) => {
@@ -127,7 +127,7 @@ test.describe('Authentication', () => {
       await page.getByLabel('Email address').fill('nobody@example.com');
       await page.getByLabel('Password').fill('somepassword123');
       await page.getByRole('button', { name: /sign in/i }).click();
-      await expect(page).toHaveURL(/users\/session/);
+      await expect(page).toHaveURL(/user\/session/);
     });
   });
 
@@ -136,7 +136,7 @@ test.describe('Authentication', () => {
       const user = uniqueUser();
       await signUp(page, user);
       await signOut(page);
-      await expect(page).toHaveURL(/users\/session/);
+      await expect(page).toHaveURL(/user\/session/);
     });
 
     test('redirects to sign-in page after sign-out', async ({ page }) => {
@@ -144,7 +144,7 @@ test.describe('Authentication', () => {
       await signUp(page, user);
       await signOut(page);
       await page.goto(taskListsPath());
-      await expect(page).toHaveURL(/users\/session/);
+      await expect(page).toHaveURL(/user\/session/);
     });
   });
 
@@ -207,7 +207,7 @@ test.describe('Authentication', () => {
       // Verify can sign in with new password
       await signOut(page);
       await signIn(page, { ...user, password: newPassword });
-      await expect(page).not.toHaveURL(/users\/session/);
+      await expect(page).not.toHaveURL(/user\/session/);
     });
 
     test('shows error for wrong current password', async ({ page }) => {
@@ -363,7 +363,7 @@ test.describe('Authentication', () => {
 
       // Step 5: Sign in with new password
       await signIn(page, { email: user.email, password: newPassword });
-      await expect(page).not.toHaveURL(/users\/session/);
+      await expect(page).not.toHaveURL(/user\/session/);
     });
 
     test('expired or invalid reset token redirects with error', async ({ page }) => {

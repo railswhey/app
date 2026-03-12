@@ -27,6 +27,7 @@ class User::PasswordsController < ApplicationController
   end
 
   def edit
+    @token = params[:token]
     render :edit
   end
 
@@ -50,7 +51,7 @@ class User::PasswordsController < ApplicationController
   private
 
   def set_user_by_token
-    @user = User.find_by_token_for(:reset_password, params[:id]) || User.find_by(id: params[:id])
+    @user = User.find_by_token_for(:reset_password, params[:token])
 
     return if @user
 

@@ -80,7 +80,7 @@ class APIV1UserRegistrationsTest < ActionDispatch::IntegrationTest
   test "#destroy responds with 401 when API token is invalid" do
     headers = [ {}, api_v1_adapter.authorization_header(SecureRandom.hex(20)) ].sample
 
-    delete(api_v1_adapter.user__registrations_url, headers:)
+    delete(api_v1_adapter.user__registration_url, headers:)
 
     api_v1_adapter.assert_response_with_failure(:unauthorized)
   end
@@ -95,7 +95,7 @@ class APIV1UserRegistrationsTest < ActionDispatch::IntegrationTest
       -> { TaskList.count } => -1,
       -> { UserToken.count } => -1
     ) do
-      delete(api_v1_adapter.user__registrations_url, headers: api_v1_adapter.authorization_header(user))
+      delete(api_v1_adapter.user__registration_url, headers: api_v1_adapter.authorization_header(user))
     end
 
     assert_response(:no_content)

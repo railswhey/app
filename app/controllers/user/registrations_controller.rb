@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 class User::RegistrationsController < ApplicationController
-  before_action :require_guest_access!
+  before_action :require_guest_access!, only: %i[new create]
+  before_action :authenticate_user!, only: %i[destroy]
 
   def new
     @user = User.new
@@ -24,6 +25,18 @@ class User::RegistrationsController < ApplicationController
         format.html { render(:new, status: :unprocessable_entity) }
         format.json { render("errors/from_model", status: :unprocessable_entity, locals: { model: @user }) }
       end
+    end
+  end
+
+  def destroy
+    Current.user.destroy!
+
+    respond_to do |format|
+      format.html do
+        sign_out
+        redirect_to root_path, notice: "Your account has been deleted."
+      end
+      format.json { head :no_content }
     end
   end
 

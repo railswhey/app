@@ -87,7 +87,7 @@ class Account::InvitationsController < ApplicationController
     unless Current.user
       respond_to do |format|
         format.html do
-          redirect_to new_user_session_path(return_to: show_invitation_path(@invitation.token)),
+          redirect_to new_user_session_path(return_to: invitation_path(@invitation.token)),
                       notice: "Please sign in to accept the invitation."
         end
         format.json { render("errors/unauthorized", status: :unauthorized) }
@@ -101,7 +101,7 @@ class Account::InvitationsController < ApplicationController
       end
     else
       respond_to do |format|
-        format.html { redirect_to show_invitation_path(@invitation.token), alert: "Could not accept invitation." }
+        format.html { redirect_to invitation_path(@invitation.token), alert: "Could not accept invitation." }
         format.json { render_json_with_failure(status: :unprocessable_entity, message: "Could not accept invitation.") }
       end
     end

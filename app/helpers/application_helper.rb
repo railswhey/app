@@ -54,9 +54,9 @@ module ApplicationHelper
     n = notification.notifiable
     case notification.action
     when "transfer_requested"
-      n.is_a?(TaskListTransfer) ? show_task_list_transfer_path(n.token) : nil
+      n.is_a?(TaskListTransfer) ? transfer_path(n.token) : nil
     when "invitation_received"
-      n.is_a?(Invitation) ? show_invitation_path(n.token) : nil
+      n.is_a?(Invitation) ? invitation_path(n.token) : nil
     else
       nil
     end

@@ -80,7 +80,7 @@ class Task::List::TransfersController < ApplicationController
       if request.format.json?
         render("errors/unauthorized", status: :unauthorized)
       else
-        redirect_to new_user_session_path(return_to: show_task_list_transfer_path(@transfer.token)),
+        redirect_to new_user_session_path(return_to: transfer_path(@transfer.token)),
                     notice: "Please sign in to respond to this transfer."
       end
       return
@@ -101,7 +101,7 @@ class Task::List::TransfersController < ApplicationController
       end
     else
       respond_to do |format|
-        format.html { redirect_to show_task_list_transfer_path(@transfer.token), alert: "Could not process transfer." }
+        format.html { redirect_to transfer_path(@transfer.token), alert: "Could not process transfer." }
         format.json { render_json_with_failure(status: :unprocessable_entity, message: "Could not process transfer.") }
       end
     end

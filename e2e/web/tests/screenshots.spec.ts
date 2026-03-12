@@ -66,7 +66,7 @@ test('capture documentation screenshots', async ({ page }) => {
   await page.getByLabel('Email address').fill('nobody@example.com');
   await page.getByLabel('Password').fill('wrong');
   await page.getByRole('button', { name: /sign in/i }).click();
-  await page.waitForURL(/\/users\/session/, { timeout: 10_000 });
+  await page.waitForURL(/\/user\/session/, { timeout: 10_000 });
   await page.locator('.notice').waitFor({ timeout: 5_000 });
   await shot(page, '002_sign_in_error.png');
 

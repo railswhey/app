@@ -40,11 +40,11 @@
   <% if Current.user && @transfer.to_account.memberships.owner_or_admin.exists?(user: Current.user) %>
     <div class="action-group" style="max-width: 480px; margin-top: 1rem;">
       <%= link_to "✅ Accept Transfer",
-            task_list_transfer_path(@transfer.token, action_type: "accept"),
+            transfer_path(@transfer.token, action_type: "accept"),
             data: { turbo_method: :patch },
             class: "button" %>
       <%= link_to "❌ Decline",
-            task_list_transfer_path(@transfer.token, action_type: "reject"),
+            transfer_path(@transfer.token, action_type: "reject"),
             data: { turbo_method: :patch },
             class: "button btn-danger" %>
     </div>
@@ -52,8 +52,8 @@
     <div class="card" style="max-width: 480px; margin-top: 1rem;">
       <p>Sign in or create an account to respond to this transfer request.</p>
       <div style="display: flex; gap: 0.75rem; margin-top: 0.5rem;">
-        <%= link_to "Sign in →", new_user_session_path(return_to: show_task_list_transfer_path(@transfer.token)), class: "button" %>
-        <%= link_to "Create account →", new_user_registration_path(return_to: show_task_list_transfer_path(@transfer.token)), class: "button btn-secondary" %>
+        <%= link_to "Sign in →", new_user_session_path(return_to: transfer_path(@transfer.token)), class: "button" %>
+        <%= link_to "Create account →", new_user_registration_path(return_to: transfer_path(@transfer.token)), class: "button btn-secondary" %>
       </div>
     </div>
   <% end %>

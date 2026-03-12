@@ -8,11 +8,11 @@ export function rootPath() { return '/'; }
 // ── Users / Auth ─────────────────────────────────────────────────────────────
 
 export function newUserPath() { return '/user/registrations/new'; }
-export function userSessionPath() { return '/user/session'; }
-export function userProfilePath() { return '/user/settings/profile'; }
-export function userPasswordPath() { return '/user/passwords'; }
-export function userPasswordResetPath(token: string) { return `/user/passwords/${token}/edit`; }
-export function userTokenPath() { return '/user/settings/token'; }
+export function userSessionPath() { return '/user/session/new'; }
+export function userProfilePath() { return '/user/settings/profile/edit'; }
+export function userPasswordPath() { return '/user/password/new'; }
+export function userPasswordResetPath(token: string) { return `/user/password/edit?token=${token}`; }
+export function userTokenPath() { return '/user/settings/token/edit'; }
 
 // ── Task Lists ───────────────────────────────────────────────────────────────
 

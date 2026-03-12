@@ -18,8 +18,8 @@ test.describe('Notifications', () => {
 
     await openNav(page);
     await page.getByRole('link', { name: /🔔.*notifications/i }).click();
-    await page.waitForURL(/\/notifications/, { timeout: 10_000 });
-    await expect(page).toHaveURL(/\/notifications/);
+    await page.waitForURL(/\/notification\/inbox/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/notification\/inbox/);
   });
 
   test('notifications page loads without error', async ({ page }) => {
@@ -27,7 +27,7 @@ test.describe('Notifications', () => {
     await signUp(page, user);
 
     await page.goto(notificationsPath());
-    await expect(page).toHaveURL(/\/notifications/);
+    await expect(page).toHaveURL(/\/notification\/inbox/);
     // Page should render without crashing
     await expect(page.locator('body')).toBeVisible();
   });
@@ -55,10 +55,10 @@ test.describe('Notifications', () => {
     const markAllBtn = page.getByRole('button', { name: /mark all.*read/i });
     if (await markAllBtn.isVisible()) {
       await markAllBtn.click();
-      await page.waitForURL(/\/notifications/, { timeout: 10_000 });
+      await page.waitForURL(/\/notification\/inbox/, { timeout: 10_000 });
     }
     // Page should still be accessible
-    await expect(page).toHaveURL(/\/notifications/);
+    await expect(page).toHaveURL(/\/notification\/inbox/);
   });
 
   test('mark individual notification as read', async ({ page }) => {
@@ -70,9 +70,9 @@ test.describe('Notifications', () => {
     const markReadBtn = page.getByRole('button', { name: /mark.*read/i }).first();
     if (await markReadBtn.isVisible()) {
       await markReadBtn.click();
-      await page.waitForURL(/\/notifications/, { timeout: 10_000 });
+      await page.waitForURL(/\/notification\/inbox/, { timeout: 10_000 });
     }
-    await expect(page).toHaveURL(/\/notifications/);
+    await expect(page).toHaveURL(/\/notification\/inbox/);
   });
 
   test('notification count badge visible in nav when notifications exist', async ({ page }) => {

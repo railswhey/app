@@ -97,12 +97,13 @@ class ActionDispatch::IntegrationTest
     def new_user__session_url = test.new_user_session_url
 
     def user__registrations_url = test.user_registrations_url
+    def user__registration_url = test.user_registration_url
     def new_user__registration_url = test.new_user_registration_url
 
-    def user__password_url(...) = test.user_password_url(...)
-    def user__passwords_url = test.user_passwords_url
+    def user__password_url(token = nil, **opts) = test.user_password_url(token:, **opts)
+    def user__passwords_url = test.user_password_url
     def new_user__password_url = test.new_user_password_url
-    def edit_user__password_url(...) = test.edit_user_password_url(...)
+    def edit_user__password_url(token = nil, **opts) = test.edit_user_password_url(token:, **opts)
 
     def user__tokens_url = test.user_settings_token_url
     def edit_user__token_url = test.edit_user_settings_token_url
@@ -142,17 +143,17 @@ class ActionDispatch::IntegrationTest
     def account__invitations_url = test.account_invitations_url
     def new_account__invitation_url = test.new_account_invitation_url
     def account__invitation_url(...) = test.account_invitation_url(...)
-    def show__invitation_url(...) = test.show_invitation_url(...)
-    def accept__invitation_url(...) = test.accept_invitation_url(...)
+    def show__invitation_url(...) = test.invitation_url(...)
+    def accept__invitation_url(...) = test.invitation_url(...)
 
     def account__memberships_url = test.account_memberships_url
     def account__membership_url(...) = test.account_membership_url(...)
 
     def new_task__list_transfer_url(...) = test.new_task_list_transfer_url(...)
-    def task__list_transfer_form_url(...) = test.task_list_transfer_form_url(...)
-    def task__list_transfer_url(...) = test.task_list_transfer_url(...)
-    def show_task__list_transfer_url(...) = test.show_task_list_transfer_url(...)
-    def show_task__list_transfer_path(...) = test.show_task_list_transfer_path(...)
+    def task__list_transfer_form_url(...) = test.task_list_transfer_url(...)
+    def task__list_transfer_url(...) = test.transfer_url(...)
+    def show_task__list_transfer_url(...) = test.transfer_url(...)
+    def show_task__list_transfer_path(...) = test.transfer_path(...)
 
     def notifications__url(...) = test.user_notification_inbox_index_url(...)
     def notification__url(...) = test.user_notification_inbox_url(...)
@@ -220,9 +221,10 @@ class ActionDispatch::IntegrationTest
     def user__sessions_url = test.user_session_url(format: :json)
 
     def user__registrations_url = test.user_registrations_url(format: :json)
+    def user__registration_url = test.user_registration_url(format: :json)
 
-    def user__password_url(...) = test.user_password_url(...)
-    def user__passwords_url = test.user_passwords_url(format: :json)
+    def user__passwords_url = test.user_password_url(format: :json)
+    def user__password_url(token = nil, format: :json, **opts) = test.user_password_url(token:, format:, **opts)
 
     def user__tokens_url = test.user_settings_token_url(format: :json)
 
@@ -238,14 +240,14 @@ class ActionDispatch::IntegrationTest
 
     def account__invitation_url(...) = test.account_invitation_url(...)
     def account__invitations_url(...) = test.account_invitations_url(...)
-    def accept__invitation_url(...) = test.accept_invitation_url(...)
+    def accept__invitation_url(...) = test.invitation_url(...)
 
     def account__membership_url(...) = test.account_membership_url(...)
 
     def new_task__list_transfer_url(...) = test.new_task_list_transfer_url(...)
-    def task__list_transfer_form_url(...) = test.task_list_transfer_form_url(...)
-    def task__list_transfer_url(...) = test.task_list_transfer_url(...)
-    def show_task__list_transfer_url(...) = test.show_task_list_transfer_url(...)
+    def task__list_transfer_form_url(...) = test.task_list_transfer_url(...)
+    def task__list_transfer_url(...) = test.transfer_url(...)
+    def show_task__list_transfer_url(...) = test.transfer_url(...)
 
     def my__tasks_url(**kwargs) = test.my_tasks_url(format: :json, **kwargs)
     def search__url(**kwargs) = test.search_url(format: :json, **kwargs)

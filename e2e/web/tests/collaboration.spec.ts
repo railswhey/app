@@ -32,6 +32,7 @@ async function addComment(page: Page, body: string) {
 /** Send invitation from /account page. Owner must be signed in. */
 async function sendInvite(page: Page, email: string) {
   await page.goto(accountPath());
+  await page.waitForLoadState('networkidle');
   await page.getByPlaceholder('email@example.com').fill(email);
   await page.getByRole('button', { name: 'Invite' }).click();
   await page.waitForLoadState('networkidle');
@@ -205,7 +206,7 @@ test.describe('Collaboration — Invitation Flow', () => {
     await guestPage.goto(invitationUrl);
     // Click sign-in link
     await guestPage.getByRole('link', { name: /sign in/i }).click();
-    await expect(guestPage).toHaveURL(/users\/session/);
+    await expect(guestPage).toHaveURL(/user\/session/);
   });
 });
 
