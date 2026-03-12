@@ -14,11 +14,11 @@
   <img src="/docs/assets/logo.png" alt="Rails Whey App" width="180" height="180">
 </p>
 
-Eleven controllers that accumulated prefixes inside `task/` and `user/` move into four sub-namespaces (`Task::Item::`, `Task::List::`, `User::Notification::`, `User::Settings::`). Controller count stays at 26. Directory depth goes from 2 to 3. The first structural refactoring in the arc that introduces a runtime bug.
+The view layer catches up to the controller layer. Eight shared partials move into namespace directories that mirror their controllers, 3 jbuilder partials shed redundant domain prefixes, 3 dead files are deleted, and 41 render strings update. `shared/` shrinks from 12 files in 4 subdirectories to 2 files with no subdirectories.
 
 | | |
 |---|---|
-| **Branch** | `3B-nested-namespaces` |
+| **Branch** | `3C-context-views` |
 | **Ruby** | 4.0 |
 | **Rails** | 8.1 |
 | **Rubycritic** | 84.71 |
@@ -41,194 +41,172 @@ Eleven controllers that accumulated prefixes inside `task/` and `user/` move int
 
 ## 🎯 The concept
 
-> **One rule:** if the prefix survived the namespace, the namespace isn't deep enough.
+> **One rule:** domain in the path, resource in the name.
 
-3A solved the flat directory. But inside the namespaces, prefixes reappeared — `task/` had six `item_` files and two `list_` files sharing a single folder. This branch applies the same principle one level deeper:
+`task/lists/_task_list.json.jbuilder` — the directory already says "task list." The file should just say what it is: `_list.json.jbuilder`. Similarly, `shared/tasks/_header.html.erb` sits in a project with a `task/` namespace and a `task/shared/` destination waiting for it. `shared/tasks/` was its home before the namespace existed; now it's a historical artifact.
 
-| Before (3A) | After (3B) |
-|---|---|
-| `Task::ItemCommentsController` | `Task::Item::CommentsController` |
-| `Task::ListTransfersController` | `Task::List::TransfersController` |
-| `User::NotificationsController` | `User::Notification::InboxController` |
-| `User::ProfilesController` | `User::Settings::ProfilesController` |
+3B organized controllers into nested domain directories (e.g., `Task::Item::CommentsController` at `task/item/comments_controller.rb`). The view layer was left behind — controller refactoring doesn't touch `render` strings unless the controller's own template path changes, so view files are a side effect that structural refactors leave behind. This branch catches it up: shared partials move into the namespaces that own them, jbuilder partials shed prefixes their directory already carries, and three dead files are removed.
 
-```mermaid
-flowchart LR
-  subgraph Before["3A: prefixes inside namespaces"]
-    TASK1["task/ — 9 files<br/>6 item_ + 2 list_ prefixes"]
-    USER1["user/ — flat<br/>notifications + settings mixed"]
-  end
-
-  subgraph After["3B: nested namespaces"]
-    TI["task/item/ — 5 files"]
-    TL["task/list/ — 2 files"]
-    UN["user/notification/ — 2 files"]
-    US["user/settings/ — 2 files"]
-  end
-
-  TASK1 --> TI
-  TASK1 --> TL
-  USER1 --> UN
-  USER1 --> US
-
-  style Before fill:#fde8e8
-  style TI fill:#e8f4fd
-  style TL fill:#e8f4fd
-  style UN fill:#fff3e0
-  style US fill:#fff3e0
-```
-
-The four sub-namespaces group different things. `Task::Item` and `Task::List` mirror entity hierarchies — genuine sub-domains with distinct models and lifecycles. `User::Notification` groups a feature hub. `User::Settings` groups a UI page. Same trigger (shared prefix), different meaning. Structure before behavior is the right first step — but only if you recognize it as a first step.
+Two files stay in `shared/`: `_header.html.erb` (sidebar) and `_topbar.html.erb` (top navigation). Both render the app-wide chrome used by every authenticated namespace. No single domain owns the frame.
 
 ---
 
 ## 📊 The numbers
 
-Rubycritic: 84.71 (unchanged). LOC: 1390 (unchanged). Static analysis measures what's inside files, not how files are organized. Structure that helps humans navigate is invisible to machines.
+| | Before (3B) | After (3C) |
+|---|---|---|
+| `shared/` files | 12 | 2 |
+| `shared/` subdirectories | 4 | 0 |
+| Files moved | — | 8 |
+| Files renamed | — | 3 |
+| Files deleted | — | 3 |
+| Render strings updated | — | 41 |
 
-The cost that escapes metrics: a constant lookup bug. Creating the `User::Notification` namespace made Ruby's constant resolution silently bind to the wrong thing. Ruby searches inside-out — it finds the nearest match first, like yelling "Mom!" in a crowded store and having the closest stranger's kid respond:
+Rubycritic: 84.71 (unchanged). LOC: 1390 (unchanged). Fourth consecutive branch where both hold flat. Static analysis measures complexity per file — it has nothing to say about where files live.
 
-```mermaid
-flowchart TD
-  A["Code: Current.user.notifications"] --> B{"Ruby resolves<br/>Notification constant"}
-  B --> C["1. Search current nesting:<br/>User::Notification"]
-  C --> D{"Found?"}
-  D -->|"Yes"| E["❌ Binds to User::Notification<br/>(namespace module, not model)"]
-  D -->|"No"| F["2. Search top-level:<br/>::Notification"]
-  F --> G["✅ Binds to Notification<br/>(the actual data model)"]
-
-  style E fill:#fde8e8
-  style G fill:#e8fde8
-```
-
-The fix — one line in `user.rb`:
-
-```ruby
-has_many :notifications, class_name: "::Notification", dependent: :destroy
-```
-
-No error. No exception. The code compiled, ran, and loaded the wrong constant. The first time in the arc that a structural refactoring introduced a semantic bug.
-
-Unlike the one-time route helper renaming at depth 1, constant lookup collisions are an ongoing cost — every future namespace that shares a name with a model risks the same silent failure.
+The real cost: 41 render string updates — roughly 3 per file operation. Mechanical, one-time, scattered across every namespace.
 
 ---
 
 ## 🤔 The problem
 
-Inside `task/` before this branch:
+Before namespaces existed, `shared/` was the only home for cross-controller partials. By 3B it had become the junk drawer of the app:
 
 ```
-task/
-  complete_items_controller.rb
-  incomplete_items_controller.rb
-  item_assigned_controller.rb
-  item_comments_controller.rb
-  item_moves_controller.rb
-  items_controller.rb
-  list_comments_controller.rb
-  list_transfers_controller.rb
-  lists_controller.rb
+shared/
+  _pending_invitations.html.erb     ← dead
+  _topbar.html.erb
+  comments/
+    _comment.html.erb
+    _form.html.erb
+    edit.html.erb
+  settings/
+    _settings_header.html.erb       ← dead
+  tasks/
+    _add_new.html.erb               ← dead
+    _header.html.erb
+  users/
+    _header.html.erb
+    _reset_password_link.html.erb
+    _sign_in_link.html.erb
+    _sign_up_link.html.erb
 ```
 
-Six `item_` files, two `list_` — prefixes doing the work of directories inside a namespace. The exact problem namespaces were supposed to eliminate.
+Three of those 12 files had zero callers. They survived because `shared/` has no ownership signal — every file is an orphan by design. Dead files blend in.
 
-In `user/`, the pattern was subtler: `notifications_controller.rb` next to `notification_reads_controller.rb` shared a feature with no sub-directory. `profiles_controller.rb` and `tokens_controller.rb` belonged to a settings hub that existed in the UI but not in the file system.
+The living files had clear owners. `shared/comments/` was rendered exclusively by two `task/` controllers. `shared/users/` was rendered exclusively by user-domain views. They belonged to domains that now had directories waiting for them.
+
+The jbuilder partials told the same story from a different angle. `task/lists/_task_list.json.jbuilder` encoded `task_list` in both the path and the filename. The directory changed when namespaces arrived in 3A; the name didn't follow.
 
 ---
 
 ## 🔬 The evidence
 
-**`module:` vs `namespace:` — a routing position choice**
-
-Comment routes nest inside `resources :items`, already inside `namespace :task`. Adding `namespace :item` would double the segment: `task_list_item_item_comments_path`. The routing DSL offers `module:` instead:
-
-```ruby
-namespace :task do
-  resources :lists do
-    resources :items do
-      resources :comments, only: [:create, :edit, :update, :destroy], module: "item"
-    end
-    namespace :item do
-      resources :complete,   only: [:update]
-      resources :incomplete, only: [:update]
-      resources :moves,      only: [:create]
-    end
-    resources :comments, only: [:create, :edit, :update, :destroy], module: "list"
-  end
-end
-```
-
-`module: "item"` routes to `Task::Item::CommentsController` without adding an `/item/` URL segment. `namespace :item` appears for routes not nested inside `resources :items` — no doubling risk there. The choice is driven by routing position, not preference.
-
-**The directory after reorganization**
+**Pattern 1: Jbuilder partials shed redundant prefixes**
 
 ```mermaid
-flowchart TD
-  subgraph TaskNS["task/"]
-    TL[lists_controller.rb]
-    TI[items_controller.rb]
-    subgraph ItemNS["item/ — 5 files"]
-      TIA[assigned_controller.rb]
-      TIC[comments_controller.rb]
-      TICO[complete_controller.rb]
-      TIIN[incomplete_controller.rb]
-      TIM[moves_controller.rb]
-    end
-    subgraph ListNS["list/ — 2 files"]
-      TLC[comments_controller.rb]
-      TLT[transfers_controller.rb]
-    end
+flowchart LR
+  subgraph Before["3B: redundant names"]
+    B1["task/lists/<b>_task_list</b>.json.jbuilder"]
+    B2["task/items/<b>_task_item</b>.json.jbuilder"]
+    B3["task/list/transfers/<b>_task_list_transfer</b>.json.jbuilder"]
   end
 
-  subgraph UserNS["user/"]
-    US[sessions_controller.rb]
-    UP[passwords_controller.rb]
-    UR[registrations_controller.rb]
-    UAD[account_deletions_controller.rb]
-    USET[settings_controller.rb]
-    subgraph NotifNS["notification/ — 2 files"]
-      NI[inbox_controller.rb]
-      NR[reads_controller.rb]
-    end
-    subgraph SettNS["settings/ — 2 files"]
-      SP[profiles_controller.rb]
-      ST[tokens_controller.rb]
-    end
+  subgraph After["3C: resource in the name"]
+    A1["task/lists/<b>_list</b>.json.jbuilder"]
+    A2["task/items/<b>_item</b>.json.jbuilder"]
+    A3["task/list/transfers/<b>_transfer</b>.json.jbuilder"]
   end
 
-  style ItemNS fill:#e8f4fd
-  style ListNS fill:#e8f4fd
-  style NotifNS fill:#fde8e8
-  style SettNS fill:#fde8e8
+  B1 --> A1
+  B2 --> A2
+  B3 --> A3
+
+  style Before fill:#fde8e8
+  style After fill:#e8fde8
 ```
 
-Blue = entity hierarchies (`Task::Item`, `Task::List`). Red = feature/UI groupings (`User::Notification`, `User::Settings`). Same principle, different semantics.
+The local variable inside each file dropped the prefix too:
+
+```ruby
+# Before — task/lists/_task_list.json.jbuilder
+json.extract!(task_list, :id, :inbox, :name, ...)
+
+# After — task/lists/_list.json.jbuilder
+json.extract!(list, :id, :inbox, :name, ...)
+```
+
+Safe because all jbuilder render calls use explicit `json.partial!` — no implicit model-name-to-partial lookup applies.
+
+**Pattern 2: Domain partials move to domain directories**
+
+`shared/comments/` moved to `task/shared/comments/` — both comment controllers live in the `task/` namespace. `shared/users/` moved to `user/shared/` — all callers are user-domain views. `shared/tasks/_header.html.erb` (rendered by 21 views across all namespaces) was the genuinely cross-domain partial — it moved up to `shared/_header.html.erb`, dropping the now-empty `tasks/` subdirectory.
+
+```mermaid
+flowchart LR
+  subgraph Before["3B: shared/ (12 files, 4 subdirs)"]
+    SC[shared/comments/]
+    SU[shared/users/]
+    ST["shared/tasks/_header"]
+    SS[shared/settings/]
+    STOP[shared/_topbar]
+    SDEAD["3 dead files"]
+  end
+
+  subgraph After["3C: shared/ (2 files, 0 subdirs)"]
+    STOP2[shared/_header]
+    STOP3[shared/_topbar]
+  end
+
+  SC -->|"moved to domain"| TC[task/shared/comments/]
+  SU -->|"moved to domain"| US[user/shared/]
+  ST -->|"promoted to root"| STOP2
+  SDEAD -->|"deleted"| DEL["(removed)"]
+  SS -->|"deleted (dead)"| DEL
+
+  style Before fill:#fde8e8
+  style After fill:#e8fde8
+  style SDEAD fill:#f5f5f5
+  style DEL fill:#f5f5f5
+```
+
+**Pattern 3: Dead files surfaced by the move**
+
+Moving files into domain directories forces the question: "who renders this?" Dead files answer: nobody.
+
+- `shared/_pending_invitations.html.erb` — v1 artifact; no view renders it
+- `shared/tasks/_add_new.html.erb` — lost its caller during earlier restructuring
+- `shared/settings/_settings_header.html.erb` — superseded when settings moved to `user/settings/`
+
+In `shared/`, dead files persist indefinitely. No ownership means nobody asks "does this still belong here?"
 
 ---
 
 ## 🤖 The agent's view
 
-At depth 2, `task/` held 9 files. At depth 3, `task/item/` holds 5. A **44% reduction** in scan space for item-related searches.
+Think of the codebase as a warehouse. The AI agent is the forklift driver. If the aisle labeled "Task Lists" contains a box also labeled "Task List" — that's a redundant label. The driver pauses to reconcile the signal. Strip the redundancy: domain once in the path, resource once in the name. The aisles are clearly labeled. The driver navigates straight to the right box.
 
-The constant lookup risk is a direct correctness hazard. An agent writing `has_many :notifications` inside `User::Notification::InboxController` produces silently wrong code — no error, no exception, just the wrong constant loaded at runtime. Every namespace that shares a name with a model is a potential collision.
+**Path as context.** Before: `render "shared/comments/form"` → the path suggests a global partial. Only two `task/` controllers use it. After: `render "task/shared/comments/form"` → the path tells the agent the domain (`task/`) and the scope (`shared` within task) before reading the file.
 
-The tradeoff: every new controller requires a placement decision — `task/`, `task/item/`, or `task/list/`? What if a feature applies to both an item and a list? Classification is simple for entities with clear ownership, ambiguous for cross-cutting concerns. An LLM doesn't browse a file tree visually; it deduces grouping rules from serialized path strings. Every nesting layer multiplies inference cost. Smaller haystacks, but the needles are now invisible.
+**Dead files as token cost.** Three files an agent would read, find no callers for, and spend tokens confirming were dead. After this branch, `shared/` has 2 files — both actively rendered by every authenticated namespace. Nothing dead to evaluate.
+
+**Jbuilder token distance.** `json.partial! "task/lists/task_list"` with local `task_list` — the domain processed three times. After: `json.partial! "task/lists/list"` with local `list`. Domain once. Resource once. Fewer redundant signals to reconcile.
 
 ---
 
 ## ➡️ What comes next
 
-Controller directories are organized. The view layer is not.
+Controllers are namespaced (3A-3B). Views mirror their controllers (3C). One layer still speaks the flat language: mailers.
 
-`shared/tasks/` predates the `task/` namespace. Partials carry `_task_list` prefixes that duplicate what the path already says. Dead files sit in `shared/`, consuming attention.
+`InvitationMailer` is called exclusively from `Account::InvitationsController`. `TransferMailer` from `Task::List::TransfersController`. Neither name reflects its domain. Their view templates sit at the root of `app/views/` alongside namespaced directories.
 
-Branch `3C-context-views` catches the view layer up. Shared partials move into namespace directories. Domain prefixes drop. Dead files are deleted. `shared/` shrinks from 12 to 2 files. ✌️
+Branch `3D-context-mailers` applies the same namespace discipline. The two mailer classes gain domain prefixes. Their view templates move into namespace-aligned directories. The mailer layer catches up to the rest of the stack. ✌️
 
 ---
 
 ## 🏛️ Thesis checkpoint
 
-Deeper nesting is still vanilla Rails (Principle 4). The namespace depth reflects domain relationships, not just entity grouping. But the constant lookup collision is the arc's first warning that structure and behavior can diverge — the directory tree looks pristine; Ruby's runtime disagrees. Principle 1 holds through the collision: the behavioral tests don't care about constant resolution order, only HTTP contracts. Resolving that tension — ensuring class boundaries reflect responsibility boundaries, not just filing conventions — begins at 3F.
+Controllers and views now share the same directory structure — Principle 6 fulfilled. The structural alignment eliminates an entire category of navigation friction. Principle 1 enabled the move: tests assert on rendered content, not template paths, so every view file relocated without editing a single test. But the alignment is still structural — view files moved, not render logic. The `render` strings remain implicit framework contracts. Branch 3D makes the first of those contracts explicit with `default template_path:` declarations on mailers.
 
 ---
 
@@ -237,8 +215,8 @@ Deeper nesting is still vanilla Rails (Principle 4). The namespace depth reflect
 Prerequisites: [mise](https://mise.jdx.dev/) (manages Ruby, Node, Mailpit)
 
 ```sh
-git clone git@github.com:railswhey/app.git -b 3B-nested-namespaces 3B-nested-namespaces
-cd 3B-nested-namespaces
+git clone git@github.com:railswhey/app.git -b 3C-context-views 3C-context-views
+cd 3C-context-views
 mise install                 # Ruby 4.0.1 + Node 22 + Mailpit 1.29.2
 bin/setup                    # bundle install, db:prepare, starts dev server
 ```

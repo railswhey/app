@@ -1,4 +1,4 @@
-<%= render("shared/tasks/header") %>
+<%= render("shared/header") %>
 
 <% all_lists = Current.account.task_lists.order(:name) %>
 <% other_lists = all_lists.where.not(id: Current.task_list_id) %>

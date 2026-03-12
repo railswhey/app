@@ -1,4 +1,4 @@
-<%= render("shared/tasks/header") %>
+<%= render("shared/header") %>
 
 <div id="<%= dom_id(@task_item) %>">
   <%= render("shared/topbar",
@@ -99,7 +99,7 @@
     <% if comments.any? %>
       <div class="comments-list">
         <% comments.each do |comment| %>
-          <%= render "shared/comments/comment", comment:, task_list:, task_item: @task_item %>
+          <%= render "task/shared/comments/comment", comment:, task_list:, task_item: @task_item %>
         <% end %>
       </div>
     <% else %>
@@ -107,7 +107,7 @@
     <% end %>
 
     <div class="comment-form-wrap">
-      <%= render "shared/comments/form",
+      <%= render "task/shared/comments/form",
           comment: Comment.new,
           url: task_list_item_comments_path(task_list, @task_item),
           submit_label: "Add Comment" %>

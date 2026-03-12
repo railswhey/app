@@ -20,7 +20,7 @@ class Task::List::CommentsController < ApplicationController
     @comment = @task_list.comments.find(params[:id])
     require_comment_author! or return
 
-    render "shared/comments/edit"
+    render "task/shared/comments/edit"
   end
 
   def update
@@ -31,7 +31,7 @@ class Task::List::CommentsController < ApplicationController
     if @comment.update(comment_params)
       redirect_to task_list_path(@task_list), notice: "Comment updated."
     else
-      render "shared/comments/edit", status: :unprocessable_entity
+      render "task/shared/comments/edit", status: :unprocessable_entity
     end
   end
 
