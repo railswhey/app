@@ -14,11 +14,11 @@
   <img src="/docs/assets/logo.png" alt="Rails Whey App" width="180" height="180">
 </p>
 
-The view layer catches up to the controller layer. Eight shared partials move into namespace directories that mirror their controllers, 3 jbuilder partials shed redundant domain prefixes, 3 dead files are deleted, and 41 render strings update. `shared/` shrinks from 12 files in 4 subdirectories to 2 files with no subdirectories.
+Two mailer classes gain domain prefixes, all three relocate view templates into `{namespace}/mailers/` directories, and every mailer declares `default template_path:` — replacing Rails' implicit path guessing with an explicit contract. Namespace discipline now spans controllers, views, and mailers.
 
 | | |
 |---|---|
-| **Branch** | `3C-context-views` |
+| **Branch** | `3D-context-mailers` |
 | **Ruby** | 4.0 |
 | **Rails** | 8.1 |
 | **Rubycritic** | 84.71 |
@@ -41,172 +41,136 @@ The view layer catches up to the controller layer. Eight shared partials move in
 
 ## 🎯 The concept
 
-> **One rule:** domain in the path, resource in the name.
+> **One rule:** declare the path; don't let Rails guess it from the class name. You outgrow convention-over-configuration the moment you fundamentally alter the architecture that convention was designed for.
 
-`task/lists/_task_list.json.jbuilder` — the directory already says "task list." The file should just say what it is: `_list.json.jbuilder`. Similarly, `shared/tasks/_header.html.erb` sits in a project with a `task/` namespace and a `task/shared/` destination waiting for it. `shared/tasks/` was its home before the namespace existed; now it's a historical artifact.
-
-3B organized controllers into nested domain directories (e.g., `Task::Item::CommentsController` at `task/item/comments_controller.rb`). The view layer was left behind — controller refactoring doesn't touch `render` strings unless the controller's own template path changes, so view files are a side effect that structural refactors leave behind. This branch catches it up: shared partials move into the namespaces that own them, jbuilder partials shed prefixes their directory already carries, and three dead files are removed.
-
-Two files stay in `shared/`: `_header.html.erb` (sidebar) and `_topbar.html.erb` (top navigation). Both render the app-wide chrome used by every authenticated namespace. No single domain owns the frame.
+3A through 3C aligned controllers and views to domain namespaces. Each time, mailers were deferred. This branch closes the gap. Two classes gain domain prefixes: `InvitationMailer` → `Account::InvitationMailer`, `TransferMailer` → `Task::ListTransferMailer`. `UserMailer` keeps its name — it already identifies its domain. All three get one explicit line — `default template_path:` — that replaces the framework's implicit convention with a visible contract.
 
 ---
 
 ## 📊 The numbers
 
-| | Before (3B) | After (3C) |
+| | Before (3C) | After (3D) |
 |---|---|---|
-| `shared/` files | 12 | 2 |
-| `shared/` subdirectories | 4 | 0 |
-| Files moved | — | 8 |
-| Files renamed | — | 3 |
-| Files deleted | — | 3 |
-| Render strings updated | — | 41 |
+| Mailer view directories at `app/views/` root | 3 | 0 |
+| Mailer files renamed/moved | — | 2 |
+| Mailer view files moved | — | 8 |
+| `default template_path:` declarations | 0 | 3 |
 
-Rubycritic: 84.71 (unchanged). LOC: 1390 (unchanged). Fourth consecutive branch where both hold flat. Static analysis measures complexity per file — it has nothing to say about where files live.
-
-The real cost: 41 render string updates — roughly 3 per file operation. Mechanical, one-time, scattered across every namespace.
+Fifth consecutive branch where Rubycritic (84.71) and LOC (1390) hold flat. The entire 3-series is structural alignment — no method bodies changed, no new logic was written.
 
 ---
 
 ## 🤔 The problem
 
-Before namespaces existed, `shared/` was the only home for cross-controller partials. By 3B it had become the junk drawer of the app:
+After 3C, three mailer directories sat at the `app/views/` root:
 
 ```
-shared/
-  _pending_invitations.html.erb     ← dead
-  _topbar.html.erb
-  comments/
-    _comment.html.erb
-    _form.html.erb
-    edit.html.erb
-  settings/
-    _settings_header.html.erb       ← dead
-  tasks/
-    _add_new.html.erb               ← dead
-    _header.html.erb
-  users/
-    _header.html.erb
-    _reset_password_link.html.erb
-    _sign_in_link.html.erb
-    _sign_up_link.html.erb
+app/views/
+  account/                  ← namespaced controller views
+  task/                     ← namespaced controller views
+  user/                     ← namespaced controller views
+  invitation_mailer/        ← flat mailer views (no namespace)
+  transfer_mailer/          ← flat mailer views (no namespace)
+  user_mailer/              ← flat mailer views (no namespace)
+  shared/
+  layouts/
 ```
 
-Three of those 12 files had zero callers. They survived because `shared/` has no ownership signal — every file is an orphan by design. Dead files blend in.
+Same level, different kind of thing. `account/` holds namespaced controller views. `invitation_mailer/` holds email templates for the account domain — but nothing in the path says so. `InvitationMailer` is called exclusively from `Account::InvitationsController`. `TransferMailer` exclusively from `Task::List::TransfersController`. The call sites live in namespaced controllers. The mailers don't reflect that relationship.
 
-The living files had clear owners. `shared/comments/` was rendered exclusively by two `task/` controllers. `shared/users/` was rendered exclusively by user-domain views. They belonged to domains that now had directories waiting for them.
+Rails auto-derives the view path from the class name. Rename `InvitationMailer` to `Account::InvitationMailer` without declaring a template path, and Rails silently looks for a directory that doesn't exist. No error at boot. Since mailers often run in background jobs, the failure explodes at runtime — when the email actually fires:
 
-The jbuilder partials told the same story from a different angle. `task/lists/_task_list.json.jbuilder` encoded `task_list` in both the path and the filename. The directory changed when namespaces arrived in 3A; the name didn't follow.
+```mermaid
+flowchart TD
+  A["Rename: InvitationMailer → Account::InvitationMailer"] --> B{"Rails resolves<br/>template path"}
+  B --> C["Derives: account/invitation_mailer/"]
+  C --> D["❌ Directory doesn't exist"]
+  D --> E["Silent failure at runtime<br/>(not at boot)"]
+
+  style D fill:#fde8e8
+  style E fill:#fde8e8
+```
+
+The implicit convention that worked for a flat architecture becomes a trap under namespacing. What was a cheap deferral in 3A becomes a maintenance trap by 3D — later branches (3E onward) operate under the assumption that namespace discipline is complete.
 
 ---
 
 ## 🔬 The evidence
 
-**Pattern 1: Jbuilder partials shed redundant prefixes**
+**Pattern 1: Class naming follows a contextual rule**
 
-```mermaid
-flowchart LR
-  subgraph Before["3B: redundant names"]
-    B1["task/lists/<b>_task_list</b>.json.jbuilder"]
-    B2["task/items/<b>_task_item</b>.json.jbuilder"]
-    B3["task/list/transfers/<b>_task_list_transfer</b>.json.jbuilder"]
-  end
+Add a namespace prefix only when it adds meaningful domain signal:
 
-  subgraph After["3C: resource in the name"]
-    A1["task/lists/<b>_list</b>.json.jbuilder"]
-    A2["task/items/<b>_item</b>.json.jbuilder"]
-    A3["task/list/transfers/<b>_transfer</b>.json.jbuilder"]
-  end
+| Mailer | Rule | `template_path:` |
+|---|---|---|
+| `Account::InvitationMailer` | Prefix added — belongs to account domain | `account/mailers/invitation` |
+| `Task::ListTransferMailer` | Flattened — `Task::List::` compressed into name | `task/mailers/list_transfer` |
+| `UserMailer` | Unchanged — name already carries domain signal | `user/mailers` |
 
-  B1 --> A1
-  B2 --> A2
-  B3 --> A3
-
-  style Before fill:#fde8e8
-  style After fill:#e8fde8
-```
-
-The local variable inside each file dropped the prefix too:
+All three declare `default template_path:`. One line per mailer, no boilerplate explosion — but the shift is significant. From "the framework guesses" to "the code declares":
 
 ```ruby
-# Before — task/lists/_task_list.json.jbuilder
-json.extract!(task_list, :id, :inbox, :name, ...)
+class Account::InvitationMailer < ApplicationMailer
+  default template_path: "account/mailers/invitation"
 
-# After — task/lists/_list.json.jbuilder
-json.extract!(list, :id, :inbox, :name, ...)
+  def invite(invitation)
+    @invitation = invitation
+    @accept_url = show_invitation_url(invitation.token)
+    mail(
+      to: invitation.email,
+      subject: "You've been invited to #{invitation.account.name}"
+    )
+  end
+end
 ```
 
-Safe because all jbuilder render calls use explicit `json.partial!` — no implicit model-name-to-partial lookup applies.
-
-**Pattern 2: Domain partials move to domain directories**
-
-`shared/comments/` moved to `task/shared/comments/` — both comment controllers live in the `task/` namespace. `shared/users/` moved to `user/shared/` — all callers are user-domain views. `shared/tasks/_header.html.erb` (rendered by 21 views across all namespaces) was the genuinely cross-domain partial — it moved up to `shared/_header.html.erb`, dropping the now-empty `tasks/` subdirectory.
+**Pattern 2: View templates move into namespace directories**
 
 ```mermaid
 flowchart LR
-  subgraph Before["3B: shared/ (12 files, 4 subdirs)"]
-    SC[shared/comments/]
-    SU[shared/users/]
-    ST["shared/tasks/_header"]
-    SS[shared/settings/]
-    STOP[shared/_topbar]
-    SDEAD["3 dead files"]
+  subgraph Before["3C: app/views/ root"]
+    IM[invitation_mailer/]
+    TM[transfer_mailer/]
+    UM[user_mailer/]
   end
 
-  subgraph After["3C: shared/ (2 files, 0 subdirs)"]
-    STOP2[shared/_header]
-    STOP3[shared/_topbar]
+  subgraph After["3D: namespace-aligned"]
+    AIM[account/mailers/invitation/]
+    TTM[task/mailers/list_transfer/]
+    UMN[user/mailers/]
   end
 
-  SC -->|"moved to domain"| TC[task/shared/comments/]
-  SU -->|"moved to domain"| US[user/shared/]
-  ST -->|"promoted to root"| STOP2
-  SDEAD -->|"deleted"| DEL["(removed)"]
-  SS -->|"deleted (dead)"| DEL
+  IM -->|"moved + renamed"| AIM
+  TM -->|"moved + renamed"| TTM
+  UM -->|"moved"| UMN
 
   style Before fill:#fde8e8
   style After fill:#e8fde8
-  style SDEAD fill:#f5f5f5
-  style DEL fill:#f5f5f5
 ```
 
-**Pattern 3: Dead files surfaced by the move**
-
-Moving files into domain directories forces the question: "who renders this?" Dead files answer: nobody.
-
-- `shared/_pending_invitations.html.erb` — v1 artifact; no view renders it
-- `shared/tasks/_add_new.html.erb` — lost its caller during earlier restructuring
-- `shared/settings/_settings_header.html.erb` — superseded when settings moved to `user/settings/`
-
-In `shared/`, dead files persist indefinitely. No ownership means nobody asks "does this still belong here?"
+Three root-level directories disappear. The `mailers/` subdirectory within each namespace creates an unambiguous boundary between controller views and email templates.
 
 ---
 
 ## 🤖 The agent's view
 
-Think of the codebase as a warehouse. The AI agent is the forklift driver. If the aisle labeled "Task Lists" contains a box also labeled "Task List" — that's a redundant label. The driver pauses to reconcile the signal. Strip the redundancy: domain once in the path, resource once in the name. The aisles are clearly labeled. The driver navigates straight to the right box.
+Before: an agent modifying the invitation email had to know the Rails convention — class name underscored = view directory. The path was an invisible dot to connect. After: `Account::InvitationMailer` contains `default template_path: "account/mailers/invitation"`. The path is in the file. No convention to memorize, no guessing game.
 
-**Path as context.** Before: `render "shared/comments/form"` → the path suggests a global partial. Only two `task/` controllers use it. After: `render "task/shared/comments/form"` → the path tells the agent the domain (`task/`) and the scope (`shared` within task) before reading the file.
-
-**Dead files as token cost.** Three files an agent would read, find no callers for, and spend tokens confirming were dead. After this branch, `shared/` has 2 files — both actively rendered by every authenticated namespace. Nothing dead to evaluate.
-
-**Jbuilder token distance.** `json.partial! "task/lists/task_list"` with local `task_list` — the domain processed three times. After: `json.partial! "task/lists/list"` with local `list`. Domain once. Resource once. Fewer redundant signals to reconcile.
+The `{namespace}/mailers/` pattern creates a uniform lookup: an agent searching for email templates in any namespace knows to check `{namespace}/mailers/`. An agent renaming a class sees the `template_path:` line and knows to update it. The failure mode becomes visible in the code instead of hiding in the framework's unwritten rules.
 
 ---
 
 ## ➡️ What comes next
 
-Controllers are namespaced (3A-3B). Views mirror their controllers (3C). One layer still speaks the flat language: mailers.
+Namespace discipline covers controllers, views, and mailers. The routing layer tells a different story — nine raw HTTP verb declarations bypass the `resource`/`resources` DSL.
 
-`InvitationMailer` is called exclusively from `Account::InvitationsController`. `TransferMailer` from `Task::List::TransfersController`. Neither name reflects its domain. Their view templates sit at the root of `app/views/` alongside namespaced directories.
-
-Branch `3D-context-mailers` applies the same namespace discipline. The two mailer classes gain domain prefixes. Their view templates move into namespace-aligned directories. The mailer layer catches up to the rest of the stack. ✌️
+Branch `3E-singular-resources` replaces all nine with proper DSL calls. The routing layer catches up. ✌️
 
 ---
 
 ## 🏛️ Thesis checkpoint
 
-Controllers and views now share the same directory structure — Principle 6 fulfilled. The structural alignment eliminates an entire category of navigation friction. Principle 1 enabled the move: tests assert on rendered content, not template paths, so every view file relocated without editing a single test. But the alignment is still structural — view files moved, not render logic. The `render` strings remain implicit framework contracts. Branch 3D makes the first of those contracts explicit with `default template_path:` declarations on mailers.
+This branch introduces the first explicit interface declaration in the arc. `default template_path:` is a one-line contract that replaces an implicit convention — Principle 4 applied to making the framework's own conventions visible rather than importing external tools. The behavioral contract holds because tests assert on email delivery, not on template paths (Principle 1). The moment the application moved beyond a flat architecture, implicit conventions became liabilities. This branch begins paying them down.
 
 ---
 
@@ -215,8 +179,8 @@ Controllers and views now share the same directory structure — Principle 6 ful
 Prerequisites: [mise](https://mise.jdx.dev/) (manages Ruby, Node, Mailpit)
 
 ```sh
-git clone git@github.com:railswhey/app.git -b 3C-context-views 3C-context-views
-cd 3C-context-views
+git clone git@github.com:railswhey/app.git -b 3D-context-mailers 3D-context-mailers
+cd 3D-context-mailers
 mise install                 # Ruby 4.0.1 + Node 22 + Mailpit 1.29.2
 bin/setup                    # bundle install, db:prepare, starts dev server
 ```

@@ -45,7 +45,7 @@ class Task::List::TransfersController < ApplicationController
 
     if @transfer.save
       Notification.create!(user: to_user, notifiable: @transfer, action: "transfer_requested")
-      TransferMailer.transfer_requested(@transfer).deliver_later
+      Task::ListTransferMailer.transfer_requested(@transfer).deliver_later
 
       respond_to do |format|
         format.html { redirect_to task_list_path(@transfer_task_list), notice: "Transfer request sent to #{to_user.email}." }

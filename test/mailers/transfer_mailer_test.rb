@@ -15,7 +15,7 @@ class TransferMailerTest < ActionMailer::TestCase
       transferred_by: sender
     )
 
-    email = TransferMailer.transfer_requested(transfer)
+    email = Task::ListTransferMailer.transfer_requested(transfer)
 
     assert_equal [ receiver.email ], email.to
     assert_equal "Transfer request: Transfer Me", email.subject
