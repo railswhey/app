@@ -10,8 +10,8 @@
     <strong><%= title %></strong>
   </nav>
   <div class="topbar-actions">
-    <%= link_to "🔍", search_path, title: "Search" %>
-    <a href="<%= settings_path %>" class="topbar-avatar" title="<%= Current.user&.email %>">
+    <%= link_to "🔍", account_search_path, title: "Search" %>
+    <a href="<%= user_settings_path %>" class="topbar-avatar" title="<%= Current.user&.email %>">
       <%= user_initials %>
     </a>
   </div>

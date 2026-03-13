@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Account::ManagementController < ApplicationController
+class Account::ManagementsController < ApplicationController
   before_action :authenticate_user!
 
   def show

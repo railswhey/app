@@ -4,9 +4,9 @@
       <button class="hamburger" onclick="document.body.classList.toggle('nav-open')" aria-label="Toggle menu">☰</button>
       <a href="<%= home_path %>"><%= app_name_with_logo %></a>
       <span class="mobile-toolbar">
-        <%= link_to "🔍", search_path, title: "Search", class: "mobile-toolbar-btn" %>
+        <%= link_to "🔍", account_search_path, title: "Search", class: "mobile-toolbar-btn" %>
         <a href="<%= user_notification_inbox_index_path %>" class="mobile-toolbar-btn" title="Notifications">🔔<% if unread_notification_count > 0 %><span class="notification-badge"><%= unread_notification_count %></span><% end %></a>
-        <a href="<%= settings_path %>" class="topbar-avatar" title="<%= Current.user&.email %>">
+        <a href="<%= user_settings_path %>" class="topbar-avatar" title="<%= Current.user&.email %>">
           <%= user_initials %>
         </a>
       </span>
@@ -48,15 +48,15 @@
         <% end %>
       <% end %>
 
-      <%= link_to(my_tasks_path) do %>
-        <% if current_resource?(controller: "my_tasks") %>
+      <%= link_to(task_item_assignments_path) do %>
+        <% if current_resource?(controller: "assignments") %>
           <strong>👤 My Tasks</strong>
         <% else %>
           👤 My Tasks
         <% end %>
       <% end %>
 
-      <%= link_to(search_path) do %>
+      <%= link_to(account_search_path) do %>
         <% if current_resource?(controller: "search") %>
           <strong>🔍 Search</strong>
         <% else %>
@@ -74,7 +74,7 @@
 
       <hr>
 
-      <%= link_to(settings_path) do %>
+      <%= link_to(user_settings_path) do %>
         <% if current_resource?(controller: /\A(settings|accounts|memberships|invitations)\z/) || (current_resource?(controller: "users") && current_resource?(action: /edit_profile|update_profile|edit_token|update_token|edit_password|update_password/)) %>
           <strong>⚙️ Settings</strong>
         <% else %>

@@ -128,32 +128,32 @@ class ActionDispatch::IntegrationTest
       test.task_list_item_moves_url(task_list, task_item_id: id, **params)
     end
 
-    def settings__url = test.settings_url
+    def settings__url = test.user_settings_url
     def account__url = test.account_management_url
     def switch__account_url(account)
       id = account.respond_to?(:id) ? account.id : account
       test.account_switches_url(account_id: id)
     end
 
-    def search__url = test.search_url
-    def my__tasks_url = test.my_tasks_url
+    def search__url = test.account_search_url
+    def my__tasks_url = test.task_item_assignments_url
     def api__docs_url(...) = test.api_docs_url(...)
     def api__docs_raw_url = test.api_docs_url(format: :md)
 
     def account__invitations_url = test.account_invitations_url
     def new_account__invitation_url = test.new_account_invitation_url
     def account__invitation_url(...) = test.account_invitation_url(...)
-    def show__invitation_url(...) = test.invitation_url(...)
-    def accept__invitation_url(...) = test.invitation_url(...)
+    def show__invitation_url(token) = test.account_invitations_acceptance_url(token: token)
+    def accept__invitation_url(token) = test.account_invitations_acceptance_url(token: token)
 
     def account__memberships_url = test.account_memberships_url
     def account__membership_url(...) = test.account_membership_url(...)
 
     def new_task__list_transfer_url(...) = test.new_task_list_transfer_url(...)
     def task__list_transfer_form_url(...) = test.task_list_transfer_url(...)
-    def task__list_transfer_url(...) = test.transfer_url(...)
-    def show_task__list_transfer_url(...) = test.transfer_url(...)
-    def show_task__list_transfer_path(...) = test.transfer_path(...)
+    def task__list_transfer_url(token, **kwargs) = test.account_transfers_response_url(token: token, **kwargs)
+    def show_task__list_transfer_url(token, **kwargs) = test.account_transfers_response_url(token: token, **kwargs)
+    def show_task__list_transfer_path(token, **kwargs) = test.account_transfers_response_path(token: token, **kwargs)
 
     def notifications__url(...) = test.user_notification_inbox_index_url(...)
     def notification__url(...) = test.user_notification_inbox_url(...)
@@ -240,17 +240,17 @@ class ActionDispatch::IntegrationTest
 
     def account__invitation_url(...) = test.account_invitation_url(...)
     def account__invitations_url(...) = test.account_invitations_url(...)
-    def accept__invitation_url(...) = test.invitation_url(...)
+    def accept__invitation_url(token, format: :json) = test.account_invitations_acceptance_url(token: token, format: format)
 
     def account__membership_url(...) = test.account_membership_url(...)
 
     def new_task__list_transfer_url(...) = test.new_task_list_transfer_url(...)
     def task__list_transfer_form_url(...) = test.task_list_transfer_url(...)
-    def task__list_transfer_url(...) = test.transfer_url(...)
-    def show_task__list_transfer_url(...) = test.transfer_url(...)
+    def task__list_transfer_url(token, **kwargs) = test.account_transfers_response_url(token: token, **kwargs)
+    def show_task__list_transfer_url(token, **kwargs) = test.account_transfers_response_url(token: token, **kwargs)
 
-    def my__tasks_url(**kwargs) = test.my_tasks_url(format: :json, **kwargs)
-    def search__url(**kwargs) = test.search_url(format: :json, **kwargs)
+    def my__tasks_url(**kwargs) = test.task_item_assignments_url(format: :json, **kwargs)
+    def search__url(**kwargs) = test.account_search_url(format: :json, **kwargs)
   end
 
   def web_adapter

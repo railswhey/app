@@ -34,11 +34,11 @@ export function newTransferPath(listId: string) { return `/task/lists/${listId}/
 
 // ── My Tasks ─────────────────────────────────────────────────────────────────
 
-export function myTasksPath() { return '/my_tasks'; }
+export function myTasksPath() { return '/task/item/assignments'; }
 
 // ── Search ───────────────────────────────────────────────────────────────────
 
-export function searchPath() { return '/search'; }
+export function searchPath() { return '/account/search'; }
 
 // ── Notifications ────────────────────────────────────────────────────────────
 
@@ -46,11 +46,11 @@ export function notificationsPath() { return '/user/notification/inbox'; }
 
 // ── Account ──────────────────────────────────────────────────────────────────
 
-export function accountPath() { return '/account'; }
+export function accountPath() { return '/account/management'; }
 
 // ── Settings ─────────────────────────────────────────────────────────────────
 
-export function settingsPath() { return '/settings'; }
+export function settingsPath() { return '/user/settings'; }
 
 // ── API Docs ─────────────────────────────────────────────────────────────────
 

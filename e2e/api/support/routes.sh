@@ -17,11 +17,11 @@ task_item_move_path()       { echo "/task/lists/${1}/item/moves.json?task_item_i
 
 # ── My Tasks ──────────────────────────────────────────────────────────────────
 
-my_tasks_path()             { echo "/my_tasks.json"; }
+my_tasks_path()             { echo "/task/item/assignments.json"; }
 
 # ── Search ────────────────────────────────────────────────────────────────────
 
-search_path()               { echo "/search.json"; }
+search_path()               { echo "/account/search.json"; }
 
 # ── Memberships (account-scoped) ──────────────────────────────────────────────
 
@@ -32,7 +32,7 @@ membership_path()           { echo "/account/memberships/${1}.json"; }
 
 account_invitations_path()  { echo "/account/invitations.json"; }
 account_invitation_path()   { echo "/account/invitations/${1}.json"; }
-invitation_path()           { echo "/invitations/${1}.json"; }
+invitation_path()           { echo "/account/invitations/acceptance.json?token=${1}"; }
 
 # ── Users ─────────────────────────────────────────────────────────────────────
 
@@ -47,4 +47,4 @@ user_password_reset_path()  { echo "/user/password.json?token=${1}"; }
 # ── Transfers ─────────────────────────────────────────────────────────────────
 
 transfer_create_path()      { echo "/task/lists/${1}/transfer.json"; }
-transfer_path()             { echo "/transfers/${1}.json"; }
+transfer_path()             { echo "/account/transfers/response.json?token=${1}"; }

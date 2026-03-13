@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class SearchController < ApplicationController
+class Account::SearchesController < ApplicationController
   before_action :authenticate_user!
 
   def show

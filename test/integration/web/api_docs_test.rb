@@ -80,7 +80,7 @@ class WebApiDocsTest < ActionDispatch::IntegrationTest
   test "my_tasks section renders the My Tasks heading and curl example" do
     get web_adapter.api__docs_url(section: "my_tasks")
     assert_select "h1", text: /My Tasks/i
-    assert_select "pre code", text: /my_tasks\.json/
+    assert_select "pre code", text: /task\/item\/assignments\.json/
   end
 
   test "my_tasks section does not contain JSON-not-supported notice" do

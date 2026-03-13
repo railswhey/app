@@ -4,7 +4,7 @@
 
 <h2>Search</h2>
 
-<%= form_with url: search_path, method: :get do %>
+<%= form_with url: account_search_path, method: :get do %>
   <input type="text" name="q" value="<%= @query %>" placeholder="Search tasks and lists..." autofocus />
   <button type="submit">Search</button>
 <% end %>

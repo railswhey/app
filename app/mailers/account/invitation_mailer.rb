@@ -5,7 +5,7 @@ class Account::InvitationMailer < ApplicationMailer
 
   def invite(invitation)
     @invitation = invitation
-    @accept_url = invitation_url(invitation.token)
+    @accept_url = account_invitations_acceptance_url(token: invitation.token)
 
     mail(
       to: invitation.email,

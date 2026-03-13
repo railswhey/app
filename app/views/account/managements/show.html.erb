@@ -1,6 +1,6 @@
 <%= render("shared/header") %>
 
-<%= render("shared/topbar", title: "Account", back_path: settings_path, back_label: "Settings") %>
+<%= render("shared/topbar", title: "Account", back_path: user_settings_path, back_label: "Settings") %>
 
 <h2>Account Settings</h2>
 
@@ -86,10 +86,10 @@
           <div class="text-muted">from <%= t.from_account.name %> &middot; by <%= t.transferred_by.email %></div>
         </div>
         <div class="action-group">
-          <%= button_to "Accept", task_list_transfer_path(t.token), method: :patch,
+          <%= button_to "Accept", account_transfers_response_path(token: t.token), method: :patch,
               params: { action_type: "accept" },
               class: "button btn-secondary" %>
-          <%= button_to "Reject", task_list_transfer_path(t.token), method: :patch,
+          <%= button_to "Reject", account_transfers_response_path(token: t.token), method: :patch,
               params: { action_type: "reject" },
               class: "button btn-danger" %>
         </div>

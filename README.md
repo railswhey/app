@@ -14,15 +14,15 @@
   <img src="/docs/assets/logo.png" alt="Rails Whey App" width="180" height="180">
 </p>
 
-A full-stack task management app built with Ruby on Rails. This branch replaces every raw HTTP verb route with proper `resource`/`resources` DSL calls, deleting a controller that existed only as a routing artifact and correcting a misplaced token parameter.
+A full-stack task management app built with Ruby on Rails. This branch eliminates every `controller:`, `path:`, `param:`, and inline `module:` override from the route file by fixing the underlying domain naming and placement that made each override necessary.
 
 | | |
 |---|---|
-| **Branch** | `3E-singular-resources` |
+| **Branch** | `3F-resource-discipline` |
 | **Ruby** | 4.0 |
 | **Rails** | 8.1 |
-| **Rubycritic** | 84.41 |
-| **LOC** | 1389 |
+| **Rubycritic** | 83.92 |
+| **LOC** | 1397 |
 
 **Table of contents:**
 
@@ -41,179 +41,225 @@ A full-stack task management app built with Ruby on Rails. This branch replaces 
 
 ## 🎯 The concept
 
-> **One rule:** express every route as a resource declaration; if it won't fit, the domain model is wrong.
+> **One rule:** fix the name, not the route.
 
-`resource :password` says what `get "users/:id/password"` does not: a user has one password, the lookup needs no ID, and the helpers follow a naming convention any Rails developer can predict. Raw HTTP verb routes do the same routing but encode nothing about the domain — no cardinality, no helper convention, no declaration of what the resource is. Each raw route is a piece of domain information discarded.
+3E replaced raw HTTP verb routes with DSL declarations. But the DSL calls still carry overrides — `controller:`, `param:`, `path:`, `module:`. Each override is a diagnostic alarm: the framework telling you something is named or placed wrong. This branch traces each alarm to its root cause.
 
-This branch recovers that information. Nine raw route declarations become four DSL calls. One controller that existed only as a routing artifact is deleted. A signed token misrepresented as an `:id` parameter moves to `?token=`, where its nature as a credential is visible.
+Five patterns. Three mechanical, two requiring domain reasoning:
+
+1. **Mixed-audience controllers.** `Account::InvitationsController` served authenticated owners and unauthenticated invitees from one class — two authorization lifecycles crammed into one file. Split by audience → override gone, security model honest.
+
+2. **Misplaced routes.** Root-level routes pointing into namespaced controllers via `to:` strings. Move the route into the namespace that owns it.
+
+3. **Singular controller names.** `resource :search` expects `SearchesController` (plural). The controller was `SearchController`. Rename the file.
+
+4. **Collection route for a singular concept.** `resources :invitations, param: :token` used a collection for a one-time acceptance. `param:` renames `:id` in a collection, but there's no collection here. A singular `resource :acceptance` with the token as a query param matches the domain.
+
+5. **Namespace driven by code proximity, not domain actor.** Transfer responses lived under `task/list/` because transfers involve task lists. But the actor who accepts or rejects is the receiving account. The code compiled, the tests passed, and the feature worked — in the wrong namespace. The wrongness was only visible when you asked: who is the actor?
+
+```mermaid
+flowchart TD
+  A["Route override detected"] --> B{"What kind of mismatch?"}
+  B -->|"Two audiences, one class"| C["Split by authorization lifecycle"]
+  B -->|"Route outside its namespace"| D["Move into correct namespace"]
+  B -->|"Wrong controller name"| E["Rename to match convention"]
+  B -->|"Collection for singular concept"| F["Switch to singular resource"]
+  B -->|"Wrong namespace for actor"| G["Move to domain actor's namespace"]
+
+  C --> H["Override eliminated"]
+  D --> H
+  E --> H
+  F --> H
+  G --> H
+
+  style A fill:#fde8e8
+  style H fill:#e8fde8
+```
+
+No model changes. Every fix targets controllers, routes, and views.
 
 ---
 
 ## 📊 The numbers
 
-| | Before (3D) | After (3E) |
+| | Before (3E) | After (3F) |
 |---|---|---|
-| Raw HTTP verb route lines | 9 | 0 |
-| DSL replacements | — | 4 |
-| `resources :passwords` (plural) | yes | `resource :password` (singular) |
-| `AccountDeletionsController` | 18-line class | deleted |
-| Password token location | path param (`:id`) | query param (`?token=`) |
-| Controller files | 26 + 1 concern | 25 + 1 concern |
+| `controller:` overrides | 4 | 0 |
+| `path:` overrides | 1 | 0 |
+| `param: :token` on singular concepts | 2 | 0 |
+| Inline `module:` on individual resources | 3 | 0 (replaced with `scope module:` blocks) |
+| Root-level routes outside their namespace | 5 | 0 |
+| New controllers (audience splits) | — | 2 |
+| Controllers renamed (convention) | — | 3 |
+| Controllers moved (domain actor) | — | 1 |
 
-Rubycritic: 84.71 → 84.41. LOC: 1390 → 1389. The 18-line controller deletion is partially offset by `destroy` moving into `RegistrationsController`. Sixth structural branch; metrics hold flat.
+Rubycritic dropped from 84.41 to 83.92. Same pattern as 2A: splitting single-responsibility files increases boilerplate-to-logic ratio. The structural improvement is real; the metric penalizes file count. LOC rose from 1389 to 1397 — the +8 lines are class declarations on the new controllers.
 
 ---
 
 ## 🤔 The problem
 
-After 3D, `routes.rb` held nine standalone HTTP verb declarations outside any `resource` context:
+After 3E, the route file still carried overrides on every token-based and management route:
 
 ```ruby
-# Registration deletion — lone delete line, own controller
-delete "registrations", to: "account_deletions#destroy"
-
-# Password reset — :id misrepresenting a signed token
-get "users/:id/password", to: "user/passwords#edit", as: :user_password_reset_link
-
-# Invitations — ad hoc named helpers
-get   "invitations/:token", to: "account/invitations#show",   as: :show_invitation
-patch "invitations/:token", to: "account/invitations#update", as: :accept_invitation
-
-# Transfers — management routes with _form_ suffix to dodge helper collision
-get  "task/lists/:list_id/transfer/new", to: "task/list/transfers#new",    as: :new_task_list_transfer
-post "task/lists/:list_id/transfer",     to: "task/list/transfers#create", as: :task_list_transfer_form
-
-# Transfers — approval routes (public, token-keyed)
-get   "transfers/:token", to: "task/list/transfers#show",   as: :show_task_list_transfer
-patch "transfers/:token", to: "task/list/transfers#update", as: :task_list_transfer
-```
-
-Each workaround was the path of least resistance. `delete "registrations"` routed to an 18-line controller that survived three refactoring branches solely to receive one HTTP verb. `get "users/:id/password"` used `:id` for a signed token — misrepresenting authority as identity. The transfer helpers carried a `_form_` suffix purely to dodge a name collision — a helper name that tells you about a routing constraint, not about the domain.
-
----
-
-## 🔬 The evidence
-
-**Pattern 1: Singular resource recovers cardinality and token identity**
-
-Before:
-
-```ruby
-# 3D — plural resources, :id stands in for a token
-resources :passwords, only: [:new, :create, :edit, :update]
-# Generated: /user/passwords/:id/edit
-```
-
-After:
-
-```ruby
-# 3E — singular resource, token travels as query param
-resource :password, only: [:new, :create, :edit, :update]
-# Generated: /user/password/edit?token=...
-```
-
-The controller reflects this — `params[:id]` disappears; `params[:token]` takes its place. The standard helper `edit_user_password_url(token: ...)` replaces the custom `user_password_reset_link_url`.
-
-```mermaid
-flowchart LR
-  subgraph Before["3D: token hidden in :id"]
-    P1["/user/passwords/:id/edit"] --> S1["Reads as: record identity"]
-    S1 --> R1["Actually: authorization credential"]
-  end
-
-  subgraph After["3E: token explicit in query"]
-    P2["/user/password/edit?token=..."] --> S2["Reads as: authorization credential"]
-    S2 --> R2["Actually: authorization credential ✓"]
-  end
-
-  style Before fill:#fde8e8
-  style After fill:#e8fde8
-```
-
-**Pattern 2: Singular resource absorbs a routing artifact**
-
-Before:
-
-```ruby
-# 3D — two declarations, two controllers
-resources :registrations, only: [:new, :create]
-delete "registrations", to: "account_deletions#destroy"
-```
-
-After:
-
-```ruby
-# 3E — two declarations, one controller
-resources :registrations, only: [:new, :create]
-resource :registration, only: [:destroy]
-```
-
-Both point to `User::RegistrationsController`. Plural handles collection actions (`new`, `create`). Singular handles a member action with no `:id` (`destroy`). `User::AccountDeletionsController` — 18 lines, one action, three branches of survival — is deleted entirely. Rails supports this plural/singular split in 8.1, though it is better understood as a framework accommodation than a documented pattern.
-
-```mermaid
-flowchart TD
-  subgraph Before["3D routes"]
-    RAW1["delete 'registrations' → AccountDeletionsController"]
-    RAW2["get 'users/:id/password' → custom helper"]
-    RAW3["get/patch 'invitations/:token' → ad hoc names"]
-    RAW4["get/post transfers (management) → _form_ suffix"]
-    RAW5["get/patch transfers (approval) → separate helpers"]
-  end
-
-  subgraph After["3E routes"]
-    DSL1["resource :registration, only: [:destroy]"]
-    DSL2["resource :password (singular)"]
-    DSL3["resources :invitations, param: :token"]
-    DSL4["resource :transfer + resources :transfers, param: :token"]
-  end
-
-  RAW1 -->|"absorbed"| DSL1
-  RAW2 -->|"replaced"| DSL2
-  RAW3 -->|"replaced"| DSL3
-  RAW4 -->|"replaced"| DSL4
-  RAW5 -->|"replaced"| DSL4
-
-  style Before fill:#fde8e8
-  style After fill:#e8fde8
-```
-
-Five workaround groups collapse into four DSL calls. Red: raw routes with no domain semantics. Green: DSL declarations that encode cardinality, lookup key type, and helper naming.
-
----
-
-## 🤖 The agent's view
-
-Agents navigate code by name. Before this branch, the route file produced non-standard helpers: `show_invitation_url`, `accept_invitation_url`, `task_list_transfer_form_url`, `user_password_reset_link_url`. None follow the naming pattern an agent trained on Rails convention would predict — the agent had to search the whole project or guess. After: `invitation_url(token)`, `transfer_url(token)`, `edit_user_password_url(token: ...)`. Standard names, derivable from the declaration. The agent can predict the route without reading the controller.
-
-`param: :token` is explicit metadata. An agent reading `resources :invitations, param: :token` knows the lookup key before reading the controller. In 3D, the raw routes used `:token` as a path segment but nothing in the route declaration said "this is a token, not an ID." After 3E, the route declaration carries the information.
-
-The plural/singular registration split is the one pattern that remains non-obvious. `resources :registrations, only: [:new, :create]` alongside `resource :registration, only: [:destroy]` — both pointing to one controller. The two declarations generate different URL shapes (`/user/registrations` for collection actions, `/user/registration` for the member action). Narrow surface — one controller, three actions — but less predictable than any other route in the file.
-
----
-
-## ➡️ What comes next
-
-The raw routes are gone. But DSL overrides remain:
-
-```ruby
+# Token flows — controller: points elsewhere, param: renames :id
 resources :invitations, only: [:show, :update],
           controller: "account/invitations", param: :token
 
 resources :transfers, only: [:show, :update],
           controller: "task/list/transfers", param: :token
 
-resource :transfer, only: [:new, :create], module: "list"
+# Management — path: and controller: compensate for naming
+resource :management, only: [:show, :update], path: "", controller: "management"
+
+# Search — singular controller name violates convention
+resource :search, only: [:show], controller: "search"
+
+# Repeated module: on each resource
+resources :comments, only: [...], module: "item"
+resources :comments, only: [...], module: "list"
+resource  :transfer, only: [...], module: "list"
 ```
 
-`controller:`, `param:`, `module:` — each says "the resource name doesn't match the controller that handles it." The raw verbs are gone; the naming mismatches that produced them are not.
+When you write `controller: "account/invitations"` on a route, the DSL is telling you the resource resolves to the wrong controller. Either the controller is in the wrong namespace, or the resource needs a different name.
 
-Branch `3F-resource-discipline` treats each override as a diagnostic: what naming or placement mismatch made it necessary? 3F resolves them — a `routes.rb` where every line is derivable from the resource name alone. ✌️
+---
+
+## 🔬 The evidence
+
+**Pattern 1: Audience split makes the file structure a security boundary**
+
+In 3E, one controller served two authorization lifecycles:
+
+```ruby
+# 3E — mixed audience
+class Account::InvitationsController < ApplicationController
+  before_action :authenticate_user!, only: %i[index new create destroy]
+  # show and update: no auth — public email link (visible only by absence)
+end
+```
+
+After the split, the acceptance controller's stance is the entire class — no `before_action`, no ambiguity:
+
+```ruby
+# 3F — token acceptance only
+class Account::Invitations::AcceptancesController < ApplicationController
+  def show
+    @invitation = Invitation.find_by!(token: params[:token])
+  end
+
+  def update
+    @invitation = Invitation.find_by!(token: params[:token])
+    # ...
+  end
+end
+```
+
+The route resolves without overrides:
+
+```ruby
+namespace :account do
+  resources :invitations, only: [:index, :new, :create, :destroy]
+  namespace :invitations do
+    resource :acceptance, only: [:show, :update]
+  end
+end
+```
+
+No `controller:`. No `param: :token`. The token travels as `?token=` in the query string.
+
+**Pattern 2: Domain actor determines namespace**
+
+Transfer responses moved from `task/list/` to `account/`:
+
+```ruby
+namespace :account do
+  namespace :transfers do
+    resource :response, only: [:show, :update]
+  end
+end
+```
+
+The name is "responses" (not "acceptances") because `update` handles both accept and reject via `params[:action_type]`. Controller placement follows the actor; model placement follows the data.
+
+```mermaid
+flowchart LR
+  subgraph Before["3E: overrides patch naming mismatches"]
+    R1["resources :invitations, controller: 'account/invitations', param: :token"]
+    R2["resources :transfers, controller: 'task/list/transfers', param: :token"]
+    R3["resource :management, path: '', controller: 'management'"]
+    R4["resource :search, controller: 'search'"]
+  end
+
+  subgraph After["3F: names match, overrides gone"]
+    D1["namespace :invitations → resource :acceptance"]
+    D2["namespace :transfers → resource :response (in account)"]
+    D3["resource :management (ManagementsController)"]
+    D4["resource :search (SearchesController)"]
+  end
+
+  R1 -->|"split + singular"| D1
+  R2 -->|"move to account"| D2
+  R3 -->|"rename controller"| D3
+  R4 -->|"rename controller"| D4
+
+  style Before fill:#fde8e8
+  style After fill:#e8fde8
+```
+
+**Pattern 3: `scope module:` replaces repeated inline `module:`**
+
+```ruby
+# 3E — repeated                          # 3F — grouped
+resources :comments, module: "list"       scope module: :list do
+resource  :transfer, module: "list"         resources :comments, only: [...]
+                                            resource  :transfer, only: [...]
+                                          end
+```
+
+Same routes. The `scope` form declares the module once. `module:` remains necessary — `comments` exists in both `item` and `list` contexts — but the block form makes the justification visible.
+
+---
+
+## 🤖 The agent's view
+
+Before this branch, four `controller:` overrides meant an agent couldn't derive the controller path from the route declaration. `resources :invitations, controller: "account/invitations"` required the agent to read the override string, translate it, and then discover that the same controller served both authenticated management and public token acceptance — 80 lines of management code and 65 lines of acceptance code in one file. After the split, `Account::Invitations::AcceptancesController` is 65 lines, all acceptance.
+
+The mixed-audience pattern was a reasoning trap. `before_action :authenticate_user!, only: %i[index new create destroy]` documents what *gets* authentication. What *doesn't* — `show` and `update` — is visible only by absence. An agent might apply authentication to all actions, or worse — strip it from a private one. After the split, `AcceptancesController` has no `before_action :authenticate_user!`. The absence is the class's entire stance, not a silent omission from an `only:` list.
+
+```mermaid
+flowchart LR
+  subgraph Trap["Mixed-audience controller"]
+    A["before_action :authenticate_user!,<br/>only: %i[index new create destroy]"] --> B["Agent sees: auth is present"]
+    B --> C["❌ Applies auth to show/update<br/>or strips auth from index/new"]
+  end
+
+  subgraph Safe["Split controllers"]
+    D["InvitationsController:<br/>before_action on ALL actions"] --> E["✅ Entire class is authenticated"]
+    F["AcceptancesController:<br/>no before_action"] --> G["✅ Entire class is public"]
+  end
+
+  style Trap fill:#fde8e8
+  style Safe fill:#e8fde8
+```
+
+The namespace move changes the search space. An agent modifying transfer acceptance would naturally search `task/`. In 3F, it lives in `account/transfers/`. This is more accurate but requires domain knowledge the agent may not have. The route file resolves the ambiguity — the namespace path tells the agent where to look.
+
+---
+
+## ➡️ What comes next
+
+The route file is clean. Every resource matches its controller, every namespace reflects its domain actor. But one assumption remains: API endpoints inherit their names from the UI.
+
+`PATCH /user/settings/profile` changes a password — because the settings page has a "Profile" tab. An API consumer must know the UI layout to find the password operation.
+
+Branch `3G-domain-naming` gives the password change its own controller and endpoint (`PATCH /user/settings/password`). The profile page still renders both forms. UI organization and API naming become independent. ✌️
 
 ---
 
 ## 🏛️ Thesis checkpoint
 
-Routes now express whether a resource is a singleton or a collection — Principle 4 applied to route semantics. No test files were edited despite every singleton route changing its helper name — the abstraction layer absorbed the migration (Principle 2). This continues the shift from implicit to explicit that 3D began with `default template_path:` — raw verbs were implicit contracts (string-matched routing encoding no domain knowledge); DSL declarations are explicit contracts (cardinality, lookup key type, and helper naming in the route itself). But the `controller:` and `param:` overrides that remain are symptoms of deeper naming mismatches. 3F will trace each to its root cause.
+This is where structural reorganization gives way to behavioral decoupling — Principle 4 applied to responsibility boundaries, not just file boundaries. 3A through 3D moved files and aligned directories — but class responsibilities inside those files remained unchanged. 3F splits controllers by authorization lifecycle and by domain actor. These are responsibility decisions, not filing decisions. Principle 1 validates the split: the behavioral tests don't care how many controllers exist or which class handles which action. The overrides disappear not because the routes changed, but because the domain model became accurate enough that routes could be derived from names alone.
 
 ---
 
@@ -222,8 +268,8 @@ Routes now express whether a resource is a singleton or a collection — Princip
 Prerequisites: [mise](https://mise.jdx.dev/) (manages Ruby, Node, Mailpit)
 
 ```sh
-git clone git@github.com:railswhey/app.git -b 3E-singular-resources 3E-singular-resources
-cd 3E-singular-resources
+git clone git@github.com:railswhey/app.git -b 3F-resource-discipline 3F-resource-discipline
+cd 3F-resource-discipline
 mise install                 # Ruby 4.0.1 + Node 22 + Mailpit 1.29.2
 bin/setup                    # bundle install, db:prepare, starts dev server
 ```

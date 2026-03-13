@@ -4,12 +4,12 @@ Returns all task items assigned to you across the account.
 
 ## List my tasks
 
-`GET /my_tasks.json`
+`GET /task/item/assignments.json`
 
 Optional `filter` query param: `incomplete`, `completed` (default: all)
 
 ```bash
-curl "<%= request.base_url %>/my_tasks.json?filter=incomplete" \
+curl "<%= request.base_url %>/task/item/assignments.json?filter=incomplete" \
   -H "Authorization: Bearer <token>" \
   -H "Accept: application/json"
 ```
@@ -37,7 +37,7 @@ curl "<%= request.base_url %>/my_tasks.json?filter=incomplete" \
     "incomplete": 3,
     "completed": 2
   },
-  "url": "http://example.com/my_tasks.json"
+  "url": "http://example.com/task/item/assignments.json"
 }
 ```
 

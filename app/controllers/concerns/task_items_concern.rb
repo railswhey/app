@@ -31,7 +31,7 @@ module TaskItemsConcern
   end
 
   def next_location
-    return my_tasks_url if params[:return_to] == "my_tasks"
+    return task_item_assignments_url if params[:return_to] == "task_item_assignments"
     case params[:filter]
     when "completed" then task_items_url(filter: "completed")
     when "incomplete" then task_items_url(filter: "incomplete")

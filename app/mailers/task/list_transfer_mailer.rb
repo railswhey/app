@@ -5,7 +5,7 @@ class Task::ListTransferMailer < ApplicationMailer
 
   def transfer_requested(transfer)
     @transfer = transfer
-    @review_url = transfer_url(transfer.token)
+    @review_url = account_transfers_response_url(token: transfer.token)
 
     mail(
       to: transfer.to_account.owner.email,
