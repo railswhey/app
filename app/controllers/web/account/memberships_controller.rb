@@ -12,7 +12,7 @@ class Web::Account::MembershipsController < Web::BaseController
     @account = Current.account
     @membership = @account.memberships.find(params[:id])
 
-    unless @account.memberships.owner_or_admin.exists?(user: Current.user)
+    unless owner_or_admin?
       redirect_to account_management_path, alert: "Only owners and admins can manage members."
       return
     end

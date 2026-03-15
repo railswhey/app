@@ -16,7 +16,7 @@ class API::V1::Account::MembershipsController < API::V1::BaseController
     @account = Current.account
     @membership = @account.memberships.find(params[:id])
 
-    unless @account.memberships.owner_or_admin.exists?(user: Current.user)
+    unless owner_or_admin?
       render_json_with_failure(status: :forbidden, message: "Only owners and admins can manage members.")
       return
     end

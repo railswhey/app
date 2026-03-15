@@ -50,7 +50,7 @@ class API::V1::Task::List::TransfersController < API::V1::BaseController
   end
 
   def guard_transfer_owner_or_admin!
-    return true if Current.account.memberships.owner_or_admin.exists?(user: Current.user)
+    return true if owner_or_admin?
 
     render_json_with_failure(status: :forbidden, message: "Only owners and admins can transfer lists.")
     false

@@ -42,4 +42,8 @@ class ApplicationController < ActionController::Base
 
     reset_session
   end
+
+  def owner_or_admin?
+    Current.account.memberships.owner_or_admin.exists?(user: Current.user)
+  end
 end

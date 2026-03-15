@@ -45,7 +45,7 @@ class Web::Account::InvitationsController < Web::BaseController
   private
 
   def guard_owner_or_admin!
-    return true if Current.account.memberships.owner_or_admin.exists?(user: Current.user)
+    return true if owner_or_admin?
 
     redirect_to account_management_path, alert: "Only owners and admins can manage this."
     false

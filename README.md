@@ -14,21 +14,22 @@
   <img src="/docs/assets/logo.png" alt="Rails Whey App" width="180" height="180">
 </p>
 
-A full-stack task management app built with Ruby on Rails. This branch separates the web interface and the REST API into independent controller families — `Web::` speaks HTML, `API::V1::` speaks JSON — so that each controller serves a single product with a single authentication mechanism and a single response format.
+Base controllers absorb sibling infrastructure, a shared predicate centralizes authorization, and a concern corrals co-occurring helpers — three tools matched to three kinds of duplication. Net: −89 lines, Rubycritic jumps to 87.13.
 
 | | |
 |---|---|
-| **Branch** | `4A-separation-of-entry-points` |
+| **Branch** | `4B-controller-deduplication` |
 | **Ruby** | 4.0 |
 | **Rails** | 8.1 |
-| **Rubycritic** | 78.55 |
-| **LOC** | 1741 |
+| **Rubycritic** | 87.13 |
+| **LOC** | 1667 |
 
 **Table of contents:**
 
 - [🎯 The concept](#-the-concept)
 - [📊 The numbers](#-the-numbers)
 - [🤔 The problem](#-the-problem)
+- [🏭 Why it happens](#-why-it-happens)
 - [🔬 The evidence](#-the-evidence)
 - [🤖 The agent's view](#-the-agents-view)
 - [➡️ What comes next](#️-what-comes-next)
@@ -41,259 +42,185 @@ A full-stack task management app built with Ruby on Rails. This branch separates
 
 ## 🎯 The concept
 
-> **One rule:** one controller, one format, one product.
+> **One rule:** match the extraction tool to the relationship.
 
-The web interface and the REST API are different products sharing a domain. They authenticate differently (session cookies vs bearer tokens), respond differently (HTML redirects vs JSON envelopes), and handle errors differently. Before this branch, every controller served both through `respond_to` blocks — 26 controllers, 46 blocks, two products tangled in every action.
+4A separated web and API into independent families. The boundary was correct, but the separation created three kinds of duplication:
 
-This branch splits them into two controller families:
+```mermaid
+flowchart TD
+  Q{"Where does the<br/>duplication live?"}
+  Q -->|"Same namespace<br/>(siblings)"| A["🏗️ Base controller<br/><i>Inheritance expresses<br/>the sibling relationship</i>"]
+  Q -->|"Different namespaces<br/>(cross-family)"| Q2{"What's shared?"}
+  Q2 -->|"A single query"| B["🔑 Predicate on<br/>ApplicationController"]
+  Q2 -->|"Methods that<br/>always co-occur"| C["📦 Concern<br/><i>Weakest tool — groups by<br/>co-occurrence, not cohesion</i>"]
 
-- `Web::BaseController` — session auth, HTML only, preserves existing web URLs
-- `API::V1::BaseController` — token auth, JSON only, prefixes all API URLs with `/api/v1/`
+  style A fill:#e8f4fd
+  style B fill:#e8f4fd
+  style C fill:#fff3e0
+```
 
-Each controller speaks one language. The `respond_to` blocks disappear.
+Siblings inherit. Strangers share via concerns. The concern is deliberately weak — `CommentAuthorization` bundles authorization and strong params in one container. Flawed, but it corrals scattered pieces so 5A can cleanly extract them to the model. Isolating a problem in an imperfect container beats leaving it scattered across four files where nobody can see its shape.
+
+The fix is incomplete. Business logic in action bodies — stats, filtering — belongs on the model. No controller-layer tool reaches it.
 
 ---
 
 ## 📊 The numbers
 
-| | Before (3G) | After (4A) |
+| | Before (4A) | After (4B) |
 |---|---|---|
-| Dual-format controllers | 26 | 0 |
-| Web-only controllers (`Web::`) | 0 | 27 |
-| API-only controllers (`API::V1::`) | 0 | 19 |
-| Base controllers | 0 | 2 |
-| `respond_to` blocks | 46 | 0 |
-| Test files edited | — | 0 |
+| Duplicated private methods (Task::Item) | 15 (5 × 3) | 0 |
+| Copies of `owner_or_admin` query | 6 | 1 (predicate) |
+| Copies of comment helpers | 4 (2 × 2) | 0 (concern) |
+| Inner base controllers | 0 | 2 |
+| Shared concerns | 0 | 1 |
+| Net line delta | — | −89 |
+| Rubycritic | 78.55 | 87.13 |
 
-Rubycritic dropped from 83.22 to 78.55 — the steepest single-branch drop in the arc. LOC jumped from 1417 to 1741. The cause: structural duplication. Web and API controllers now share identical private methods (`user_session_params`, authorization queries) copied in two places.
-
-The duplication is the tax. Architectural isolation is the asset. The 78.55 score is honest about the cost. It should be.
+Largest single-branch jump (+8.58) in the arc. Removing duplication with standard Rails tools moved quality more than any structural reorganization.
 
 ---
 
 ## 🤔 The problem
 
-After 3G, every controller action played traffic cop — constantly evaluating the incoming request to decide which product to serve:
+The Task::Item family had the worst duplication. Four controllers — `ItemsController`, `CompleteController`, `IncompleteController`, `MovesController` — each carried five identical private methods:
 
 ```ruby
-# 3G — User::SessionsController#create (52 lines total)
-def create
-  @user = User.authenticate_by(user_session_params)
-  respond_to do |format|
-    if @user
-      format.html { sign_in(@user); redirect_to(..., notice: "Signed in!") }
-      format.json { render "tokens/show", status: :ok }
-    else
-      format.html { flash.now[:alert] = "Invalid..."; render :new, status: :unprocessable_entity }
-      format.json { render "errors/unauthorized", status: :unauthorized }
-    end
+# In EACH of four Web::Task::Item controllers:
+def set_task_item
+  @task_item = Current.task_items.find(params[:id])
+  @task_list = Current.task_list
+end
+
+def next_location
+  return task_item_assignments_url if params[:return_to] == "task_item_assignments"
+  case params[:filter]
+  when "completed" then task_items_url(filter: "completed")
+  when "incomplete" then task_items_url(filter: "incomplete")
+  when "show" then task_item_url(@task_item)
+  else task_items_url
   end
 end
+
+# plus: require_task_list!, task_items_url, task_item_url
 ```
 
-Two response formats in one method. Changing the JSON error means reading past `flash.now` and `sign_in`. Adding an HTML notice means reading past the JSON rendering. The coupling ran deeper than action bodies — `ApplicationController` branched on `request.format.json?` in `authenticate_user!`, `current_member!`, and `rescue_from`. The base class itself didn't know what product it served.
+Twenty lines, copied three times — 60 lines of identical code in the Web family alone. The API family had the same five methods plus a `rescue_from` block.
 
-```mermaid
-flowchart TD
-  subgraph Before["3G: one controller, two products"]
-    REQ["SessionsController#create"] --> RT{"respond_to"}
-    RT -->|"format.html"| WEB["sign_in → redirect → flash"]
-    RT -->|"format.json"| API["render JSON → status code"]
-  end
+Separately, `Current.account.memberships.owner_or_admin.exists?(user: Current.user)` appeared verbatim in six controllers across both families — `InvitationsController`, `TransfersController`, and `MembershipsController` in both Web and API. Six files, one query, zero shared abstraction.
 
-  subgraph After["4A: one controller, one product"]
-    WREQ["Web::SessionsController#create"] --> WACT["sign_in → redirect → flash"]
-    AREQ["API::V1::SessionsController#create"] --> AACT["render JSON → status code"]
-  end
+---
 
-  style Before fill:#fde8e8
-  style After fill:#e8fde8
-```
+## 🏭 Why it happens
 
-`respond_to` makes dual-format easy to start — one block, two handlers. But it's additive: each new feature contributes both format branches to every action. Rails provides no signal when the branching has grown beyond its usefulness. No warning at 10 controllers, no friction at 20. At 26 controllers with 46 blocks, the approach that was correct for a handful had become a liability.
+4A separated controllers by format, not by shared infrastructure. Siblings like `CompleteController` and `MovesController` inherited from `Web::BaseController`, which provides auth and format handling — not task-item plumbing. Without a common parent below the family base, they copied.
+
+A learner's instinct would be a concern. But these controllers share a domain entity, not just methods. Inheritance expresses the sibling relationship in the type hierarchy; a concern would obscure it.
+
+The authorization query has a different root. The six controllers span `Account::Invitations`, `Task::List::Transfers`, and `Account::Memberships` — no shared namespace parent. Only the query is common; the HTTP response differs per family. The nearest common ancestor is `ApplicationController`.
 
 ---
 
 ## 🔬 The evidence
 
-**Session controller: before and after**
+**Pattern 1: Base controller absorbs sibling infrastructure**
 
-The web controller (HTML only):
+`CompleteController` dropped from 41 lines to 12:
 
 ```ruby
-class Web::User::SessionsController < Web::BaseController
-  def create
-    @user = User.authenticate_by(user_session_params)
+class Web::Task::Item::CompleteController < Web::Task::Item::BaseController
+  before_action :authenticate_user!
+  before_action :set_task_item
 
-    if @user
-      sign_in(@user)
-      redirect_to task_list_items_path(Current.task_list_id), notice: "You have successfully signed in!"
-    else
-      flash.now[:alert] = "Invalid email or password. Please try again."
-      @user = User.new(email: user_session_params[:email])
-      render :new, status: :unprocessable_entity
-    end
-  end
-
-  private
-
-  def user_session_params
-    params.require(:user).permit(:email, :password)
+  def update
+    @task_item.complete!
+    redirect_to(next_location, notice: "Task item was successfully marked as completed.")
   end
 end
 ```
 
-The API controller (JSON only):
-
-```ruby
-class API::V1::User::SessionsController < API::V1::BaseController
-  def create
-    @user = User.authenticate_by(user_session_params)
-
-    if @user
-      render "api/v1/user/settings/tokens/show", status: :ok
-    else
-      render("errors/unauthorized", status: :unauthorized, locals: {
-        message: "Invalid email or password. Please try again."
-      })
-    end
-  end
-
-  private
-
-  def user_session_params
-    params.require(:user).permit(:email, :password)
-  end
-end
-```
-
-`user_session_params` is duplicated — both controllers permit `:email` and `:password`. That duplication is the cost of the boundary. Two identical methods that cannot be merged without violating the separation that makes both files readable.
-
-**Base controllers split authentication**
-
-Each base controller knows its product. No `request.format.json?` branching — the decision is made once in the class hierarchy:
-
-```ruby
-# Web: session cookies → redirect on failure
-class Web::BaseController < ApplicationController
-  private
-
-  def authenticate_user!
-    current_member!
-    return if Current.user?
-    redirect_to next_path, alert: alert_message
-  end
-
-  def current_member!
-    Current.member!(user_id: current_user_id, account_id: session[:account_id], task_list_id:)
-    # ...
-  end
-end
-
-# API: bearer tokens → JSON error on failure
-class API::V1::BaseController < ApplicationController
-  skip_forgery_protection
-
-  private
-
-  def authenticate_user!
-    current_member!
-    return if Current.user?
-    render_json_with_failure(status: :unauthorized, message: "Invalid API token")
-  end
-
-  def current_member!
-    authenticate_with_http_token do |user_token|
-      Current.member!(user_token:, task_list_id: params[:list_id])
-    end
-  end
-end
-```
-
-**Routes declare format constraints**
-
-```ruby
-# Web: preserves existing URLs, format locked to HTML
-scope module: :web, defaults: { format: "html" }, constraints: { format: "html" } do
-  namespace :user do
-    resource :session, only: [:new, :create, :destroy]
-  end
-end
-
-# API: prefixes /api/v1/, format locked to JSON — only the actions the API needs
-namespace :api, defaults: { format: "json" }, constraints: { format: "json" } do
-  namespace :v1 do
-    namespace :user do
-      resource :session, only: [:create]
-    end
-  end
-end
-```
+One action. `set_task_item` and `next_location` come from `BaseController` — written once, inherited by four controllers.
 
 ```mermaid
 flowchart TD
-  subgraph Before["3G: 26 dual-format controllers"]
-    AC[ApplicationController<br/>format branching in auth]
-    SC[User::SessionsController<br/>respond_to in every action]
-    TC[Task::ListsController<br/>respond_to in every action]
-    OC["... 24 more"]
+  subgraph Before["4A: 60 lines copied"]
+    WI[ItemsController<br/>5 methods]
+    WC[CompleteController<br/>same 5 copied]
+    WIN[IncompleteController<br/>same 5 copied]
+    WM[MovesController<br/>same 5 copied]
   end
 
-  subgraph After["4A: 46 single-format controllers"]
-    AAC[ApplicationController<br/>shared utilities only]
-
-    subgraph Web["Web:: (27 controllers)"]
-      WBC[Web::BaseController<br/>session auth, HTML]
-      WSC[Web::User::SessionsController]
-      WTC[Web::Task::ListsController]
-    end
-
-    subgraph API["API::V1:: (19 controllers)"]
-      ABC[API::V1::BaseController<br/>token auth, JSON]
-      ASC[API::V1::User::SessionsController]
-      ATC[API::V1::Task::ListsController]
-    end
+  subgraph After["4B: 1 base, 4 inheritors"]
+    BC["BaseController<br/>5 methods, written once"]
+    WI2[ItemsController]
+    WC2[CompleteController]
+    WIN2[IncompleteController]
+    WM2[MovesController]
   end
 
-  AC --> SC
-  AC --> TC
-  AAC --> WBC
-  AAC --> ABC
-  WBC --> WSC
-  WBC --> WTC
-  ABC --> ASC
-  ABC --> ATC
+  BC --> WI2
+  BC --> WC2
+  BC --> WIN2
+  BC --> WM2
 
   style Before fill:#fde8e8
-  style Web fill:#e8f4fd
-  style API fill:#e8fde8
+  style After fill:#e8fde8
+  style BC fill:#e8f4fd
 ```
+
+**Pattern 2: Predicate centralizes a cross-family query**
+
+```ruby
+# ApplicationController — one source of truth
+def owner_or_admin?
+  Current.account.memberships.owner_or_admin.exists?(user: Current.user)
+end
+```
+
+Guard methods stay in each controller — HTTP responses differ per family — but the query has one home. Changing authorization means editing one line, not six.
+
+**Pattern 3: What 4B cannot fix**
+
+Both `ListsController#show` actions compute identical stats:
+
+```ruby
+# In BOTH Web and API ListsController#show — identical:
+items          = @task_list.task_items
+@items_total   = items.count
+@items_done    = items.completed.count
+@items_pending = @items_total - @items_done
+@items_pct     = @items_total > 0 ? (@items_done * 100.0 / @items_total).round : 0
+@preview_items = items.incomplete.order(created_at: :desc).limit(5).includes(:assigned_user)
+@list_comments = @task_list.comments.chronological.includes(:user)
+```
+
+Seven lines, character-for-character identical, in two files. Inline action logic — not private helpers. A base controller can't extract it. The computation belongs on `TaskList` as model methods. That's 5A's territory.
 
 ---
 
 ## 🤖 The agent's view
 
-**Reading gets faster.** Before, an agent asked to fix an API error loaded a 52-line controller — half HTML logic. After, it loads `API::V1::User::SessionsController` — 21 lines, all JSON. The directory structure becomes an index: `app/controllers/api/v1/task/` contains only JSON controllers. The right file is found by listing, not by reading.
+Before 4B, editing `next_location` meant changing four files. An agent that found one left three inconsistent. After: one file, one edit. The class hierarchy guides the agent to where shared behavior lives.
 
-**Writing gets dangerous.** An agent prompted "update session params to include remember_me" finds `user_session_params` in `Web::User::SessionsController`, adds `:remember_me`, and declares success. It has no reason to search for a second copy. But `API::V1::User::SessionsController` has an identical method that still permits only `:email` and `:password`. The web login accepts `remember_me`. The API silently drops it. Tests pass because the API suite doesn't exercise `remember_me`. A human reviewer scanning a single-file diff has no signal that a sibling exists.
+The `owner_or_admin?` predicate has the same benefit — six queries become one. But guard methods (`guard_owner_or_admin!` with per-family responses) remain duplicated. The predicate is shared; the HTTP response is not.
 
-The duplication weaponizes the agent's pattern-matching confidence: the more cleanly it edits one controller, the more invisible the divergence becomes. The cost is not in tokens spent reading. It is in silent feature gaps that survive code review.
+The remaining duplication costs agents most. The stats block sits inside action bodies — no named method for `grep` to surface. An agent adding "overdue count" to task list stats finds the Web version, misses the API copy. Until 5A moves this to the model, every agent mutation on task list stats is a silent divergence.
 
 ---
 
 ## ➡️ What comes next
 
-The boundary is drawn. The duplication is visible — identical private methods, authorization queries, and parameter handling copied across both families.
+The controller-level gradient is complete. Families 1–4: 79.48 → 87.13 using only controllers, concerns, base controllers, and standard routing.
 
-We bought architectural isolation and paid with duplication — the necessary price of a system that can now evolve its web and API products independently. That is not a mistake to be quickly hidden. The messy intermediate state is where the architectural lesson lives.
-
-Branch `4B-controller-deduplication` applies controller-layer tools to reduce the tax. ✌️
+What remains is business logic in action bodies — the 7-line stats block, the 5-line item filter, the invitation orchestration with mailer and notification dispatch. Branch `5A-fat-models` moves it into model methods — a single source of truth for both families. The controllers did their job. Now the models take over. ✌️
 
 ---
 
 ## 🏛️ Thesis checkpoint
 
-The first *architectural* change — not reorganization, but separation of concerns at the product level. Twenty-six dual-format controllers became 46 single-format controllers, and zero test files changed (Principle 1). The route abstraction layer (Principle 2) absorbed every URL change. Views split into `web/` and `api/` directories matching the new controller families (Principle 6). The Rubycritic drop is the steepest in the arc, and it is honest. The duplication is the price of isolation, and every real architectural boundary exacts it. Decoupled systems start messy — the mess is evidence that the boundary is real.
+Standard Rails tools absorbed the duplication 4A created — Principle 4 at the consolidation layer. The framework's own patterns, used with discipline, cleaned up the mess the framework's own patterns created. Rubycritic 87.13 — highest score in the arc. Principle 1 holds: the deduplication reshuffled controller hierarchies without touching a single test assertion.
+
+The deeper lesson: `CommentAuthorization` is structurally flawed and correct for this moment. Gathering scattered pieces in one imperfect container makes the next extraction visible. Intermediate abstractions exist not to be permanent, but to make the next step obvious.
 
 ---
 
@@ -302,8 +229,8 @@ The first *architectural* change — not reorganization, but separation of conce
 Prerequisites: [mise](https://mise.jdx.dev/) (manages Ruby, Node, Mailpit)
 
 ```sh
-git clone git@github.com:railswhey/app.git -b 4A-separation-of-entry-points 4A-separation-of-entry-points
-cd 4A-separation-of-entry-points
+git clone git@github.com:railswhey/app.git -b 4B-controller-deduplication 4B-controller-deduplication
+cd 4B-controller-deduplication
 mise install                 # Ruby 4.0.1 + Node 22 + Mailpit 1.29.2
 bin/setup                    # bundle install, db:prepare, starts dev server
 ```

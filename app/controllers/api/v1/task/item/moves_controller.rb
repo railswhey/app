@@ -1,12 +1,8 @@
 # frozen_string_literal: true
 
-class API::V1::Task::Item::MovesController < API::V1::BaseController
+class API::V1::Task::Item::MovesController < API::V1::Task::Item::BaseController
   before_action :authenticate_user!
   before_action :set_task_item
-
-  rescue_from ActiveRecord::RecordNotFound do
-    render_json_with_failure(status: :not_found, message: "Task list or item not found")
-  end
 
   def create
     source_list = @task_list
