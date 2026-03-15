@@ -219,40 +219,40 @@ class ActionDispatch::IntegrationTest
       json_data
     end
 
-    def user__sessions_url = test.user_session_url(format: :json)
+    def user__sessions_url = test.api_v1_user_session_url
 
-    def user__registrations_url = test.user_registrations_url(format: :json)
-    def user__registration_url = test.user_registration_url(format: :json)
+    def user__registrations_url = test.api_v1_user_registrations_url
+    def user__registration_url = test.api_v1_user_registration_url
 
-    def user__passwords_url = test.user_password_url(format: :json)
-    def user__password_url(token = nil, format: :json, **opts) = test.user_password_url(token:, format:, **opts)
+    def user__passwords_url = test.api_v1_user_password_url
+    def user__password_url(token = nil, **opts) = test.api_v1_user_password_url(token:, **opts)
 
-    def user__tokens_url = test.user_settings_token_url(format: :json)
+    def user__tokens_url = test.api_v1_user_settings_token_url
 
-    def user__profiles_url = test.user_settings_profile_url(format: :json)
-    def user__settings_password_url = test.user_settings_password_url(format: :json)
+    def user__profiles_url = test.api_v1_user_settings_profile_url
+    def user__settings_password_url = test.api_v1_user_settings_password_url
 
-    def task__list_url(...) = test.task_list_url(...)
-    def task__lists_url = test.task_lists_url(format: :json)
+    def task__list_url(...) = test.api_v1_task_list_url(...)
+    def task__lists_url = test.api_v1_task_lists_url
 
-    def task__item_url(...) = test.task_list_item_url(...)
-    def task__items_url(...) = test.task_list_items_url(...)
-    def complete_task__item_url(...) = test.task_list_item_complete_url(...)
-    def incomplete_task__item_url(...) = test.task_list_item_incomplete_url(...)
+    def task__item_url(...) = test.api_v1_task_list_item_url(...)
+    def task__items_url(...) = test.api_v1_task_list_items_url(...)
+    def complete_task__item_url(...) = test.api_v1_task_list_item_complete_url(...)
+    def incomplete_task__item_url(...) = test.api_v1_task_list_item_incomplete_url(...)
 
-    def account__invitation_url(...) = test.account_invitation_url(...)
-    def account__invitations_url(...) = test.account_invitations_url(...)
-    def accept__invitation_url(token, format: :json) = test.account_invitations_acceptance_url(token: token, format: format)
+    def account__invitation_url(...) = test.api_v1_account_invitation_url(...)
+    def account__invitations_url(...) = test.api_v1_account_invitations_url(...)
+    def accept__invitation_url(token, **) = test.api_v1_account_invitations_acceptance_url(token: token)
 
-    def account__membership_url(...) = test.account_membership_url(...)
+    def account__membership_url(...) = test.api_v1_account_membership_url(...)
 
-    def new_task__list_transfer_url(...) = test.new_task_list_transfer_url(...)
-    def task__list_transfer_form_url(...) = test.task_list_transfer_url(...)
-    def task__list_transfer_url(token, **kwargs) = test.account_transfers_response_url(token: token, **kwargs)
-    def show_task__list_transfer_url(token, **kwargs) = test.account_transfers_response_url(token: token, **kwargs)
+    def new_task__list_transfer_url(list_id, **) = test.api_v1_task_list_url(list_id)
+    def task__list_transfer_form_url(...) = test.api_v1_task_list_transfer_url(...)
+    def task__list_transfer_url(token, **kwargs) = test.api_v1_account_transfers_response_url(token: token, **kwargs)
+    def show_task__list_transfer_url(token, **kwargs) = test.api_v1_account_transfers_response_url(token: token, **kwargs)
 
-    def my__tasks_url(**kwargs) = test.task_item_assignments_url(format: :json, **kwargs)
-    def search__url(**kwargs) = test.account_search_url(format: :json, **kwargs)
+    def my__tasks_url(**kwargs) = test.api_v1_task_item_assignments_url(**kwargs)
+    def search__url(**kwargs) = test.api_v1_account_search_url(**kwargs)
   end
 
   def web_adapter

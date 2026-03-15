@@ -14,15 +14,15 @@
   <img src="/docs/assets/logo.png" alt="Rails Whey App" width="180" height="180">
 </p>
 
-A full-stack task management app built with Ruby on Rails. This branch extracts the authenticated password change from `User::Settings::ProfilesController` into its own `User::Settings::PasswordsController`, giving the operation a domain-accurate API endpoint instead of one shaped by the UI's page layout.
+A full-stack task management app built with Ruby on Rails. This branch separates the web interface and the REST API into independent controller families — `Web::` speaks HTML, `API::V1::` speaks JSON — so that each controller serves a single product with a single authentication mechanism and a single response format.
 
 | | |
 |---|---|
-| **Branch** | `3G-domain-naming` |
+| **Branch** | `4A-separation-of-entry-points` |
 | **Ruby** | 4.0 |
 | **Rails** | 8.1 |
-| **Rubycritic** | 83.22 |
-| **LOC** | 1417 |
+| **Rubycritic** | 78.55 |
+| **LOC** | 1741 |
 
 **Table of contents:**
 
@@ -41,174 +41,259 @@ A full-stack task management app built with Ruby on Rails. This branch extracts 
 
 ## 🎯 The concept
 
-> **One rule:** name the operation, not the page.
+> **One rule:** one controller, one format, one product.
 
-`PATCH /user/settings/profile` was the API endpoint for changing a password. The name came from the UI — the settings screen has a "Profile" tab, the password form lives on that tab, so the route reflected the page. The URL says "profile." The action is "password."
+The web interface and the REST API are different products sharing a domain. They authenticate differently (session cookies vs bearer tokens), respond differently (HTML redirects vs JSON envelopes), and handle errors differently. Before this branch, every controller served both through `respond_to` blocks — 26 controllers, 46 blocks, two products tangled in every action.
 
-This branch follows what Rails has supported since day one: one resource per controller. `User::Settings::PasswordsController` owns the password change. `User::Settings::ProfilesController` owns the username update. The profile page still renders both forms — the username form submits to `PATCH /user/settings/profile`, the password form submits to `PATCH /user/settings/password`. Two domain-accurate endpoints, one page. UI organization and API naming become independent concerns.
+This branch splits them into two controller families:
 
-The arc's smallest diff and the last step in Family 3.
+- `Web::BaseController` — session auth, HTML only, preserves existing web URLs
+- `API::V1::BaseController` — token auth, JSON only, prefixes all API URLs with `/api/v1/`
+
+Each controller speaks one language. The `respond_to` blocks disappear.
 
 ---
 
 ## 📊 The numbers
 
-| | Before (3F) | After (3G) |
+| | Before (3G) | After (4A) |
 |---|---|---|
-| Controllers mixing username + password | 1 | 0 |
-| `ProfilesController` permitted params | 5 | 1 (`:username`) |
-| Routes under `namespace :settings` | 2 | 3 |
+| Dual-format controllers | 26 | 0 |
+| Web-only controllers (`Web::`) | 0 | 27 |
+| API-only controllers (`API::V1::`) | 0 | 19 |
+| Base controllers | 0 | 2 |
+| `respond_to` blocks | 46 | 0 |
+| Test files edited | — | 0 |
 
-Rubycritic dropped from 83.92 to 83.22. Same pattern as every controller split in the arc: more single-responsibility files, lower aggregate score. The metric penalizes file count. The design improvement is real.
+Rubycritic dropped from 83.22 to 78.55 — the steepest single-branch drop in the arc. LOC jumped from 1417 to 1741. The cause: structural duplication. Web and API controllers now share identical private methods (`user_session_params`, authorization queries) copied in two places.
+
+The duplication is the tax. Architectural isolation is the asset. The 78.55 score is honest about the cost. It should be.
 
 ---
 
 ## 🤔 The problem
 
-After 3F, `ProfilesController#update` accepted params for two unrelated operations:
+After 3G, every controller action played traffic cop — constantly evaluating the incoming request to decide which product to serve:
 
 ```ruby
-# 3F — ProfilesController mixes two operations
-def user_profile_params
-  params.require(:user).permit(
-    :username,
-    :current_password,
-    :password,
-    :password_confirmation,
-    :password_challenge
-  )
+# 3G — User::SessionsController#create (52 lines total)
+def create
+  @user = User.authenticate_by(user_session_params)
+  respond_to do |format|
+    if @user
+      format.html { sign_in(@user); redirect_to(..., notice: "Signed in!") }
+      format.json { render "tokens/show", status: :ok }
+    else
+      format.html { flash.now[:alert] = "Invalid..."; render :new, status: :unprocessable_entity }
+      format.json { render "errors/unauthorized", status: :unauthorized }
+    end
+  end
 end
 ```
 
-A mobile app, a coding agent, or a `curl` command had to know that the settings page groups username and password together to find the password operation. The name "profile" gave no signal that password params were accepted.
-
-The visual grouping hijacked the backend logic:
+Two response formats in one method. Changing the JSON error means reading past `flash.now` and `sign_in`. Adding an HTML notice means reading past the JSON rendering. The coupling ran deeper than action bodies — `ApplicationController` branched on `request.format.json?` in `authenticate_user!`, `current_member!`, and `rescue_from`. The base class itself didn't know what product it served.
 
 ```mermaid
-flowchart LR
-  UI["UI designer:<br/>'Profile tab'"]
-  UI -->|"names"| CTRL["ProfilesController"]
-  CTRL -->|"generates"| URL["PATCH .../profile"]
-  URL -->|"misleads"| CONSUMER["API consumer:<br/>'where do I change<br/>the password?'"]
+flowchart TD
+  subgraph Before["3G: one controller, two products"]
+    REQ["SessionsController#create"] --> RT{"respond_to"}
+    RT -->|"format.html"| WEB["sign_in → redirect → flash"]
+    RT -->|"format.json"| API["render JSON → status code"]
+  end
 
-  style CONSUMER fill:#fde8e8
+  subgraph After["4A: one controller, one product"]
+    WREQ["Web::SessionsController#create"] --> WACT["sign_in → redirect → flash"]
+    AREQ["API::V1::SessionsController#create"] --> AACT["render JSON → status code"]
+  end
+
+  style Before fill:#fde8e8
+  style After fill:#e8fde8
 ```
 
-The settings page shows username and password on the same screen. One page encourages one controller, one route. The UI grouping hardens into the API shape. A web user sees a page with two sections — it works. An API consumer sees a URL called "profile" and must discover by reading the params that it also changes passwords.
-
-The test suite already knew these were different operations — two separate test files existed, both routing through the same URL. The tests encoded the domain separation before the routes did.
+`respond_to` makes dual-format easy to start — one block, two handlers. But it's additive: each new feature contributes both format branches to every action. Rails provides no signal when the branching has grown beyond its usefulness. No warning at 10 controllers, no friction at 20. At 26 controllers with 46 blocks, the approach that was correct for a handful had become a liability.
 
 ---
 
 ## 🔬 The evidence
 
-**Each controller now permits only its own params:**
+**Session controller: before and after**
+
+The web controller (HTML only):
 
 ```ruby
-# ProfilesController — username only
-def user_profile_params
-  params.require(:user).permit(:username)
+class Web::User::SessionsController < Web::BaseController
+  def create
+    @user = User.authenticate_by(user_session_params)
+
+    if @user
+      sign_in(@user)
+      redirect_to task_list_items_path(Current.task_list_id), notice: "You have successfully signed in!"
+    else
+      flash.now[:alert] = "Invalid email or password. Please try again."
+      @user = User.new(email: user_session_params[:email])
+      render :new, status: :unprocessable_entity
+    end
+  end
+
+  private
+
+  def user_session_params
+    params.require(:user).permit(:email, :password)
+  end
 end
 ```
 
+The API controller (JSON only):
+
 ```ruby
-# PasswordsController — password only
-def user_password_params
-  params.require(:user).permit(
-    :current_password, :password,
-    :password_confirmation, :password_challenge
-  )
+class API::V1::User::SessionsController < API::V1::BaseController
+  def create
+    @user = User.authenticate_by(user_session_params)
+
+    if @user
+      render "api/v1/user/settings/tokens/show", status: :ok
+    else
+      render("errors/unauthorized", status: :unauthorized, locals: {
+        message: "Invalid email or password. Please try again."
+      })
+    end
+  end
+
+  private
+
+  def user_session_params
+    params.require(:user).permit(:email, :password)
+  end
 end
 ```
 
-**One resource added to the route file:**
+`user_session_params` is duplicated — both controllers permit `:email` and `:password`. That duplication is the cost of the boundary. Two identical methods that cannot be merged without violating the separation that makes both files readable.
+
+**Base controllers split authentication**
+
+Each base controller knows its product. No `request.format.json?` branching — the decision is made once in the class hierarchy:
 
 ```ruby
-namespace :settings do
-  resource :profile,  only: [:edit, :update]
-  resource :password, only: [:update]         # ← new
-  resource :token,    only: [:edit, :update]
+# Web: session cookies → redirect on failure
+class Web::BaseController < ApplicationController
+  private
+
+  def authenticate_user!
+    current_member!
+    return if Current.user?
+    redirect_to next_path, alert: alert_message
+  end
+
+  def current_member!
+    Current.member!(user_id: current_user_id, account_id: session[:account_id], task_list_id:)
+    # ...
+  end
+end
+
+# API: bearer tokens → JSON error on failure
+class API::V1::BaseController < ApplicationController
+  skip_forgery_protection
+
+  private
+
+  def authenticate_user!
+    current_member!
+    return if Current.user?
+    render_json_with_failure(status: :unauthorized, message: "Invalid API token")
+  end
+
+  def current_member!
+    authenticate_with_http_token do |user_token|
+      Current.member!(user_token:, task_list_id: params[:list_id])
+    end
+  end
 end
 ```
 
-No override. The resource name matches the controller. The URL says "password."
+**Routes declare format constraints**
 
-**The page renders both forms. The routes separate them:**
+```ruby
+# Web: preserves existing URLs, format locked to HTML
+scope module: :web, defaults: { format: "html" }, constraints: { format: "html" } do
+  namespace :user do
+    resource :session, only: [:new, :create, :destroy]
+  end
+end
+
+# API: prefixes /api/v1/, format locked to JSON — only the actions the API needs
+namespace :api, defaults: { format: "json" }, constraints: { format: "json" } do
+  namespace :v1 do
+    namespace :user do
+      resource :session, only: [:create]
+    end
+  end
+end
+```
 
 ```mermaid
 flowchart TD
-  subgraph Page["Settings → Profile (edit page)"]
-    UF["Username form"]
-    PF["Password form"]
+  subgraph Before["3G: 26 dual-format controllers"]
+    AC[ApplicationController<br/>format branching in auth]
+    SC[User::SessionsController<br/>respond_to in every action]
+    TC[Task::ListsController<br/>respond_to in every action]
+    OC["... 24 more"]
   end
 
-  subgraph API["API endpoints"]
-    EP1["PATCH /user/settings/profile<br/>permits: username"]
-    EP2["PATCH /user/settings/password<br/>permits: current_password,<br/>password, password_confirmation"]
+  subgraph After["4A: 46 single-format controllers"]
+    AAC[ApplicationController<br/>shared utilities only]
+
+    subgraph Web["Web:: (27 controllers)"]
+      WBC[Web::BaseController<br/>session auth, HTML]
+      WSC[Web::User::SessionsController]
+      WTC[Web::Task::ListsController]
+    end
+
+    subgraph API["API::V1:: (19 controllers)"]
+      ABC[API::V1::BaseController<br/>token auth, JSON]
+      ASC[API::V1::User::SessionsController]
+      ATC[API::V1::Task::ListsController]
+    end
   end
 
-  UF -->|"submits to"| EP1
-  PF -->|"submits to"| EP2
+  AC --> SC
+  AC --> TC
+  AAC --> WBC
+  AAC --> ABC
+  WBC --> WSC
+  WBC --> WTC
+  ABC --> ASC
+  ABC --> ATC
 
-  style Page fill:#f5f5f5
-  style EP1 fill:#e8fde8
-  style EP2 fill:#e8fde8
+  style Before fill:#fde8e8
+  style Web fill:#e8f4fd
+  style API fill:#e8fde8
 ```
-
-A redesign that moves the password form to a separate page requires zero route changes. An API version that deprecates the profile endpoint doesn't affect the password endpoint. The concerns are independent.
 
 ---
 
 ## 🤖 The agent's view
 
-An agent asked to "find the endpoint for changing a password" searches for `password` in controller file names. In 3F, it finds `user/passwords_controller.rb` (the guest password reset) but not the authenticated password change, buried inside `user/settings/profiles_controller.rb`. After 3G, `user/settings/passwords_controller.rb` is a direct hit. The file name matches the operation.
+**Reading gets faster.** Before, an agent asked to fix an API error loaded a 52-line controller — half HTML logic. After, it loads `API::V1::User::SessionsController` — 21 lines, all JSON. The directory structure becomes an index: `app/controllers/api/v1/task/` contains only JSON controllers. The right file is found by listing, not by reading.
 
-The test suite mirrors the problem. In 3F, password-change tests lived in `profiles_test.rb`. An agent adding a test for password validation would search for `password` in test file names, find `passwords_test.rb` (guest reset tests), and miss the authenticated tests entirely. After 3G, `settings/passwords_test.rb` is the right file on the first search.
+**Writing gets dangerous.** An agent prompted "update session params to include remember_me" finds `user_session_params` in `Web::User::SessionsController`, adds `:remember_me`, and declares success. It has no reason to search for a second copy. But `API::V1::User::SessionsController` has an identical method that still permits only `:email` and `:password`. The web login accepts `remember_me`. The API silently drops it. Tests pass because the API suite doesn't exercise `remember_me`. A human reviewer scanning a single-file diff has no signal that a sibling exists.
 
-The cost compounds with scale. One mismatch between a UI-derived name and a domain operation is a minor detour. A dozen means agents spend more tokens on backtracking than on the task they were asked to perform. Domain-accurate naming prevents the accumulation.
-
-Across the full Family 3 arc: structural alignment (3A–3C) shrank the search space from 26 flat files to scoped directories. Explicit contracts (3D–3E) gave agents metadata in the code — `template_path:`, `param: :token`, DSL declarations — instead of requiring convention inference. Behavioral decoupling (3F–3G) reduced reasoning complexity — a single-audience controller is easier to reason about than a mixed-audience one with `only:` filters parsed by absence. Each phase compounded the previous one's gains.
+The duplication weaponizes the agent's pattern-matching confidence: the more cleanly it edits one controller, the more invisible the divergence becomes. The cost is not in tokens spent reading. It is in silent feature gaps that survive code review.
 
 ---
 
 ## ➡️ What comes next
 
-Family 3 is complete. Seven branches (3A through 3G) took 26 flat controllers and gave them domain-aligned namespaces, nested structure, matching views, mailer alignment, proper DSL routes, override elimination, and accurate API naming. Every controller now has a name that says what it does, not where it appears on screen.
+The boundary is drawn. The duplication is visible — identical private methods, authorization queries, and parameter handling copied across both families.
 
-The arc had three phases:
+We bought architectural isolation and paid with duplication — the necessary price of a system that can now evolve its web and API products independently. That is not a mistake to be quickly hidden. The messy intermediate state is where the architectural lesson lives.
 
-```mermaid
-flowchart LR
-  subgraph S["3A–3C: Structure"]
-    S1["Move files into<br/>domain directories"]
-  end
-  subgraph C["3D–3E: Contracts"]
-    C1["Replace implicit magic<br/>with explicit declarations"]
-  end
-  subgraph B["3F–3G: Behavior"]
-    B1["Split controllers<br/>by responsibility"]
-  end
-
-  S --> C --> B
-
-  style S fill:#e8f4fd
-  style C fill:#fff3e0
-  style B fill:#e8fde8
-```
-
-Each phase was necessary for the next: you can't split a controller by lifecycle until it lives in the right namespace, and you can't declare explicit paths until the directory structure is stable.
-
-But every controller still serves two products. `User::SessionsController#create` handles HTML sign-in and JSON token exchange in the same method through `respond_to` blocks. Session cookies vs bearer tokens, different response shapes, different error conventions — tangled in every action across all controllers.
-
-Branch `4A-separation-of-entry-points` makes the break: two controller families (`Web::` for HTML, `API::V1::` for JSON), two base controllers, two route scopes. Each controller speaks one language. The `respond_to` blocks disappear. ✌️
+Branch `4B-controller-deduplication` applies controller-layer tools to reduce the tax. ✌️
 
 ---
 
 ## 🏛️ Thesis checkpoint
 
-Naming is the most underrated design tool. This branch renames controllers, routes, and views to reflect domain language rather than implementation language — Principle 4 at the naming level. Views followed controllers through every rename (Principle 6). The Controller Era ends here with a Rubycritic score of 83.22 — a 3.74-point climb from the baseline using nothing but structural reorganization and standard Rails conventions.
-
-Structure before behavior is the right sequence, but structure alone is not architecture. The directory tree that looked pristine in 3B now has classes whose internal design matches their external organization. The [Manifesto](/docs/governance/MANIFESTO.md) calls this the gradient — the Controller Era proved the first segment exists.
+The first *architectural* change — not reorganization, but separation of concerns at the product level. Twenty-six dual-format controllers became 46 single-format controllers, and zero test files changed (Principle 1). The route abstraction layer (Principle 2) absorbed every URL change. Views split into `web/` and `api/` directories matching the new controller families (Principle 6). The Rubycritic drop is the steepest in the arc, and it is honest. The duplication is the price of isolation, and every real architectural boundary exacts it. Decoupled systems start messy — the mess is evidence that the boundary is real.
 
 ---
 
@@ -217,8 +302,8 @@ Structure before behavior is the right sequence, but structure alone is not arch
 Prerequisites: [mise](https://mise.jdx.dev/) (manages Ruby, Node, Mailpit)
 
 ```sh
-git clone git@github.com:railswhey/app.git -b 3G-domain-naming 3G-domain-naming
-cd 3G-domain-naming
+git clone git@github.com:railswhey/app.git -b 4A-separation-of-entry-points 4A-separation-of-entry-points
+cd 4A-separation-of-entry-points
 mise install                 # Ruby 4.0.1 + Node 22 + Mailpit 1.29.2
 bin/setup                    # bundle install, db:prepare, starts dev server
 ```

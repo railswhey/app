@@ -21,7 +21,7 @@ class WebApiDocsTest < ActionDispatch::IntegrationTest
   end
 
   test "shows each known section without error" do
-    APIDocsController::SECTIONS.each do |section|
+    Web::APIDocsController::SECTIONS.each do |section|
       get web_adapter.api__docs_url(section:)
       assert_response :ok, "expected 200 for section=#{section}"
     end
@@ -51,7 +51,7 @@ class WebApiDocsTest < ActionDispatch::IntegrationTest
   # ── ERB interpolation ─────────────────────────────────────────────────────
 
   test "ERB tags are not present in rendered HTML" do
-    APIDocsController::SECTIONS.each do |section|
+    Web::APIDocsController::SECTIONS.each do |section|
       get web_adapter.api__docs_url(section:)
       assert_no_match(/&lt;%=|<%=/, response.body,
         "raw ERB tag found in section=#{section} — interpolation failed")
@@ -122,7 +122,7 @@ class WebApiDocsTest < ActionDispatch::IntegrationTest
 
   test "layout renders nav links for all sections" do
     get web_adapter.api__docs_url
-    APIDocsController::SECTIONS.each do |section|
+    Web::APIDocsController::SECTIONS.each do |section|
       assert_select "a[href*='#{section}']", minimum: 1,
         message: "expected a nav link for section=#{section}"
     end

@@ -30,7 +30,7 @@
       </div>
 
       <nav class="settings-subnav" style="margin-bottom:1rem">
-        <% APIDocsController::SECTIONS.each do |s| %>
+        <% Web::APIDocsController::SECTIONS.each do |s| %>
           <% label = s == "index" ? "Overview" : s.tr("_", " ").split.map(&:capitalize).join(" ") %>
           <% active = params[:section] == s || (s == "index" && params[:section].nil?) %>
           <%= link_to label, api_docs_path(section: s),
