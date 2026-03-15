@@ -24,7 +24,7 @@ class WebUserProfileTest < ActionDispatch::IntegrationTest
     member!(user)
     web_adapter.sign_in(user)
 
-    put web_adapter.user__profiles_url, params: {
+    put web_adapter.user__settings_password_url, params: {
       user: {
         current_password: "123123123",
         password: "newpassword1",
@@ -41,7 +41,7 @@ class WebUserProfileTest < ActionDispatch::IntegrationTest
     member!(user)
     web_adapter.sign_in(user)
 
-    put web_adapter.user__profiles_url, params: {
+    put web_adapter.user__settings_password_url, params: {
       user: {
         current_password: "wrongpassword",
         password: "newpassword1",

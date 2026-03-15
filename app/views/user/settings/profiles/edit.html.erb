@@ -5,7 +5,7 @@
 <h2>User profile</h2>
 
 <div class="card">
-  <%= form_with(model: Current.user, url: user_settings_profile_path, method: :put) do |f| %>
+  <%= form_with(model: Current.user, url: user_settings_profile_path, method: :patch) do |f| %>
     <% if f.object.errors.any? %>
       <div class="notice warn">
         <strong><%= pluralize(f.object.errors.count, "error") %> prohibited this user from being saved:</strong>
@@ -29,23 +29,33 @@
     </div>
 
     <div>
-      <%= f.label :password_challenge, "Current password", style: "display: block" %>
-      <%= f.password_field :password_challenge, required: true %>
+      <%= f.submit "Update profile" %>
+      <%= link_to("Cancel", task_list_items_path(Current.task_list_id), class: "button btn-ghost") %>
+    </div>
+  <% end %>
+</div>
+
+<div class="card">
+  <%= form_with(url: user_settings_password_path, method: :patch) do |f| %>
+    <h3>Change password</h3>
+
+    <div>
+      <%= f.label :current_password, "Current password", style: "display: block" %>
+      <%= f.password_field :current_password, name: "user[current_password]", required: true %>
     </div>
 
     <div>
       <%= f.label :password, "New password", style: "display: block" %>
-      <%= f.password_field :password, required: true %>
+      <%= f.password_field :password, name: "user[password]", required: true %>
     </div>
 
     <div>
       <%= f.label :password_confirmation, style: "display: block" %>
-      <%= f.password_field :password_confirmation, required: true %>
+      <%= f.password_field :password_confirmation, name: "user[password_confirmation]", required: true %>
     </div>
 
     <div>
       <%= f.submit "Update password" %>
-      <%= link_to("Cancel", task_list_items_path(Current.task_list_id), class: "button btn-ghost") %>
     </div>
   <% end %>
 </div>

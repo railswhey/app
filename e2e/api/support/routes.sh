@@ -40,7 +40,8 @@ users_path()                { echo "/user/registrations.json"; }
 user_path()                 { echo "/user/registration.json"; }
 user_session_path()         { echo "/user/session.json"; }
 user_token_path()           { echo "/user/settings/token.json"; }
-user_profile_path()         { echo "/user/settings/profile.json"; }
+user_profile_path()           { echo "/user/settings/profile.json"; }
+user_settings_password_path() { echo "/user/settings/password.json"; }
 user_password_path()        { echo "/user/password.json"; }
 user_password_reset_path()  { echo "/user/password.json?token=${1}"; }
 

@@ -110,6 +110,7 @@ class ActionDispatch::IntegrationTest
 
     def user__profiles_url = test.user_settings_profile_url
     def edit_user__profile_url = test.edit_user_settings_profile_url
+    def user__settings_password_url = test.user_settings_password_url
 
     def task__list_url(...) = test.task_list_url(...)
     def task__lists_url = test.task_lists_url
@@ -229,6 +230,7 @@ class ActionDispatch::IntegrationTest
     def user__tokens_url = test.user_settings_token_url(format: :json)
 
     def user__profiles_url = test.user_settings_profile_url(format: :json)
+    def user__settings_password_url = test.user_settings_password_url(format: :json)
 
     def task__list_url(...) = test.task_list_url(...)
     def task__lists_url = test.task_lists_url(format: :json)

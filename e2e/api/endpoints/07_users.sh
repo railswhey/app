@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Test: User lifecycle endpoints (register, login, token, profile, password, delete)
 # These endpoints have full JSON support but are not yet in the API docs.
-# Mirrors: test/integration/api/v1/users/{registrations,sessions,tokens,profiles,passwords}_test.rb
+# Mirrors: test/integration/api/v1/users/{registrations,sessions,tokens,passwords,settings/passwords}_test.rb
 
 section "Users"
 
@@ -61,20 +61,20 @@ assert_json_not_null "$RESPONSE_BODY" ".data.user_token" "refresh returns new to
 
 REG_TOKEN=$(echo "$RESPONSE_BODY" | jq -r '.data.user_token')
 
-# ── PROFILE UPDATE — 400 missing params ──────────────────────────────────────
+# ── PASSWORD UPDATE — 400 missing params ─────────────────────────────────────
 
-api_put "$(user_profile_path)" '{}' "$REG_TOKEN"
-assert_status "400" "$RESPONSE_STATUS" "PUT /users/profile.json (missing params → 400)"
+api_put "$(user_settings_password_path)" '{}' "$REG_TOKEN"
+assert_status "400" "$RESPONSE_STATUS" "PUT /users/settings/password.json (missing params → 400)"
 
-# ── PROFILE UPDATE — 422 wrong current password ─────────────────────────────
+# ── PASSWORD UPDATE — 422 wrong current password ─────────────────────────────
 
-api_put "$(user_profile_path)" '{"user":{"current_password":"wrong","password":"NewPass!123","password_confirmation":"NewPass!123"}}' "$REG_TOKEN"
-assert_status "422" "$RESPONSE_STATUS" "PUT /users/profile.json (wrong current_password → 422)"
+api_put "$(user_settings_password_path)" '{"user":{"current_password":"wrong","password":"NewPass!123","password_confirmation":"NewPass!123"}}' "$REG_TOKEN"
+assert_status "422" "$RESPONSE_STATUS" "PUT /users/settings/password.json (wrong current_password → 422)"
 
-# ── PROFILE UPDATE — 200 success ────────────────────────────────────────────
+# ── PASSWORD UPDATE — 200 success ────────────────────────────────────────────
 
-api_put "$(user_profile_path)" "{\"user\":{\"current_password\":\"${REG_PASSWORD}\",\"password\":\"SmokeTe5t!Reg2\",\"password_confirmation\":\"SmokeTe5t!Reg2\"}}" "$REG_TOKEN"
-assert_status "200" "$RESPONSE_STATUS" "PUT /users/profile.json (change password)"
+api_put "$(user_settings_password_path)" "{\"user\":{\"current_password\":\"${REG_PASSWORD}\",\"password\":\"SmokeTe5t!Reg2\",\"password_confirmation\":\"SmokeTe5t!Reg2\"}}" "$REG_TOKEN"
+assert_status "200" "$RESPONSE_STATUS" "PUT /users/settings/password.json (change password)"
 REG_PASSWORD="SmokeTe5t!Reg2"
 
 # ── PASSWORD RESET REQUEST — 400 missing params ─────────────────────────────

@@ -14,15 +14,15 @@
   <img src="/docs/assets/logo.png" alt="Rails Whey App" width="180" height="180">
 </p>
 
-A full-stack task management app built with Ruby on Rails. This branch eliminates every `controller:`, `path:`, `param:`, and inline `module:` override from the route file by fixing the underlying domain naming and placement that made each override necessary.
+A full-stack task management app built with Ruby on Rails. This branch extracts the authenticated password change from `User::Settings::ProfilesController` into its own `User::Settings::PasswordsController`, giving the operation a domain-accurate API endpoint instead of one shaped by the UI's page layout.
 
 | | |
 |---|---|
-| **Branch** | `3F-resource-discipline` |
+| **Branch** | `3G-domain-naming` |
 | **Ruby** | 4.0 |
 | **Rails** | 8.1 |
-| **Rubycritic** | 83.92 |
-| **LOC** | 1397 |
+| **Rubycritic** | 83.22 |
+| **LOC** | 1417 |
 
 **Table of contents:**
 
@@ -41,225 +41,174 @@ A full-stack task management app built with Ruby on Rails. This branch eliminate
 
 ## 🎯 The concept
 
-> **One rule:** fix the name, not the route.
+> **One rule:** name the operation, not the page.
 
-3E replaced raw HTTP verb routes with DSL declarations. But the DSL calls still carry overrides — `controller:`, `param:`, `path:`, `module:`. Each override is a diagnostic alarm: the framework telling you something is named or placed wrong. This branch traces each alarm to its root cause.
+`PATCH /user/settings/profile` was the API endpoint for changing a password. The name came from the UI — the settings screen has a "Profile" tab, the password form lives on that tab, so the route reflected the page. The URL says "profile." The action is "password."
 
-Five patterns. Three mechanical, two requiring domain reasoning:
+This branch follows what Rails has supported since day one: one resource per controller. `User::Settings::PasswordsController` owns the password change. `User::Settings::ProfilesController` owns the username update. The profile page still renders both forms — the username form submits to `PATCH /user/settings/profile`, the password form submits to `PATCH /user/settings/password`. Two domain-accurate endpoints, one page. UI organization and API naming become independent concerns.
 
-1. **Mixed-audience controllers.** `Account::InvitationsController` served authenticated owners and unauthenticated invitees from one class — two authorization lifecycles crammed into one file. Split by audience → override gone, security model honest.
-
-2. **Misplaced routes.** Root-level routes pointing into namespaced controllers via `to:` strings. Move the route into the namespace that owns it.
-
-3. **Singular controller names.** `resource :search` expects `SearchesController` (plural). The controller was `SearchController`. Rename the file.
-
-4. **Collection route for a singular concept.** `resources :invitations, param: :token` used a collection for a one-time acceptance. `param:` renames `:id` in a collection, but there's no collection here. A singular `resource :acceptance` with the token as a query param matches the domain.
-
-5. **Namespace driven by code proximity, not domain actor.** Transfer responses lived under `task/list/` because transfers involve task lists. But the actor who accepts or rejects is the receiving account. The code compiled, the tests passed, and the feature worked — in the wrong namespace. The wrongness was only visible when you asked: who is the actor?
-
-```mermaid
-flowchart TD
-  A["Route override detected"] --> B{"What kind of mismatch?"}
-  B -->|"Two audiences, one class"| C["Split by authorization lifecycle"]
-  B -->|"Route outside its namespace"| D["Move into correct namespace"]
-  B -->|"Wrong controller name"| E["Rename to match convention"]
-  B -->|"Collection for singular concept"| F["Switch to singular resource"]
-  B -->|"Wrong namespace for actor"| G["Move to domain actor's namespace"]
-
-  C --> H["Override eliminated"]
-  D --> H
-  E --> H
-  F --> H
-  G --> H
-
-  style A fill:#fde8e8
-  style H fill:#e8fde8
-```
-
-No model changes. Every fix targets controllers, routes, and views.
+The arc's smallest diff and the last step in Family 3.
 
 ---
 
 ## 📊 The numbers
 
-| | Before (3E) | After (3F) |
+| | Before (3F) | After (3G) |
 |---|---|---|
-| `controller:` overrides | 4 | 0 |
-| `path:` overrides | 1 | 0 |
-| `param: :token` on singular concepts | 2 | 0 |
-| Inline `module:` on individual resources | 3 | 0 (replaced with `scope module:` blocks) |
-| Root-level routes outside their namespace | 5 | 0 |
-| New controllers (audience splits) | — | 2 |
-| Controllers renamed (convention) | — | 3 |
-| Controllers moved (domain actor) | — | 1 |
+| Controllers mixing username + password | 1 | 0 |
+| `ProfilesController` permitted params | 5 | 1 (`:username`) |
+| Routes under `namespace :settings` | 2 | 3 |
 
-Rubycritic dropped from 84.41 to 83.92. Same pattern as 2A: splitting single-responsibility files increases boilerplate-to-logic ratio. The structural improvement is real; the metric penalizes file count. LOC rose from 1389 to 1397 — the +8 lines are class declarations on the new controllers.
+Rubycritic dropped from 83.92 to 83.22. Same pattern as every controller split in the arc: more single-responsibility files, lower aggregate score. The metric penalizes file count. The design improvement is real.
 
 ---
 
 ## 🤔 The problem
 
-After 3E, the route file still carried overrides on every token-based and management route:
+After 3F, `ProfilesController#update` accepted params for two unrelated operations:
 
 ```ruby
-# Token flows — controller: points elsewhere, param: renames :id
-resources :invitations, only: [:show, :update],
-          controller: "account/invitations", param: :token
-
-resources :transfers, only: [:show, :update],
-          controller: "task/list/transfers", param: :token
-
-# Management — path: and controller: compensate for naming
-resource :management, only: [:show, :update], path: "", controller: "management"
-
-# Search — singular controller name violates convention
-resource :search, only: [:show], controller: "search"
-
-# Repeated module: on each resource
-resources :comments, only: [...], module: "item"
-resources :comments, only: [...], module: "list"
-resource  :transfer, only: [...], module: "list"
+# 3F — ProfilesController mixes two operations
+def user_profile_params
+  params.require(:user).permit(
+    :username,
+    :current_password,
+    :password,
+    :password_confirmation,
+    :password_challenge
+  )
+end
 ```
 
-When you write `controller: "account/invitations"` on a route, the DSL is telling you the resource resolves to the wrong controller. Either the controller is in the wrong namespace, or the resource needs a different name.
+A mobile app, a coding agent, or a `curl` command had to know that the settings page groups username and password together to find the password operation. The name "profile" gave no signal that password params were accepted.
+
+The visual grouping hijacked the backend logic:
+
+```mermaid
+flowchart LR
+  UI["UI designer:<br/>'Profile tab'"]
+  UI -->|"names"| CTRL["ProfilesController"]
+  CTRL -->|"generates"| URL["PATCH .../profile"]
+  URL -->|"misleads"| CONSUMER["API consumer:<br/>'where do I change<br/>the password?'"]
+
+  style CONSUMER fill:#fde8e8
+```
+
+The settings page shows username and password on the same screen. One page encourages one controller, one route. The UI grouping hardens into the API shape. A web user sees a page with two sections — it works. An API consumer sees a URL called "profile" and must discover by reading the params that it also changes passwords.
+
+The test suite already knew these were different operations — two separate test files existed, both routing through the same URL. The tests encoded the domain separation before the routes did.
 
 ---
 
 ## 🔬 The evidence
 
-**Pattern 1: Audience split makes the file structure a security boundary**
-
-In 3E, one controller served two authorization lifecycles:
+**Each controller now permits only its own params:**
 
 ```ruby
-# 3E — mixed audience
-class Account::InvitationsController < ApplicationController
-  before_action :authenticate_user!, only: %i[index new create destroy]
-  # show and update: no auth — public email link (visible only by absence)
+# ProfilesController — username only
+def user_profile_params
+  params.require(:user).permit(:username)
 end
 ```
 
-After the split, the acceptance controller's stance is the entire class — no `before_action`, no ambiguity:
-
 ```ruby
-# 3F — token acceptance only
-class Account::Invitations::AcceptancesController < ApplicationController
-  def show
-    @invitation = Invitation.find_by!(token: params[:token])
-  end
-
-  def update
-    @invitation = Invitation.find_by!(token: params[:token])
-    # ...
-  end
+# PasswordsController — password only
+def user_password_params
+  params.require(:user).permit(
+    :current_password, :password,
+    :password_confirmation, :password_challenge
+  )
 end
 ```
 
-The route resolves without overrides:
+**One resource added to the route file:**
 
 ```ruby
-namespace :account do
-  resources :invitations, only: [:index, :new, :create, :destroy]
-  namespace :invitations do
-    resource :acceptance, only: [:show, :update]
-  end
+namespace :settings do
+  resource :profile,  only: [:edit, :update]
+  resource :password, only: [:update]         # ← new
+  resource :token,    only: [:edit, :update]
 end
 ```
 
-No `controller:`. No `param: :token`. The token travels as `?token=` in the query string.
+No override. The resource name matches the controller. The URL says "password."
 
-**Pattern 2: Domain actor determines namespace**
-
-Transfer responses moved from `task/list/` to `account/`:
-
-```ruby
-namespace :account do
-  namespace :transfers do
-    resource :response, only: [:show, :update]
-  end
-end
-```
-
-The name is "responses" (not "acceptances") because `update` handles both accept and reject via `params[:action_type]`. Controller placement follows the actor; model placement follows the data.
+**The page renders both forms. The routes separate them:**
 
 ```mermaid
-flowchart LR
-  subgraph Before["3E: overrides patch naming mismatches"]
-    R1["resources :invitations, controller: 'account/invitations', param: :token"]
-    R2["resources :transfers, controller: 'task/list/transfers', param: :token"]
-    R3["resource :management, path: '', controller: 'management'"]
-    R4["resource :search, controller: 'search'"]
+flowchart TD
+  subgraph Page["Settings → Profile (edit page)"]
+    UF["Username form"]
+    PF["Password form"]
   end
 
-  subgraph After["3F: names match, overrides gone"]
-    D1["namespace :invitations → resource :acceptance"]
-    D2["namespace :transfers → resource :response (in account)"]
-    D3["resource :management (ManagementsController)"]
-    D4["resource :search (SearchesController)"]
+  subgraph API["API endpoints"]
+    EP1["PATCH /user/settings/profile<br/>permits: username"]
+    EP2["PATCH /user/settings/password<br/>permits: current_password,<br/>password, password_confirmation"]
   end
 
-  R1 -->|"split + singular"| D1
-  R2 -->|"move to account"| D2
-  R3 -->|"rename controller"| D3
-  R4 -->|"rename controller"| D4
+  UF -->|"submits to"| EP1
+  PF -->|"submits to"| EP2
 
-  style Before fill:#fde8e8
-  style After fill:#e8fde8
+  style Page fill:#f5f5f5
+  style EP1 fill:#e8fde8
+  style EP2 fill:#e8fde8
 ```
 
-**Pattern 3: `scope module:` replaces repeated inline `module:`**
-
-```ruby
-# 3E — repeated                          # 3F — grouped
-resources :comments, module: "list"       scope module: :list do
-resource  :transfer, module: "list"         resources :comments, only: [...]
-                                            resource  :transfer, only: [...]
-                                          end
-```
-
-Same routes. The `scope` form declares the module once. `module:` remains necessary — `comments` exists in both `item` and `list` contexts — but the block form makes the justification visible.
+A redesign that moves the password form to a separate page requires zero route changes. An API version that deprecates the profile endpoint doesn't affect the password endpoint. The concerns are independent.
 
 ---
 
 ## 🤖 The agent's view
 
-Before this branch, four `controller:` overrides meant an agent couldn't derive the controller path from the route declaration. `resources :invitations, controller: "account/invitations"` required the agent to read the override string, translate it, and then discover that the same controller served both authenticated management and public token acceptance — 80 lines of management code and 65 lines of acceptance code in one file. After the split, `Account::Invitations::AcceptancesController` is 65 lines, all acceptance.
+An agent asked to "find the endpoint for changing a password" searches for `password` in controller file names. In 3F, it finds `user/passwords_controller.rb` (the guest password reset) but not the authenticated password change, buried inside `user/settings/profiles_controller.rb`. After 3G, `user/settings/passwords_controller.rb` is a direct hit. The file name matches the operation.
 
-The mixed-audience pattern was a reasoning trap. `before_action :authenticate_user!, only: %i[index new create destroy]` documents what *gets* authentication. What *doesn't* — `show` and `update` — is visible only by absence. An agent might apply authentication to all actions, or worse — strip it from a private one. After the split, `AcceptancesController` has no `before_action :authenticate_user!`. The absence is the class's entire stance, not a silent omission from an `only:` list.
+The test suite mirrors the problem. In 3F, password-change tests lived in `profiles_test.rb`. An agent adding a test for password validation would search for `password` in test file names, find `passwords_test.rb` (guest reset tests), and miss the authenticated tests entirely. After 3G, `settings/passwords_test.rb` is the right file on the first search.
 
-```mermaid
-flowchart LR
-  subgraph Trap["Mixed-audience controller"]
-    A["before_action :authenticate_user!,<br/>only: %i[index new create destroy]"] --> B["Agent sees: auth is present"]
-    B --> C["❌ Applies auth to show/update<br/>or strips auth from index/new"]
-  end
+The cost compounds with scale. One mismatch between a UI-derived name and a domain operation is a minor detour. A dozen means agents spend more tokens on backtracking than on the task they were asked to perform. Domain-accurate naming prevents the accumulation.
 
-  subgraph Safe["Split controllers"]
-    D["InvitationsController:<br/>before_action on ALL actions"] --> E["✅ Entire class is authenticated"]
-    F["AcceptancesController:<br/>no before_action"] --> G["✅ Entire class is public"]
-  end
-
-  style Trap fill:#fde8e8
-  style Safe fill:#e8fde8
-```
-
-The namespace move changes the search space. An agent modifying transfer acceptance would naturally search `task/`. In 3F, it lives in `account/transfers/`. This is more accurate but requires domain knowledge the agent may not have. The route file resolves the ambiguity — the namespace path tells the agent where to look.
+Across the full Family 3 arc: structural alignment (3A–3C) shrank the search space from 26 flat files to scoped directories. Explicit contracts (3D–3E) gave agents metadata in the code — `template_path:`, `param: :token`, DSL declarations — instead of requiring convention inference. Behavioral decoupling (3F–3G) reduced reasoning complexity — a single-audience controller is easier to reason about than a mixed-audience one with `only:` filters parsed by absence. Each phase compounded the previous one's gains.
 
 ---
 
 ## ➡️ What comes next
 
-The route file is clean. Every resource matches its controller, every namespace reflects its domain actor. But one assumption remains: API endpoints inherit their names from the UI.
+Family 3 is complete. Seven branches (3A through 3G) took 26 flat controllers and gave them domain-aligned namespaces, nested structure, matching views, mailer alignment, proper DSL routes, override elimination, and accurate API naming. Every controller now has a name that says what it does, not where it appears on screen.
 
-`PATCH /user/settings/profile` changes a password — because the settings page has a "Profile" tab. An API consumer must know the UI layout to find the password operation.
+The arc had three phases:
 
-Branch `3G-domain-naming` gives the password change its own controller and endpoint (`PATCH /user/settings/password`). The profile page still renders both forms. UI organization and API naming become independent. ✌️
+```mermaid
+flowchart LR
+  subgraph S["3A–3C: Structure"]
+    S1["Move files into<br/>domain directories"]
+  end
+  subgraph C["3D–3E: Contracts"]
+    C1["Replace implicit magic<br/>with explicit declarations"]
+  end
+  subgraph B["3F–3G: Behavior"]
+    B1["Split controllers<br/>by responsibility"]
+  end
+
+  S --> C --> B
+
+  style S fill:#e8f4fd
+  style C fill:#fff3e0
+  style B fill:#e8fde8
+```
+
+Each phase was necessary for the next: you can't split a controller by lifecycle until it lives in the right namespace, and you can't declare explicit paths until the directory structure is stable.
+
+But every controller still serves two products. `User::SessionsController#create` handles HTML sign-in and JSON token exchange in the same method through `respond_to` blocks. Session cookies vs bearer tokens, different response shapes, different error conventions — tangled in every action across all controllers.
+
+Branch `4A-separation-of-entry-points` makes the break: two controller families (`Web::` for HTML, `API::V1::` for JSON), two base controllers, two route scopes. Each controller speaks one language. The `respond_to` blocks disappear. ✌️
 
 ---
 
 ## 🏛️ Thesis checkpoint
 
-This is where structural reorganization gives way to behavioral decoupling — Principle 4 applied to responsibility boundaries, not just file boundaries. 3A through 3D moved files and aligned directories — but class responsibilities inside those files remained unchanged. 3F splits controllers by authorization lifecycle and by domain actor. These are responsibility decisions, not filing decisions. Principle 1 validates the split: the behavioral tests don't care how many controllers exist or which class handles which action. The overrides disappear not because the routes changed, but because the domain model became accurate enough that routes could be derived from names alone.
+Naming is the most underrated design tool. This branch renames controllers, routes, and views to reflect domain language rather than implementation language — Principle 4 at the naming level. Views followed controllers through every rename (Principle 6). The Controller Era ends here with a Rubycritic score of 83.22 — a 3.74-point climb from the baseline using nothing but structural reorganization and standard Rails conventions.
+
+Structure before behavior is the right sequence, but structure alone is not architecture. The directory tree that looked pristine in 3B now has classes whose internal design matches their external organization. The [Manifesto](/docs/governance/MANIFESTO.md) calls this the gradient — the Controller Era proved the first segment exists.
 
 ---
 
@@ -268,8 +217,8 @@ This is where structural reorganization gives way to behavioral decoupling — P
 Prerequisites: [mise](https://mise.jdx.dev/) (manages Ruby, Node, Mailpit)
 
 ```sh
-git clone git@github.com:railswhey/app.git -b 3F-resource-discipline 3F-resource-discipline
-cd 3F-resource-discipline
+git clone git@github.com:railswhey/app.git -b 3G-domain-naming 3G-domain-naming
+cd 3G-domain-naming
 mise install                 # Ruby 4.0.1 + Node 22 + Mailpit 1.29.2
 bin/setup                    # bundle install, db:prepare, starts dev server
 ```

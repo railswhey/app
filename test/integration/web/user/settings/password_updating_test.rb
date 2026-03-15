@@ -18,7 +18,7 @@ class WebUserSettingsPasswordUpdatingTest < ActionDispatch::IntegrationTest
       }
     }
 
-    put(web_adapter.user__profiles_url, params:)
+    put(web_adapter.user__settings_password_url, params:)
 
     web_adapter.assert_unauthorized_access
   end
@@ -62,7 +62,7 @@ class WebUserSettingsPasswordUpdatingTest < ActionDispatch::IntegrationTest
       }
     }
 
-    put(web_adapter.user__profiles_url, params:)
+    put(web_adapter.user__settings_password_url, params:)
 
     assert_response :unprocessable_entity
 
@@ -77,7 +77,7 @@ class WebUserSettingsPasswordUpdatingTest < ActionDispatch::IntegrationTest
       }
     }
 
-    put(web_adapter.user__profiles_url, params:)
+    put(web_adapter.user__settings_password_url, params:)
 
     assert_response :unprocessable_entity
 
@@ -97,7 +97,7 @@ class WebUserSettingsPasswordUpdatingTest < ActionDispatch::IntegrationTest
       }
     }
 
-    put(web_adapter.user__profiles_url, params:)
+    put(web_adapter.user__settings_password_url, params:)
 
     assert_redirected_to web_adapter.edit_user__profile_url
 

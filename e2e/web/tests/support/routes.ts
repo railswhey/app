@@ -10,6 +10,7 @@ export function rootPath() { return '/'; }
 export function newUserPath() { return '/user/registrations/new'; }
 export function userSessionPath() { return '/user/session/new'; }
 export function userProfilePath() { return '/user/settings/profile/edit'; }
+export function userSettingsPasswordPath() { return '/user/settings/password'; }
 export function userPasswordPath() { return '/user/password/new'; }
 export function userPasswordResetPath(token: string) { return `/user/password/edit?token=${token}`; }
 export function userTokenPath() { return '/user/settings/token/edit'; }

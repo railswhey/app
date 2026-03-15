@@ -8,8 +8,9 @@ Rails.application.routes.draw do
     resource  :password,      only: [ :new, :create, :edit, :update ]
     resource  :settings,      only: [ :show ]
     namespace :settings do
-      resource :profile, only: [ :edit, :update ]
-      resource :token,   only: [ :edit, :update ]
+      resource :profile,  only: [ :edit, :update ]
+      resource :password, only: [ :update ]
+      resource :token,    only: [ :edit, :update ]
     end
     namespace :notification do
       resources :inbox, only: [ :index, :update ]
