@@ -27,9 +27,9 @@ class Account::Member::Authorization
   def users_relation
     return users_left_joins.where(users: { id: member.user_id }) if member.user_id?
 
-    short, long = User::Token.parse_value(member.user_token)
+    short, long = User::Token::Secret.parse(member.user_token)
 
-    checksum = User::Token.checksum(short:, long:)
+    checksum = User::Token::Secret.checksum(short:, long:)
 
     users_left_joins.joins(:user_token).where(user_tokens: { short:, checksum: })
   end
