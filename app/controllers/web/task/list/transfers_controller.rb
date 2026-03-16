@@ -6,7 +6,7 @@ class Web::Task::List::TransfersController < Web::BaseController
   def new
     set_transfer_task_list! or return
     guard_transfer_owner_or_admin! or return
-    @transfer = TaskListTransfer.new
+    @transfer = Task::List::Transfer.new
 
     render :new
   end
@@ -15,14 +15,14 @@ class Web::Task::List::TransfersController < Web::BaseController
     set_transfer_task_list! or return
     guard_transfer_owner_or_admin! or return
 
-    to_user, error = TaskListTransfer.resolve_recipient(params.dig(:task_list_transfer, :to_email))
+    to_user, error = Task::List::Transfer.resolve_recipient(params.dig(:task_list_transfer, :to_email))
 
     if error
       redirect_to new_task_list_transfer_path(@transfer_task_list), alert: error
       return
     end
 
-    @transfer = TaskListTransfer.new(
+    @transfer = Task::List::Transfer.new(
       task_list:      @transfer_task_list,
       from_account:   Current.account,
       to_account:     to_user.account,

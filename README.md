@@ -14,15 +14,15 @@
   <img src="/docs/assets/logo.png" alt="Rails Whey App" width="180" height="180">
 </p>
 
-A full-stack task management app built with Ruby on Rails. This branch moves side effects — emails and notifications — from controllers to model callbacks. After 5A put queries and predicates in models, the only duplication left between Web and API controllers was side-effect orchestration. `after_create_commit` callbacks eliminate it. Controllers no longer contain side-effect logic.
+A full-stack task management app built with Ruby on Rails. This branch unifies the vocabulary between controllers and models. After 5A and 5B pushed business logic into models, those models still used flat scaffold names — `TaskList`, `Invitation`, `TaskListTransfer`. Controllers already spoke `Task::List::`, `Account::`, `Task::List::Transfer`. 5C closes the gap: 8 models renamed, 4 tables migrated, the stack speaks one language from routes to models.
 
 | | |
 |---|---|
-| **Branch** | `5B-model-callbacks` |
+| **Branch** | `5C-unified-vocabulary` |
 | **Ruby** | 4.0 |
 | **Rails** | 8.1 |
-| **Rubycritic** | 91.23 |
-| **LOC** | 1638 |
+| **Rubycritic** | 91.18 |
+| **LOC** | 1641 |
 
 **Table of contents:**
 
@@ -30,7 +30,7 @@ A full-stack task management app built with Ruby on Rails. This branch moves sid
 - [📊 The numbers](#-the-numbers)
 - [🤔 The problem](#-the-problem)
 - [🔬 The evidence](#-the-evidence)
-- [🔪 The sharp knife](#-the-sharp-knife)
+- [🔧 The table name strategy](#-the-table-name-strategy)
 - [➡️ What comes next](#️-what-comes-next)
 - [🏛️ Thesis checkpoint](#️-thesis-checkpoint)
 - [🤖 The agent's view](#-the-agents-view)
@@ -42,229 +42,161 @@ A full-stack task management app built with Ruby on Rails. This branch moves sid
 
 ## 🎯 The concept
 
-> **One rule:** if every creation path should trigger the effect, the model owns the event.
+> **One rule:** the model's name should match the controller's namespace.
 
-5A moved queries and predicates to models. But both Web and API controllers still duplicated side-effect orchestration — email dispatch and notification creation after a record is saved. Three pairs of controllers carried the same post-save code, character-for-character. 5A's tools (scopes, predicates, value objects) cannot extract these. They are not queries or computations. They are events tied to a lifecycle moment.
+The stack speaks two dialects. Controllers say `Task::List::TransfersController`. Models say `TaskListTransfer`. A developer tracing a bug from controller to database must mentally translate every reference — invisible friction that compounds with every lookup.
 
-A side effect differs from a query in a fundamental way: a query can live on any object that has the data. A side effect is tied to the moment after persistence — "after this record is created, do X." Rails has a native mechanism: `after_create_commit`. The `_commit` variant ensures the side effect only fires after the database transaction succeeds — a rolled-back save never sends an email. And it fires for every creation path — controllers, seeds, console, scripts.
+This branch aligns the two. `TaskList` becomes `Task::List`. `Invitation` becomes `Account::Invitation`. `TaskListTransfer` becomes `Task::List::Transfer`. Eight models renamed, four tables migrated, zero behavioral changes.
 
-The developer must decide: is this side effect truly an invariant of the lifecycle event? The answer determines which tool to use:
-
-```mermaid
-flowchart TD
-  Q{"Does the side effect<br/>belong to record creation?"}
-  Q -->|"Yes — fires on<br/>every creation path"| CB["**Callback**<br/>after_create_commit<br/>(Invitation email, Transfer notification)"]
-  Q -->|"No — no record<br/>is created"| CM["**Class method**<br/>User.send_reset_password_email<br/>(explicit call, not lifecycle-bound)"]
-
-  style CB fill:#e8f4fd
-  style CM fill:#e8f4fd
-```
+Two models stay flat: `User` and `Account`. They are top-level domain roots — the namespaces themselves, not members of someone else's namespace.
 
 ---
 
 ## 📊 The numbers
 
-| | Before (5A) | After (5B) |
+| | Before (5B) | After (5C) |
 |---|---|---|
-| Models with `after_create_commit` callbacks | 1 (`User`) | 3 (`User`, `Invitation`, `TaskListTransfer`) |
-| Controller side-effect lines (duplicated) | 9 (across 3 pairs) | 0 |
-| Controllers simplified | — | 6 |
-| Model class methods added | — | 1 (`send_reset_password_email`) |
-| Rubycritic | 91.51 | 91.23 |
+| Models with flat names | 8 | 0 |
+| Models namespaced | 0 | 8 |
+| Table rename migrations | — | 4 |
+| Files with updated references | — | ~60 |
+| Behavioral test changes | — | 0 |
+| Rubycritic | 91.23 | 91.18 |
 
-The score dipped −0.28 points. Callbacks add model complexity — more methods, more implicit behavior — without reducing the kind of duplication Rubycritic measures. The value is in the controller layer: six controllers lost their side-effect orchestration, and that logic now exists in exactly one place per event. LOC dropped from 1640 to 1638.
+~60 files touched for zero behavioral change. The score dipped −0.05 points — structural renames don't move quality needles. The value is elsewhere: a `grep` for `Task::List` now finds controllers, views, and models in the same search.
 
 ---
 
 ## 🤔 The problem
 
-After 5A, both Web and API controllers shared identical side-effect blocks in three places:
+After 5A and 5B, models carry real weight. `Task::List` has a `Stats` value object, scopes, callbacks, and validations. `Account::Invitation` has lifecycle callbacks and a token-based accept flow. These are domain objects with behavior — living at the wrong address.
 
-```ruby
-# In BOTH Web and API InvitationsController#create:
-Account::InvitationMailer.invite(@invitation).deliver_later
+The gap exists because `rails generate model TaskList` creates `app/models/task_list.rb` with `class TaskList`. When controllers gained namespaces in Family 3, models stayed behind. Nobody goes back to rename a working model. A 10-line model with a flat name is a minor inconsistency. A 50-line model with stats, scopes, and callbacks — still named `TaskList` while its controller says `Task::List` — is a vocabulary failure.
 
-if (invitee = User.find_by(email: @invitation.email))
-  @invitation.notify_invitee!(invitee)
-end
-```
+Two common mistakes when deciding what to namespace:
 
-```ruby
-# In BOTH Web and API TransfersController#create:
-Notification.create!(user: to_user, notifiable: @transfer, action: "transfer_requested")
-Task::ListTransferMailer.transfer_requested(@transfer).deliver_later
-```
-
-```ruby
-# In BOTH Web and API PasswordsController#create:
-user = User.find_by(email: params.require(:user).require(:email))
-if user
-  UserMailer.with(user: user, token: user.generate_token_for(:reset_password))
-    .reset_password.deliver_later
-end
-```
-
-A different tool is needed.
+- **Assuming namespace conflicts where none exist.** `User::Notification` (model) and `Web::User::Notification::InboxController` (controller) are different Ruby constants. No conflict.
+- **Treating polymorphic models as cross-domain.** `Comment` is polymorphic, but both commentable types belong to `Task::`. Polymorphic means flexible association, not that the model belongs everywhere. `Task::Comment` is the honest name.
 
 ---
 
 ## 🔬 The evidence
 
-**Callbacks replace controller-side orchestration.** Before (5A), both invitation controllers had 4 side-effect lines after save. After (5B), the controller just calls `.save`:
+**The move map:**
+
+| Before | After | File |
+|---|---|---|
+| `TaskList` | `Task::List` | `app/models/task/list.rb` |
+| `TaskItem` | `Task::Item` | `app/models/task/item.rb` |
+| `Comment` | `Task::Comment` | `app/models/task/comment.rb` |
+| `TaskListTransfer` | `Task::List::Transfer` | `app/models/task/list/transfer.rb` |
+| `UserToken` | `User::Token` | `app/models/user/token.rb` |
+| `Notification` | `User::Notification` | `app/models/user/notification.rb` |
+| `Invitation` | `Account::Invitation` | `app/models/account/invitation.rb` |
+| `Membership` | `Account::Membership` | `app/models/account/membership.rb` |
+
+**Table renames:**
+
+| Before | After |
+|---|---|
+| `comments` | `task_comments` |
+| `notifications` | `user_notifications` |
+| `invitations` | `account_invitations` |
+| `memberships` | `account_memberships` |
+
+Tables that already matched (`task_lists`, `task_items`, `user_tokens`, `task_list_transfers`) needed no migration. Polymorphic `commentable_type` columns required data migration to update stored class names (`"TaskItem"` → `"Task::Item"`).
+
+**The namespace module pattern:**
 
 ```ruby
-# Web::Account::InvitationsController#create (after 5B)
-def create
-  guard_owner_or_admin! or return
-  @account = Current.account
-  @invitation = @account.invitations.new(invitation_params.merge(invited_by: Current.user))
-  if @invitation.save
-    redirect_to account_management_path, notice: "Invitation sent to #{@invitation.email}."
-  else
-    render :new, status: :unprocessable_entity
-  end
+# app/models/task.rb — pure namespace module
+module Task
+  def self.table_name_prefix = "task_"
+end
+
+# app/models/task/list.rb — carries 5A's stats and 5B's callbacks
+class Task::List < ApplicationRecord
+  belongs_to :account
+  has_many :task_items, class_name: "Task::Item", foreign_key: :task_list_id, dependent: :destroy
+  has_many :comments, as: :commentable, class_name: "Task::Comment", dependent: :destroy
+
+  Stats = Data.define(:total, :done, :pending, :pct, :assigned, :comments_count,
+                      :last_activity, :preview_items, :list_comments)
 end
 ```
-
-The email and notification live in the model:
-
-```ruby
-class Invitation < ApplicationRecord
-  after_create_commit :send_invite_email
-  after_create_commit :notify_existing_invitee
-
-  private
-
-  def send_invite_email
-    Account::InvitationMailer.invite(self).deliver_later
-  end
-
-  def notify_existing_invitee
-    invitee = User.find_by(email: email)
-    return unless invitee
-
-    Notification.create!(user: invitee, notifiable: self, action: "invitation_received")
-  end
-end
-```
-
-`after_create_commit` handles creation invariants (always send the email). Explicit methods handle conditional operations (accept or reject).
-
-**Virtual attributes as a seam.** `TaskListTransfer` stores `to_account` but the notification goes to a specific user. The model uses a virtual attribute to receive controller-provided context:
-
-```ruby
-class TaskListTransfer < ApplicationRecord
-  attr_accessor :to_user
-
-  after_create_commit :notify_recipient
-  after_create_commit :send_transfer_email
-
-  private
-
-  def notify_recipient
-    return unless to_user
-    Notification.create!(user: to_user, notifiable: self, action: "transfer_requested")
-  end
-
-  def send_transfer_email
-    Task::ListTransferMailer.transfer_requested(self).deliver_later
-  end
-end
-```
-
-The `return unless to_user` guard makes this a conditional callback, not a universal invariant — an exception to the "one rule." Transfers created without `to_user` (seeds, console, data migrations) skip the notification because they are not user-initiated. The coupling is visible and named — `attr_accessor :to_user` — not hidden.
-
-**Password reset stays explicit.** No record is created, so a callback is wrong:
-
-```ruby
-# User model
-def self.send_reset_password_email(email)
-  user = find_by(email: email)
-  return unless user
-
-  UserMailer.with(user: user, token: user.generate_token_for(:reset_password))
-    .reset_password.deliver_later
-end
-```
-
-Both controllers replace three lines with one call: `User.send_reset_password_email(email)`.
 
 ```mermaid
-flowchart TD
-  subgraph Before["5A: side effects in controllers"]
-    WC["Web::InvitationsController#create<br/>4 lines: email + notification"]
-    AC["API::InvitationsController#create<br/>4 lines: email + notification (identical)"]
+flowchart LR
+  subgraph Before["5B: two dialects"]
+    C1["Task::List::TransfersController"]
+    M1["TaskListTransfer"]
+    C2["Account::InvitationsController"]
+    M2["Invitation"]
   end
 
-  subgraph After["5B: side effects in model"]
-    INV["Invitation model<br/>after_create_commit :send_invite_email<br/>after_create_commit :notify_existing_invitee"]
-    WC2["Web::InvitationsController#create<br/>@invitation.save + redirect"]
-    AC2["API::InvitationsController#create<br/>@invitation.save + render"]
+  subgraph After["5C: one language"]
+    C3["Task::List::TransfersController"]
+    M3["Task::List::Transfer"]
+    C4["Account::InvitationsController"]
+    M4["Account::Invitation"]
   end
 
-  WC -->|"extracted"| INV
-  AC -->|"extracted"| INV
-  INV -.->|"fires on save"| WC2
-  INV -.->|"fires on save"| AC2
+  C1 -.->|"translates to"| M1
+  C3 -->|"matches"| M3
+  C2 -.->|"translates to"| M2
+  C4 -->|"matches"| M4
 
   style Before fill:#fde8e8
   style After fill:#e8fde8
-  style INV fill:#e8f4fd
 ```
+
+Dashed arrows are lookups across naming conventions. Solid arrows are direct matches.
 
 ---
 
-## 🔪 The sharp knife
+## 🔧 The table name strategy
 
-Callbacks are a sharp knife. They cut duplication cleanly — but they cut in directions you might not expect.
-
-**What you gain:** Side effects can never be forgotten. If `Invitation` has an `after_create_commit` that sends an email, every creation path sends the email. The guarantee is total.
-
-**What you pay:** Side effects are invisible to the caller. A developer reading `@invitation.save` sees a save. The email, the notification — all hidden behind the model. It's like wiring a light switch that secretly also opens the garage door.
-
-Seeds are the concrete proof. Before 5B, seeds created invitations with explicit `Notification.create!` calls and no emails. After 5B, seeds call `create!` and callbacks handle everything — notifications created automatically, emails delivered to Mailpit in development. No creation path escapes.
-
-This is the design for the standard domain lifecycle. But production applications have operational contexts outside it — and the framework provides the escape hatches:
+Rails derives table names differently depending on the namespace type:
 
 ```mermaid
 flowchart TD
-  OP{"Operational context?"}
-  OP -->|"Standard user flow"| CB["Callbacks fire normally<br/>Emails sent, notifications created"]
-  OP -->|"Bulk import<br/>(millions of records)"| IA["insert_all / upsert_all<br/>Bypasses ActiveRecord entirely<br/>No objects loaded, no callbacks"]
-  OP -->|"Admin correction<br/>(needs validations, not side effects)"| CA["CurrentAttributes suppression<br/>Current.suppress_notifications = true<br/>Callback guards check the flag"]
+  N{"Namespace type?"}
+  N -->|"Module<br/>(Task)"| P["table_name_prefix<br/>Define once → all children auto-derive<br/>Task::List → task_lists"]
+  N -->|"AR class<br/>(User, Account)"| C["compute_table_name<br/>Rails derives from parent automatically<br/>User::Token → user_tokens"]
+  N -->|"Multi-level<br/>(Task::List::Transfer)"| M["Module prefix + class derivation<br/>task_ + list_ + transfers → task_list_transfers"]
 
-  style CB fill:#e8fde8
-  style IA fill:#fff3cd
-  style CA fill:#fff3cd
+  style P fill:#e8fde8
+  style C fill:#e8f4fd
+  style M fill:#fff3cd
 ```
 
-**Bulk imports** cannot instantiate a million AR objects and fire a million welcome emails. `insert_all` operates at the database level, bypassing AR instantiation entirely.
+**`table_name_prefix` is the systemic cure.** Without it, every model inside `Task::` needs its own `self.table_name` declaration. A new `Task::Label` model would silently look for a `labels` table instead of `task_labels` — a cryptic failure, not a helpful error. The module-level prefix eliminates the human memory component: define it once, every nested model auto-derives.
 
-**Administrative operations** need validations but not downstream notifications — `insert_all` doesn't help because you lose the validation layer. `CurrentAttributes` provides a thread-safe lever: set a context flag, guard the callback, reset in `ensure`. The application pauses side effects for one thread while the default behavior remains intact for all others.
-
-The callback enforces the domain invariant for organic flows. The bypass patterns handle the operational reality that not every `INSERT` is an organic user action.
+The only explicit `foreign_key` needed is on `Task::List`'s `has_many :task_items` — Rails demodulizes `Task::List` to `List` and derives `list_id` instead of `task_list_id`.
 
 ---
 
 ## ➡️ What comes next
 
-Controllers say `Task::List::TransfersController`. Models say `TaskListTransfer`. After 5A and 5B, models carry real weight — stats, scopes, callbacks, predicates — but still use the flat names that `rails generate` gave them. The controller layer speaks domain vocabulary. The model layer speaks scaffold vocabulary.
+The stack speaks one language. But vocabulary alignment doesn't fix who owns the logic. Callers still reach through `Account`'s associations to check authorization and create memberships. `Task::List::Transfer#accept!` calls `to_account.memberships.owner_or_admin.exists?(user: user)` when `Account#owner_or_admin?` already answers that.
 
-Branch `5C-unified-vocabulary` aligns model names with the domain vocabulary that controllers already established. `TaskList` becomes `Task::List`. `TaskItem` becomes `Task::Item`. `TaskListTransfer` becomes `Task::List::Transfer`. The stack speaks one language from routes to models. ✌️
+Branch `5D-model-authority` applies Tell Don't Ask: move logic to the model that owns the data. Six moves, three patterns — no new files, no new abstractions. Just code moving to where it belongs. ✌️
 
 ---
 
 ## 🏛️ Thesis checkpoint
 
-`after_create_commit` is a native Rails tool — Principle 4, no architectural additives needed. Side effects that were duplicated across Web and API controllers now fire once from the model lifecycle. The model owns the event, not the HTTP layer. Principle 1 validates the extraction: tests assert on the behavioral outcome (email sent, notification created), not on which layer triggered it. But callbacks are not binary — "always fire" is the default, not the only mode. `insert_all` for bulk operations and `CurrentAttributes` suppression for admin tasks are the framework's own escape hatches. The domain invariant holds for organic flows. The breaker box exists for everything else.
+Naming is design. One word for one concept — Principle 4 at the semantic level. The vocabulary unification uses nothing but standard Rails conventions: modules, `table_name_prefix`, namespaced models. The `table_name_prefix` on the `Task` module teaches the framework to read the new vocabulary instead of fighting its conventions. The `set_fixture_class` overrides for class-based namespaces (`Account::`, `User::`) are the compounding friction that remains — a trade-off that scales poorly as models accumulate.
 
 ---
 
 ## 🤖 The agent's view
 
-Before 5B, an agent asked to "add a notification when an invitation is created" would update both Web and API controllers. After 5B, it adds one callback to `Invitation`. One file, one edit, every creation path gets the new behavior.
+5C eliminates the translation step. Before, an agent seeing `Task::List::TransfersController` had to know it maps to `TaskListTransfer` at `app/models/task_list_transfer.rb` — a lookup across two naming conventions. After, the namespace is the file path: `task/list/transfer.rb`. One language from routes to models.
 
-The trade-off mirrors the human one. An agent reading `InvitationsController#create` sees `@invitation.save` followed by a redirect — it does not see the email or the notification. The answer requires loading the model file. The bypass patterns matter too: an agent writing a data migration must know to use `insert_all` instead of `Invitation.create!` — otherwise a million invitation emails fire.
+Search precision improves too. Before 5C, `TaskList` found model code; `Task::List` found controller code. An agent building a mental map searched twice. After 5C, `Task::List` finds everything — model, controller, view, route. One search, complete results.
+
+The `set_fixture_class` mapping in `test_helper.rb` remains a friction point for class-based namespaces (`Account::`, `User::`). Module namespaces (`Task::`) avoid it via `table_name_prefix`. A future model added to `Account::` needs a manual fixture entry — the agent won't know that unless it reads `test_helper.rb` proactively.
 
 ---
 
@@ -273,8 +205,8 @@ The trade-off mirrors the human one. An agent reading `InvitationsController#cre
 Prerequisites: [mise](https://mise.jdx.dev/) (manages Ruby, Node, Mailpit)
 
 ```sh
-git clone git@github.com:railswhey/app.git -b 5B-model-callbacks 5B-model-callbacks
-cd 5B-model-callbacks
+git clone git@github.com:railswhey/app.git -b 5C-unified-vocabulary 5C-unified-vocabulary
+cd 5C-unified-vocabulary
 mise install                 # Ruby 4.0.1 + Node 22 + Mailpit 1.29.2
 bin/setup                    # bundle install, db:prepare, starts dev server
 ```

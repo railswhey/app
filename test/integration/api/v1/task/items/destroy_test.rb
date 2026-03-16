@@ -17,7 +17,7 @@ class APIV1TaskItemsDestroyTest < ActionDispatch::IntegrationTest
     user = users(:one)
     task = task_items(:one)
 
-    url = api_v1_adapter.task__item_url(TaskList.maximum(:id) + 1, task.id, format: :json)
+    url = api_v1_adapter.task__item_url(Task::List.maximum(:id) + 1, task.id, format: :json)
 
     delete(url, headers: api_v1_adapter.authorization_header(user))
 
@@ -27,7 +27,7 @@ class APIV1TaskItemsDestroyTest < ActionDispatch::IntegrationTest
   test "#destroy responds with 404 when task is not found" do
     user = users(:one)
 
-    url = api_v1_adapter.task__item_url(member!(user).inbox, TaskItem.maximum(:id) + 1, format: :json)
+    url = api_v1_adapter.task__item_url(member!(user).inbox, Task::Item.maximum(:id) + 1, format: :json)
 
     delete(url, headers: api_v1_adapter.authorization_header(user))
 

@@ -7,14 +7,14 @@ class API::V1::Account::Transfers::ResponsesController < API::V1::BaseController
 
   def show
     current_member!
-    @transfer = TaskListTransfer.find_by!(token: params[:token])
+    @transfer = Task::List::Transfer.find_by!(token: params[:token])
 
     render :show
   end
 
   def update
     current_member!
-    @transfer = TaskListTransfer.find_by!(token: params[:token])
+    @transfer = Task::List::Transfer.find_by!(token: params[:token])
 
     unless Current.user
       render("errors/unauthorized", status: :unauthorized)

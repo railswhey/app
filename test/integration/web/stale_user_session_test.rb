@@ -11,10 +11,10 @@ class WebStaleUserSessionTest < ActionDispatch::IntegrationTest
     # Delete all records in dependency order to avoid FK violations
     user_id = user.id
     account = user.account
-    UserToken.where(user_id: user_id).delete_all
-    TaskItem.where(task_list_id: account.task_lists.select(:id)).delete_all
-    TaskList.where(account_id: account.id).delete_all
-    Membership.where(user_id: user_id).delete_all
+    User::Token.where(user_id: user_id).delete_all
+    Task::Item.where(task_list_id: account.task_lists.select(:id)).delete_all
+    Task::List.where(account_id: account.id).delete_all
+    Account::Membership.where(user_id: user_id).delete_all
     Account.where(id: account.id).delete_all
     User.where(id: user_id).delete_all
 

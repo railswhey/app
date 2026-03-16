@@ -136,13 +136,13 @@ class WebTaskListTransfersTest < ActionDispatch::IntegrationTest
 
     web_adapter.sign_in(sender)
 
-    assert_difference "TaskListTransfer.count", 1 do
+    assert_difference "Task::List::Transfer.count", 1 do
       post web_adapter.task__list_transfer_form_url(list), params: {
         task_list_transfer: { to_email: receiver.email }
       }
     end
 
-    transfer = TaskListTransfer.last
+    transfer = Task::List::Transfer.last
     assert transfer.pending?
     assert_equal list, transfer.task_list
     assert_equal sender.account, transfer.from_account
@@ -161,14 +161,14 @@ class WebTaskListTransfersTest < ActionDispatch::IntegrationTest
     web_adapter.sign_in(sender)
 
     assert_enqueued_emails 1 do
-      assert_difference "Notification.count", 1 do
+      assert_difference "User::Notification.count", 1 do
         post web_adapter.task__list_transfer_form_url(list), params: {
           task_list_transfer: { to_email: receiver.email }
         }
       end
     end
 
-    notification = Notification.last
+    notification = User::Notification.last
     assert_equal receiver, notification.user
     assert_equal "transfer_requested", notification.action
   end
@@ -331,7 +331,7 @@ class WebTaskListTransfersTest < ActionDispatch::IntegrationTest
   def create_transfer(from_user: users(:one), to_user: users(:two))
     list = create_task_list(member!(from_user).account, name: "Transfer Me")
 
-    TaskListTransfer.create!(
+    Task::List::Transfer.create!(
       task_list: list,
       from_account: from_user.account,
       to_account: to_user.account,

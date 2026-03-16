@@ -2,7 +2,7 @@
 
 require "test_helper"
 
-class MembershipTest < ActiveSupport::TestCase
+class Account::MembershipTest < ActiveSupport::TestCase
   # test "the truth" do
   #   assert true
   # end

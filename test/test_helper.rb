@@ -34,6 +34,15 @@ module ActiveSupport
     end
 
     # Setup all fixtures in test/fixtures/*.yml for all tests in alphabetical order.
+    set_fixture_class task_lists: Task::List,
+                      task_items: Task::Item,
+                      task_comments: Task::Comment,
+                      task_list_transfers: Task::List::Transfer,
+                      user_tokens: User::Token,
+                      user_notifications: User::Notification,
+                      account_invitations: Account::Invitation,
+                      account_memberships: Account::Membership
+
     fixtures :all
 
     # Add more helper methods to be used by all tests here...

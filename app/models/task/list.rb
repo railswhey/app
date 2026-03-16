@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-class TaskList < ApplicationRecord
+class Task::List < ApplicationRecord
   belongs_to :account
 
-  has_many :task_items, dependent: :destroy
-  has_many :comments, as: :commentable, dependent: :destroy
+  has_many :task_items, class_name: "Task::Item", foreign_key: :task_list_id, dependent: :destroy
+  has_many :comments, as: :commentable, class_name: "Task::Comment", dependent: :destroy
 
   scope :inbox, -> { where(inbox: true) }
   scope :search, ->(q) { where("task_lists.name LIKE ? OR task_lists.description LIKE ?", "%#{q}%", "%#{q}%") }

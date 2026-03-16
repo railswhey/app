@@ -38,8 +38,8 @@ class APIV1InvitationsTest < ActionDispatch::IntegrationTest
     # Lines 88-90 are only reachable when accept! returns false after the
     # accepted? guard passes (a race-condition scenario). No mock gem is
     # available in minitest 6, so we temporarily override the method.
-    original = Invitation.instance_method(:accept!)
-    Invitation.define_method(:accept!) { |_user| false }
+    original = Account::Invitation.instance_method(:accept!)
+    Account::Invitation.define_method(:accept!) { |_user| false }
 
     patch(
       api_v1_adapter.accept__invitation_url(invitation.token, format: :json),
@@ -48,6 +48,6 @@ class APIV1InvitationsTest < ActionDispatch::IntegrationTest
 
     api_v1_adapter.assert_response_with_failure(:unprocessable_entity)
   ensure
-    Invitation.define_method(:accept!, original)
+    Account::Invitation.define_method(:accept!, original)
   end
 end

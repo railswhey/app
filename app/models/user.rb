@@ -3,22 +3,22 @@
 class User < ApplicationRecord
   has_secure_password
 
-  has_many :memberships, dependent: :destroy
+  has_many :memberships, class_name: "Account::Membership", dependent: :destroy
   has_many :accounts, through: :memberships
 
   has_many :task_lists, through: :accounts
 
-  has_one :ownership, -> { owner }, class_name: "Membership", inverse_of: :user, dependent: nil
+  has_one :ownership, -> { owner }, class_name: "Account::Membership", inverse_of: :user, dependent: nil
   has_one :account, through: :ownership
   has_one :inbox, through: :account
 
-  has_one :user_token, dependent: :destroy
+  has_one :user_token, class_name: "User::Token", dependent: :destroy
 
-  has_many :assigned_task_items,  class_name: "TaskItem",         foreign_key: :assigned_user_id,  dependent: :nullify
-  has_many :sent_invitations,     class_name: "Invitation",       foreign_key: :invited_by_id,     dependent: :destroy
-  has_many :initiated_transfers,  class_name: "TaskListTransfer", foreign_key: :transferred_by_id, dependent: :destroy
-  has_many :notifications, class_name: "::Notification", dependent: :destroy
-  has_many :comments, dependent: :destroy
+  has_many :assigned_task_items,  class_name: "Task::Item",           foreign_key: :assigned_user_id,  dependent: :nullify
+  has_many :sent_invitations,     class_name: "Account::Invitation",  foreign_key: :invited_by_id,     dependent: :destroy
+  has_many :initiated_transfers,  class_name: "Task::List::Transfer", foreign_key: :transferred_by_id, dependent: :destroy
+  has_many :notifications, class_name: "User::Notification", dependent: :destroy
+  has_many :comments, class_name: "Task::Comment", dependent: :destroy
 
   with_options presence: true do
     validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }, uniqueness: true

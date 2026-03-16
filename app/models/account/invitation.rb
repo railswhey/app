@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Invitation < ApplicationRecord
+class Account::Invitation < ApplicationRecord
   belongs_to :account
   belongs_to :invited_by, class_name: "User"
 
@@ -33,7 +33,7 @@ class Invitation < ApplicationRecord
       end
       update_column(:accepted_at, Time.current)
 
-      Notification.create!(
+      User::Notification.create!(
         user:       invited_by,
         notifiable: self,
         action:     "invitation_accepted"
@@ -52,6 +52,6 @@ class Invitation < ApplicationRecord
     invitee = User.find_by(email: email)
     return unless invitee
 
-    Notification.create!(user: invitee, notifiable: self, action: "invitation_received")
+    User::Notification.create!(user: invitee, notifiable: self, action: "invitation_received")
   end
 end

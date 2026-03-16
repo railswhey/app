@@ -1,4 +1,4 @@
-<%= form_with model: comment, url: url, class: "comment-form" do |f| %>
+<%= form_with model: comment, url: url, scope: :comment, class: "comment-form" do |f| %>
   <%= f.text_area :body, placeholder: "Write a comment...", rows: 3, required: true,
       style: "width:100%;resize:vertical" %>
   <div style="margin-top:0.5rem">

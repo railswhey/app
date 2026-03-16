@@ -100,7 +100,7 @@
 
     <div class="comment-form-wrap">
       <%= render "task/shared/comments/form",
-          comment: Comment.new,
+          comment: Task::Comment.new,
           url: task_list_comments_path(@task_list),
           submit_label: "Add Comment" %>
     </div>

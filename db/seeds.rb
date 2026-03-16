@@ -133,8 +133,8 @@ end
 puts "  📋 Alice's lists: Inbox (#{alice_inbox.task_items.count}), Side Projects (#{alice_projects.task_items.count})"
 
 # ── Cross-user: transfer request (demo → alice) ─────────────────────────────
-unless TaskListTransfer.exists?(task_list: empty_a)
-  TaskListTransfer.create!(
+unless Task::List::Transfer.exists?(task_list: empty_a)
+  Task::List::Transfer.create!(
     task_list: empty_a,
     from_account: account,
     to_account: alice_account,

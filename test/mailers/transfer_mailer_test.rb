@@ -8,7 +8,7 @@ class TransferMailerTest < ActionMailer::TestCase
     receiver = users(:two)
     list = sender.account.task_lists.create!(name: "Transfer Me")
 
-    transfer = TaskListTransfer.create!(
+    transfer = Task::List::Transfer.create!(
       task_list: list,
       from_account: sender.account,
       to_account: receiver.account,

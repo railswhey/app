@@ -12,7 +12,7 @@ class Web::Account::InvitationsController < Web::BaseController
   def new
     guard_owner_or_admin! or return
     @account = Current.account
-    @invitation = Invitation.new
+    @invitation = Account::Invitation.new
 
     render :new
   end

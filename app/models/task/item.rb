@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-class TaskItem < ApplicationRecord
-  belongs_to :task_list
+class Task::Item < ApplicationRecord
+  belongs_to :task_list, class_name: "Task::List"
   belongs_to :assigned_user, class_name: "User", optional: true
 
-  has_many :comments, as: :commentable, dependent: :destroy
+  has_many :comments, as: :commentable, class_name: "Task::Comment", dependent: :destroy
 
   scope :completed,    -> { where.not(completed_at: nil) }
   scope :incomplete,   -> { where(completed_at: nil) }

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class UserToken < ApplicationRecord
+class User::Token < ApplicationRecord
   SHORT_LENGTH = 8
   LONG_LENGTH = 32
   LONG_MASKED = "X" * LONG_LENGTH

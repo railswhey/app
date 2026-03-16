@@ -111,7 +111,7 @@ class WebNotificationsTest < ActionDispatch::IntegrationTest
 
     notification = receiver.notifications.last
     assert_equal "transfer_requested", notification.action
-    assert_equal "TaskListTransfer", notification.notifiable_type
+    assert_equal "Task::List::Transfer", notification.notifiable_type
   end
 
   test "accepting a transfer notifies the sender" do
@@ -155,7 +155,7 @@ class WebNotificationsTest < ActionDispatch::IntegrationTest
 
     notification = invitee.notifications.last
     assert_equal "invitation_received", notification.action
-    assert_equal "Invitation", notification.notifiable_type
+    assert_equal "Account::Invitation", notification.notifiable_type
   end
 
   test "accepting an invitation notifies the inviter" do
@@ -191,7 +191,7 @@ class WebNotificationsTest < ActionDispatch::IntegrationTest
 
   def create_transfer(from_user:, to_user:)
     list = create_task_list(member!(from_user).account, name: "Transfer Me")
-    TaskListTransfer.create!(
+    Task::List::Transfer.create!(
       task_list: list,
       from_account: from_user.account,
       to_account: to_user.account,
@@ -202,7 +202,7 @@ class WebNotificationsTest < ActionDispatch::IntegrationTest
   def create_notification(user, action:, read: false)
     # Use an invitation as a generic notifiable
     invitation = user.account.invitations.create!(email: "notif-#{SecureRandom.hex(4)}@example.com", invited_by: user)
-    Notification.create!(
+    User::Notification.create!(
       user: user,
       notifiable: invitation,
       action: action,

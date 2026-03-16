@@ -5,7 +5,7 @@
 <h2>📨 Invite Member</h2>
 
 <div class="card" style="max-width: 480px;">
-  <%= form_with model: @invitation, url: account_invitations_path do |f| %>
+  <%= form_with model: @invitation, url: account_invitations_path, scope: :invitation do |f| %>
     <% if @invitation.errors.any? %>
       <div class="notice warn">
         <span class="notice-text"><%= @invitation.errors.full_messages.join(", ") %></span>

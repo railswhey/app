@@ -10,7 +10,7 @@
 <%= render("shared/topbar", title: "Edit Comment", back_path:, back_label: "Back") %>
 
 <div class="detail-card">
-  <%= form_with model: @comment, url: update_url, method: :patch do |f| %>
+  <%= form_with model: @comment, url: update_url, scope: :comment, method: :patch do |f| %>
     <% if @comment.errors.any? %>
       <div class="notice notice--alert" style="margin-bottom:1rem">
         <%= @comment.errors.full_messages.to_sentence %>

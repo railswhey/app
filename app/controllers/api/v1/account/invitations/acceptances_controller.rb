@@ -7,7 +7,7 @@ class API::V1::Account::Invitations::AcceptancesController < API::V1::BaseContro
 
   def show
     current_member!
-    @invitation = Invitation.find_by!(token: params[:token])
+    @invitation = Account::Invitation.find_by!(token: params[:token])
 
     if @invitation.accepted?
       render_json_with_failure(status: :unprocessable_entity, message: "This invitation has already been accepted.")
@@ -24,7 +24,7 @@ class API::V1::Account::Invitations::AcceptancesController < API::V1::BaseContro
 
   def update
     current_member!
-    @invitation = Invitation.find_by!(token: params[:token])
+    @invitation = Account::Invitation.find_by!(token: params[:token])
 
     if @invitation.accepted?
       render_json_with_failure(status: :unprocessable_entity, message: "Already accepted.")

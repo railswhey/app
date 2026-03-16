@@ -36,15 +36,15 @@ module ApplicationHelper
     n = notification.notifiable
     case notification.action
     when "transfer_requested"
-      n.is_a?(TaskListTransfer) ? "#{n.transferred_by.username} wants to transfer list \"#{n.task_list.name}\" to you" : notification.action.humanize
+      n.is_a?(Task::List::Transfer) ? "#{n.transferred_by.username} wants to transfer list \"#{n.task_list.name}\" to you" : notification.action.humanize
     when "transfer_accepted"
-      n.is_a?(TaskListTransfer) ? "Your transfer of \"#{n.task_list.name}\" was accepted" : notification.action.humanize
+      n.is_a?(Task::List::Transfer) ? "Your transfer of \"#{n.task_list.name}\" was accepted" : notification.action.humanize
     when "transfer_rejected"
-      n.is_a?(TaskListTransfer) ? "Your transfer of \"#{n.task_list.name}\" was rejected" : notification.action.humanize
+      n.is_a?(Task::List::Transfer) ? "Your transfer of \"#{n.task_list.name}\" was rejected" : notification.action.humanize
     when "invitation_received"
-      n.is_a?(Invitation) ? "You've been invited to join #{n.account.name}" : notification.action.humanize
+      n.is_a?(Account::Invitation) ? "You've been invited to join #{n.account.name}" : notification.action.humanize
     when "invitation_accepted"
-      n.is_a?(Invitation) ? "#{n.email} accepted your invitation" : notification.action.humanize
+      n.is_a?(Account::Invitation) ? "#{n.email} accepted your invitation" : notification.action.humanize
     else
       notification.action.humanize
     end
@@ -54,9 +54,9 @@ module ApplicationHelper
     n = notification.notifiable
     case notification.action
     when "transfer_requested"
-      n.is_a?(TaskListTransfer) ? account_transfers_response_path(token: n.token) : nil
+      n.is_a?(Task::List::Transfer) ? account_transfers_response_path(token: n.token) : nil
     when "invitation_received"
-      n.is_a?(Invitation) ? account_invitations_acceptance_path(token: n.token) : nil
+      n.is_a?(Account::Invitation) ? account_invitations_acceptance_path(token: n.token) : nil
     else
       nil
     end

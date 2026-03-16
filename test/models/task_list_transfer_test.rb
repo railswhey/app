@@ -2,7 +2,7 @@
 
 require "test_helper"
 
-class TaskListTransferTest < ActiveSupport::TestCase
+class Task::List::TransferTest < ActiveSupport::TestCase
   setup do
     @from_account = accounts(:one)
     @to_account   = accounts(:two)
@@ -12,7 +12,7 @@ class TaskListTransferTest < ActiveSupport::TestCase
   end
 
   def build_transfer(attrs = {})
-    TaskListTransfer.new({
+    Task::List::Transfer.new({
       task_list:      @task_list,
       from_account:   @from_account,
       to_account:     @to_account,
@@ -62,7 +62,7 @@ class TaskListTransferTest < ActiveSupport::TestCase
   test "accept! returns false if not pending" do
     transfer = build_transfer
     transfer.save!
-    transfer.update_columns(status: TaskListTransfer.statuses[:accepted])
+    transfer.update_columns(status: Task::List::Transfer.statuses[:accepted])
 
     assert_not transfer.accept!(@owner_two)
   end
@@ -86,7 +86,7 @@ class TaskListTransferTest < ActiveSupport::TestCase
   test "reject! returns false if not pending" do
     transfer = build_transfer
     transfer.save!
-    transfer.update_columns(status: TaskListTransfer.statuses[:rejected])
+    transfer.update_columns(status: Task::List::Transfer.statuses[:rejected])
 
     assert_not transfer.reject!(@owner_two)
   end

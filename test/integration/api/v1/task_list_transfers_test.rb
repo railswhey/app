@@ -83,7 +83,7 @@ class APIV1TaskListTransfersTest < ActionDispatch::IntegrationTest
 
   def create_transfer(from_user: users(:one), to_user: users(:two))
     list = create_task_list(member!(from_user).account, name: "Transfer Me")
-    TaskListTransfer.create!(
+    Task::List::Transfer.create!(
       task_list: list,
       from_account: from_user.account,
       to_account: to_user.account,

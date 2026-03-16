@@ -37,7 +37,7 @@ class WebInvitationsTest < ActionDispatch::IntegrationTest
     member!(user)
     web_adapter.sign_in(user)
 
-    assert_difference "Invitation.count", 1 do
+    assert_difference "Account::Invitation.count", 1 do
       post web_adapter.account__invitations_url, params: { invitation: { email: "newguy@example.com" } }
     end
 
@@ -51,7 +51,7 @@ class WebInvitationsTest < ActionDispatch::IntegrationTest
     member!(user)
     web_adapter.sign_in(user)
 
-    assert_no_difference "Invitation.count" do
+    assert_no_difference "Account::Invitation.count" do
       post web_adapter.account__invitations_url, params: { invitation: { email: "bad" } }
     end
 
@@ -151,7 +151,7 @@ class WebInvitationsTest < ActionDispatch::IntegrationTest
 
     web_adapter.sign_in(user)
 
-    assert_difference "Invitation.count", -1 do
+    assert_difference "Account::Invitation.count", -1 do
       delete web_adapter.account__invitation_url(invitation)
     end
 

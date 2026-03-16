@@ -61,7 +61,7 @@
     <div class="search-section">
       <p class="section-label">💬 Comments (<%= @results.comments.size %>)</p>
       <% @results.comments.each do |comment| %>
-        <% comment_path = comment.commentable_type == "TaskItem" ?
+        <% comment_path = comment.commentable_type == "Task::Item" ?
               task_list_item_path(comment.commentable.task_list, comment.commentable) :
               task_list_path(comment.commentable) %>
         <a href="<%= comment_path %>" class="search-result-card">

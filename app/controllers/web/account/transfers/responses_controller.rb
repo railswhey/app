@@ -3,7 +3,7 @@
 class Web::Account::Transfers::ResponsesController < Web::BaseController
   def show
     current_member!
-    @transfer = TaskListTransfer.find_by!(token: params[:token])
+    @transfer = Task::List::Transfer.find_by!(token: params[:token])
 
     render :show
   rescue ActiveRecord::RecordNotFound
@@ -12,7 +12,7 @@ class Web::Account::Transfers::ResponsesController < Web::BaseController
 
   def update
     current_member!
-    @transfer = TaskListTransfer.find_by!(token: params[:token])
+    @transfer = Task::List::Transfer.find_by!(token: params[:token])
 
     unless Current.user
       redirect_to new_user_session_path(return_to: account_transfers_response_path(token: @transfer.token)),

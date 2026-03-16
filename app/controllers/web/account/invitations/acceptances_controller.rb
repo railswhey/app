@@ -3,7 +3,7 @@
 class Web::Account::Invitations::AcceptancesController < Web::BaseController
   def show
     current_member!
-    @invitation = Invitation.find_by!(token: params[:token])
+    @invitation = Account::Invitation.find_by!(token: params[:token])
 
     if @invitation.accepted?
       redirect_to new_user_session_path, notice: "This invitation has already been accepted."
@@ -19,7 +19,7 @@ class Web::Account::Invitations::AcceptancesController < Web::BaseController
 
   def update
     current_member!
-    @invitation = Invitation.find_by!(token: params[:token])
+    @invitation = Account::Invitation.find_by!(token: params[:token])
 
     if @invitation.accepted?
       redirect_to new_user_session_path, notice: "Already accepted."

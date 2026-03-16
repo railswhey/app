@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-class TaskListTransfer < ApplicationRecord
-  belongs_to :task_list
+class Task::List::Transfer < ApplicationRecord
+  belongs_to :task_list, class_name: "Task::List"
   belongs_to :from_account,   class_name: "Account"
   belongs_to :to_account,     class_name: "Account"
   belongs_to :transferred_by, class_name: "User"
@@ -37,11 +37,11 @@ class TaskListTransfer < ApplicationRecord
       task_list.update!(account_id: to_account_id)
       update_columns(status: self.class.statuses[:accepted])
 
-      TaskListTransfer.where(task_list_id: task_list_id, status: :pending)
+      Task::List::Transfer.where(task_list_id: task_list_id, status: :pending)
                       .where.not(id: id)
                       .update_all(status: self.class.statuses[:rejected])
 
-      Notification.create!(
+      User::Notification.create!(
         user:       transferred_by,
         notifiable: self,
         action:     "transfer_accepted"
@@ -57,7 +57,7 @@ class TaskListTransfer < ApplicationRecord
     transaction do
       update!(status: :rejected)
 
-      Notification.create!(
+      User::Notification.create!(
         user:       transferred_by,
         notifiable: self,
         action:     "transfer_rejected"
@@ -82,7 +82,7 @@ class TaskListTransfer < ApplicationRecord
   def notify_recipient
     return unless to_user
 
-    Notification.create!(user: to_user, notifiable: self, action: "transfer_requested")
+    User::Notification.create!(user: to_user, notifiable: self, action: "transfer_requested")
   end
 
   def send_transfer_email

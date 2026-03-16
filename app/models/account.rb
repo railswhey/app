@@ -1,15 +1,15 @@
 # frozen_string_literal: true
 
 class Account < ApplicationRecord
-  has_many :memberships,        dependent: :destroy
+  has_many :memberships, class_name: "Account::Membership", dependent: :destroy
   has_many :users,              through: :memberships
-  has_many :task_lists,         dependent: :destroy
-  has_many :invitations,        dependent: :destroy
-  has_many :outgoing_transfers, class_name: "TaskListTransfer", foreign_key: :from_account_id, dependent: :destroy
-  has_many :incoming_transfers, class_name: "TaskListTransfer", foreign_key: :to_account_id,   dependent: :destroy
+  has_many :task_lists,         class_name: "Task::List", dependent: :destroy
+  has_many :invitations,        class_name: "Account::Invitation", dependent: :destroy
+  has_many :outgoing_transfers, class_name: "Task::List::Transfer", foreign_key: :from_account_id, dependent: :destroy
+  has_many :incoming_transfers, class_name: "Task::List::Transfer", foreign_key: :to_account_id,   dependent: :destroy
 
-  has_one :ownership, -> { owner }, class_name: "Membership", inverse_of: :account, dependent: nil
-  has_one :inbox,     -> { inbox }, class_name: "TaskList",   inverse_of: :account, dependent: nil
+  has_one :ownership, -> { owner }, class_name: "Account::Membership", inverse_of: :account, dependent: nil
+  has_one :inbox,     -> { inbox }, class_name: "Task::List",          inverse_of: :account, dependent: nil
   has_one :owner, through: :ownership, source: :user
 
   validates :name, presence: true
@@ -27,14 +27,14 @@ class Account < ApplicationRecord
     query = query.to_s.strip
 
     if query.length < 2
-      return SearchResults.new(task_items: TaskItem.none, task_lists: TaskList.none, comments: Comment.none)
+      return SearchResults.new(task_items: Task::Item.none, task_lists: Task::List.none, comments: Task::Comment.none)
     end
 
     SearchResults.new(
-      task_items: TaskItem.joins(:task_list).where(task_lists: { account_id: id })
+      task_items: Task::Item.joins(:task_list).where(task_lists: { account_id: id })
                     .search(query).includes(:task_list).order(created_at: :desc).limit(20),
       task_lists: task_lists.search(query).limit(10),
-      comments:   Comment.for_account(id).search(query)
+      comments:   Task::Comment.for_account(id).search(query)
                     .includes(:user, :commentable).order(created_at: :desc).limit(10)
     )
   end

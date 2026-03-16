@@ -10,7 +10,32 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_03_140725) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_16_114822) do
+  create_table "account_invitations", force: :cascade do |t|
+    t.datetime "accepted_at"
+    t.integer "account_id", null: false
+    t.datetime "created_at", null: false
+    t.string "email", null: false
+    t.integer "invited_by_id", null: false
+    t.string "token", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "email"], name: "index_account_invitations_on_account_id_and_email", unique: true
+    t.index ["account_id"], name: "index_account_invitations_on_account_id"
+    t.index ["invited_by_id"], name: "index_account_invitations_on_invited_by_id"
+    t.index ["token"], name: "index_account_invitations_on_token", unique: true
+  end
+
+  create_table "account_memberships", force: :cascade do |t|
+    t.integer "account_id", null: false
+    t.datetime "created_at", null: false
+    t.string "role", limit: 16, null: false
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.index ["account_id", "user_id"], name: "index_account_memberships_on_account_id_and_user_id", unique: true
+    t.index ["account_id"], name: "index_account_memberships_on_account_id"
+    t.index ["user_id"], name: "index_account_memberships_on_user_id"
+  end
+
   create_table "accounts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "name"
@@ -20,7 +45,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_03_140725) do
     t.index ["uuid"], name: "index_accounts_on_uuid", unique: true
   end
 
-  create_table "comments", force: :cascade do |t|
+  create_table "task_comments", force: :cascade do |t|
     t.text "body", null: false
     t.integer "commentable_id", null: false
     t.string "commentable_type", null: false
@@ -29,46 +54,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_03_140725) do
     t.integer "user_id", null: false
     t.index ["commentable_type", "commentable_id", "created_at"], name: "index_comments_on_commentable_and_created_at"
     t.index ["commentable_type", "commentable_id"], name: "index_comments_on_commentable"
-    t.index ["user_id"], name: "index_comments_on_user_id"
-  end
-
-  create_table "invitations", force: :cascade do |t|
-    t.datetime "accepted_at"
-    t.integer "account_id", null: false
-    t.datetime "created_at", null: false
-    t.string "email", null: false
-    t.integer "invited_by_id", null: false
-    t.string "token", null: false
-    t.datetime "updated_at", null: false
-    t.index ["account_id", "email"], name: "index_invitations_on_account_id_and_email", unique: true
-    t.index ["account_id"], name: "index_invitations_on_account_id"
-    t.index ["invited_by_id"], name: "index_invitations_on_invited_by_id"
-    t.index ["token"], name: "index_invitations_on_token", unique: true
-  end
-
-  create_table "memberships", force: :cascade do |t|
-    t.integer "account_id", null: false
-    t.datetime "created_at", null: false
-    t.string "role", limit: 16, null: false
-    t.datetime "updated_at", null: false
-    t.integer "user_id", null: false
-    t.index ["account_id", "user_id"], name: "index_memberships_on_account_id_and_user_id", unique: true
-    t.index ["account_id"], name: "index_memberships_on_account_id"
-    t.index ["user_id"], name: "index_memberships_on_user_id"
-  end
-
-  create_table "notifications", force: :cascade do |t|
-    t.string "action", null: false
-    t.datetime "created_at", null: false
-    t.integer "notifiable_id", null: false
-    t.string "notifiable_type", null: false
-    t.datetime "read_at"
-    t.datetime "updated_at", null: false
-    t.integer "user_id", null: false
-    t.index ["notifiable_type", "notifiable_id"], name: "index_notifications_on_notifiable"
-    t.index ["user_id", "created_at"], name: "index_notifications_on_user_id_and_created_at"
-    t.index ["user_id", "read_at"], name: "index_notifications_on_user_id_and_read_at"
-    t.index ["user_id"], name: "index_notifications_on_user_id"
+    t.index ["user_id"], name: "index_task_comments_on_user_id"
   end
 
   create_table "task_items", force: :cascade do |t|
@@ -112,6 +98,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_03_140725) do
     t.index ["account_id"], name: "index_task_lists_on_account_id"
   end
 
+  create_table "user_notifications", force: :cascade do |t|
+    t.string "action", null: false
+    t.datetime "created_at", null: false
+    t.integer "notifiable_id", null: false
+    t.string "notifiable_type", null: false
+    t.datetime "read_at"
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.index ["notifiable_type", "notifiable_id"], name: "index_notifications_on_notifiable"
+    t.index ["user_id", "created_at"], name: "index_user_notifications_on_user_id_and_created_at"
+    t.index ["user_id", "read_at"], name: "index_user_notifications_on_user_id_and_read_at"
+    t.index ["user_id"], name: "index_user_notifications_on_user_id"
+  end
+
   create_table "user_tokens", force: :cascade do |t|
     t.string "checksum", limit: 64, null: false
     t.datetime "created_at", null: false
@@ -132,12 +132,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_03_140725) do
     t.index ["username"], name: "index_users_on_username", unique: true
   end
 
-  add_foreign_key "comments", "users"
-  add_foreign_key "invitations", "accounts"
-  add_foreign_key "invitations", "users", column: "invited_by_id"
-  add_foreign_key "memberships", "accounts"
-  add_foreign_key "memberships", "users"
-  add_foreign_key "notifications", "users"
+  add_foreign_key "account_invitations", "accounts"
+  add_foreign_key "account_invitations", "users", column: "invited_by_id"
+  add_foreign_key "account_memberships", "accounts"
+  add_foreign_key "account_memberships", "users"
+  add_foreign_key "task_comments", "users"
   add_foreign_key "task_items", "task_lists"
   add_foreign_key "task_items", "users", column: "assigned_user_id"
   add_foreign_key "task_list_transfers", "accounts", column: "from_account_id"
@@ -145,5 +144,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_03_140725) do
   add_foreign_key "task_list_transfers", "task_lists"
   add_foreign_key "task_list_transfers", "users", column: "transferred_by_id"
   add_foreign_key "task_lists", "accounts"
+  add_foreign_key "user_notifications", "users"
   add_foreign_key "user_tokens", "users"
 end

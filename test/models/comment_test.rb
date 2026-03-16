@@ -2,25 +2,25 @@
 
 require "test_helper"
 
-class CommentTest < ActiveSupport::TestCase
+class Task::CommentTest < ActiveSupport::TestCase
   test "valid comment on task item" do
-    comment = Comment.new(body: "Looks good!", commentable: task_items(:one), user: users(:one))
+    comment = Task::Comment.new(body: "Looks good!", commentable: task_items(:one), user: users(:one))
     assert comment.valid?
   end
 
   test "valid comment on task list" do
-    comment = Comment.new(body: "Nice list", commentable: task_lists(:one_inbox), user: users(:one))
+    comment = Task::Comment.new(body: "Nice list", commentable: task_lists(:one_inbox), user: users(:one))
     assert comment.valid?
   end
 
   test "invalid without body" do
-    comment = Comment.new(body: "", commentable: task_items(:one), user: users(:one))
+    comment = Task::Comment.new(body: "", commentable: task_items(:one), user: users(:one))
     assert comment.invalid?
     assert_includes comment.errors[:body], "can't be blank"
   end
 
   test "strips body whitespace" do
-    comment = Comment.new(body: "  trimmed  ", commentable: task_items(:one), user: users(:one))
+    comment = Task::Comment.new(body: "  trimmed  ", commentable: task_items(:one), user: users(:one))
     assert comment.valid?
     assert_equal "trimmed", comment.body
   end
@@ -37,7 +37,7 @@ class CommentTest < ActiveSupport::TestCase
   end
 
   test "search scope matches body" do
-    comments = Comment.search("comment on task item one")
+    comments = Task::Comment.search("comment on task item one")
     assert comments.any?
   end
 
@@ -57,7 +57,7 @@ class CommentTest < ActiveSupport::TestCase
     comment_other_item = item_two.comments.create!(body: "other account item", user: users(:two))
     comment_other_list = list_two.comments.create!(body: "other account list", user: users(:two))
 
-    result = Comment.for_account(account_one.id)
+    result = Task::Comment.for_account(account_one.id)
 
     assert result.exists?(id: comment_on_item.id),  "should include item comment from account one"
     assert result.exists?(id: comment_on_list.id),  "should include list comment from account one"
