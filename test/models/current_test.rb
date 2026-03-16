@@ -15,10 +15,9 @@ class CurrentTest < ActiveSupport::TestCase
 
     assert_predicate Current, :member?
 
-    assert_raises(
-      ArgumentError,
-      "cannot be present when user_token is present"
-    ) { Current.tap(&:reset).member!(user_id:, user_token:) }
+    Current.tap(&:reset).member!(user_id:, user_token:)
+
+    assert_not_predicate Current, :member?
   end
 
   test ".member!(user_id:)" do

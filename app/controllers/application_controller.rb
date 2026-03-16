@@ -44,6 +44,6 @@ class ApplicationController < ActionController::Base
   end
 
   def owner_or_admin?
-    Current.account.owner_or_admin?(Current.user)
+    Current.owner_or_admin?
   end
 end
