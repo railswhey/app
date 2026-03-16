@@ -7,13 +7,11 @@ class Web::User::Notification::InboxController < Web::BaseController
     @filter = params[:filter] || "all"
     @unread_count = Current.user.notifications.unread.count
 
-    base = Current.user.notifications.chronological.includes(:notifiable)
-    @notifications = case @filter
-    when "unread"    then base.unread
-    when "transfers" then base.where(action: %w[transfer_requested transfer_accepted transfer_rejected])
-    when "invites"   then base.where(action: %w[invitation_received invitation_accepted])
-    else base
-    end.limit(50)
+    @notifications = Current.user.notifications
+      .chronological
+      .includes(:notifiable)
+      .filter_by(@filter)
+      .limit(50)
   end
 
   def update

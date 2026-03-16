@@ -10,4 +10,8 @@ class Membership < ApplicationRecord
 
   validates :role, presence: true
   validates :user_id, uniqueness: { scope: :account_id }
+
+  def removable_by?(user)
+    !owner? && self.user != user
+  end
 end

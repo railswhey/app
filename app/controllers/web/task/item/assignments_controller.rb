@@ -5,16 +5,10 @@ class Web::Task::Item::AssignmentsController < Web::BaseController
 
   def index
     @filter = params[:filter]
-    items = TaskItem
-      .joins(:task_list)
-      .where(task_lists: { account_id: Current.account_id })
-      .where(assigned_user_id: Current.user.id)
+    items = TaskItem.for_account(Current.account_id).assigned_to(Current.user.id)
 
-    @task_items = case @filter
-    when "completed"  then items.completed
-    when "incomplete" then items.incomplete
-    else items
-    end.order(created_at: :desc).limit(100).includes(:task_list)
+    @task_items = items.assignment_filter_by(@filter)
+      .order(created_at: :desc).limit(100).includes(:task_list)
 
     @item_counts = {
       all:        items.count,

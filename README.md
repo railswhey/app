@@ -14,26 +14,25 @@
   <img src="/docs/assets/logo.png" alt="Rails Whey App" width="180" height="180">
 </p>
 
-Base controllers absorb sibling infrastructure, a shared predicate centralizes authorization, and a concern corrals co-occurring helpers — three tools matched to three kinds of duplication. Net: −89 lines, Rubycritic jumps to 87.13.
+A full-stack task management app built with Ruby on Rails. This branch moves query and mutation logic from controllers to models — the classic "fat models, skinny controllers" pattern. Business logic that was duplicated between Web and API controllers now lives in model methods, scopes, and `Data.define` value objects. Controllers keep only HTTP concerns.
 
 | | |
 |---|---|
-| **Branch** | `4B-controller-deduplication` |
+| **Branch** | `5A-fat-models` |
 | **Ruby** | 4.0 |
 | **Rails** | 8.1 |
-| **Rubycritic** | 87.13 |
-| **LOC** | 1667 |
+| **Rubycritic** | 91.51 |
+| **LOC** | 1640 |
 
 **Table of contents:**
 
 - [🎯 The concept](#-the-concept)
 - [📊 The numbers](#-the-numbers)
 - [🤔 The problem](#-the-problem)
-- [🏭 Why it happens](#-why-it-happens)
 - [🔬 The evidence](#-the-evidence)
-- [🤖 The agent's view](#-the-agents-view)
 - [➡️ What comes next](#️-what-comes-next)
 - [🏛️ Thesis checkpoint](#️-thesis-checkpoint)
+- [🤖 The agent's view](#-the-agents-view)
 - [🚀 Quick start](#-quick-start)
 - [🧪 Testing](#-testing)
 - [🗺️ The map](#️-the-map)
@@ -42,185 +41,174 @@ Base controllers absorb sibling infrastructure, a shared predicate centralizes a
 
 ## 🎯 The concept
 
-> **One rule:** match the extraction tool to the relationship.
+> **One rule:** if two controllers compute the same thing, the model should compute it once.
 
-4A separated web and API into independent families. The boundary was correct, but the separation created three kinds of duplication:
+4B applied controller-layer tools — base controllers, shared predicates, a concern — and eliminated duplication in private methods. But identical business logic remained in action bodies. Controller tools can extract private helpers. They cannot extract inline action logic.
+
+Families 1–4 optimized controller *structure* — file organization, inheritance, namespaces. None changed *where business logic lives*. Structural optimization reduces the cost of having logic in controllers; behavioral placement removes the duplication that structural tools cannot reach.
+
+Each extraction follows one of four patterns, chosen by what the logic does:
 
 ```mermaid
 flowchart TD
-  Q{"Where does the<br/>duplication live?"}
-  Q -->|"Same namespace<br/>(siblings)"| A["🏗️ Base controller<br/><i>Inheritance expresses<br/>the sibling relationship</i>"]
-  Q -->|"Different namespaces<br/>(cross-family)"| Q2{"What's shared?"}
-  Q2 -->|"A single query"| B["🔑 Predicate on<br/>ApplicationController"]
-  Q2 -->|"Methods that<br/>always co-occur"| C["📦 Concern<br/><i>Weakest tool — groups by<br/>co-occurrence, not cohesion</i>"]
+  Q{"What does the<br/>duplicated logic do?"}
+  Q -->|"Composes queries"| S["**Scope**<br/>TaskItem.filter_by(value)<br/>Account.search(query)"]
+  Q -->|"Answers yes/no"| P["**Predicate**<br/>Account#owner_or_admin?(user)<br/>TaskItem#movable_to?(target_list)"]
+  Q -->|"Bundles computed fields"| V["**Data.define**<br/>TaskList::Stats"]
+  Q -->|"Names a framework call"| C["**Class method**<br/>User.find_by_reset_password_token<br/>TaskListTransfer.resolve_recipient"]
 
-  style A fill:#e8f4fd
-  style B fill:#e8f4fd
-  style C fill:#fff3e0
+  style S fill:#e8f4fd
+  style P fill:#e8f4fd
+  style V fill:#e8f4fd
+  style C fill:#e8f4fd
 ```
 
-Siblings inherit. Strangers share via concerns. The concern is deliberately weak — `CommentAuthorization` bundles authorization and strong params in one container. Flawed, but it corrals scattered pieces so 5A can cleanly extract them to the model. Isolating a problem in an imperfect container beats leaving it scattered across four files where nobody can see its shape.
-
-The fix is incomplete. Business logic in action bodies — stats, filtering — belongs on the model. No controller-layer tool reaches it.
+The `CommentAuthorization` concern from 4B was deleted. Its authorization became `Comment#authored_by?(user)` on the model; `comment_params` was inlined as HTTP plumbing.
 
 ---
 
 ## 📊 The numbers
 
-| | Before (4A) | After (4B) |
+| | Before (4B) | After (5A) |
 |---|---|---|
-| Duplicated private methods (Task::Item) | 15 (5 × 3) | 0 |
-| Copies of `owner_or_admin` query | 6 | 1 (predicate) |
-| Copies of comment helpers | 4 (2 × 2) | 0 (concern) |
-| Inner base controllers | 0 | 2 |
-| Shared concerns | 0 | 1 |
-| Net line delta | — | −89 |
-| Rubycritic | 78.55 | 87.13 |
+| Models with business logic methods | 0 | 9 |
+| `Data.define` value objects | 0 | 2 |
+| Model scopes added | 0 | 5 |
+| Model predicates added | 0 | 5 |
+| Controller concerns | 1 | 0 (deleted) |
+| Controllers simplified | — | 21 |
+| Net line delta | — | −41 |
+| Rubycritic | 87.13 | 91.51 |
 
-Largest single-branch jump (+8.58) in the arc. Removing duplication with standard Rails tools moved quality more than any structural reorganization.
+Rubycritic jumped +4.38 points — the highest score in the arc. Controllers shrank more than models grew because model methods are written once where they were previously written twice (or six times, for authorization). −41 net lines: duplication eliminated, not relocated. Business logic in the right layer produces better quality metrics than any structural reorganization.
 
 ---
 
 ## 🤔 The problem
 
-The Task::Item family had the worst duplication. Four controllers — `ItemsController`, `CompleteController`, `IncompleteController`, `MovesController` — each carried five identical private methods:
+After 4B, action-body duplication was the last category remaining. The worst case — `ListsController#show`, 7 identical lines in both Web and API:
 
 ```ruby
-# In EACH of four Web::Task::Item controllers:
-def set_task_item
-  @task_item = Current.task_items.find(params[:id])
-  @task_list = Current.task_list
-end
-
-def next_location
-  return task_item_assignments_url if params[:return_to] == "task_item_assignments"
-  case params[:filter]
-  when "completed" then task_items_url(filter: "completed")
-  when "incomplete" then task_items_url(filter: "incomplete")
-  when "show" then task_item_url(@task_item)
-  else task_items_url
-  end
-end
-
-# plus: require_task_list!, task_items_url, task_item_url
+# In BOTH Web::Task::ListsController#show AND API::V1::Task::ListsController#show:
+items               = @task_list.task_items
+@items_total        = items.count
+@items_done         = items.completed.count
+@items_pending      = @items_total - @items_done
+@items_pct          = @items_total > 0 ? (@items_done * 100.0 / @items_total).round : 0
+@preview_items      = items.incomplete.order(created_at: :desc).limit(5).includes(:assigned_user)
+@list_comments      = @task_list.comments.chronological.includes(:user)
 ```
 
-Twenty lines, copied three times — 60 lines of identical code in the Web family alone. The API family had the same five methods plus a `rescue_from` block.
+The view compounded the problem — running additional queries (`assigned_count`, `last_activity`, `comments_count`) that the controller hadn't provided. Two sources of truth for the same data.
 
-Separately, `Current.account.memberships.owner_or_admin.exists?(user: Current.user)` appeared verbatim in six controllers across both families — `InvitationsController`, `TransfersController`, and `MembershipsController` in both Web and API. Six files, one query, zero shared abstraction.
-
----
-
-## 🏭 Why it happens
-
-4A separated controllers by format, not by shared infrastructure. Siblings like `CompleteController` and `MovesController` inherited from `Web::BaseController`, which provides auth and format handling — not task-item plumbing. Without a common parent below the family base, they copied.
-
-A learner's instinct would be a concern. But these controllers share a domain entity, not just methods. Inheritance expresses the sibling relationship in the type hierarchy; a concern would obscure it.
-
-The authorization query has a different root. The six controllers span `Account::Invitations`, `Task::List::Transfers`, and `Account::Memberships` — no shared namespace parent. Only the query is common; the HTTP response differs per family. The nearest common ancestor is `ApplicationController`.
+The pattern repeated: a 5-line filter in both `ItemsController#index`, a 20-line search in both `SearchesController#show`, identical auth checks in six controllers, identical `acceptable_by?` guards in two acceptance controllers.
 
 ---
 
 ## 🔬 The evidence
 
-**Pattern 1: Base controller absorbs sibling infrastructure**
+**Stats computation becomes a value object**
 
-`CompleteController` dropped from 41 lines to 12:
+Before — 7 lines in each controller. After — one call:
 
 ```ruby
-class Web::Task::Item::CompleteController < Web::Task::Item::BaseController
-  before_action :authenticate_user!
-  before_action :set_task_item
+# Web::Task::ListsController
+def show
+  @stats = @task_list.stats
+  @can_transfer = owner_or_admin?
+end
 
-  def update
-    @task_item.complete!
-    redirect_to(next_location, notice: "Task item was successfully marked as completed.")
-  end
+# API::V1::Task::ListsController
+def show
+  @stats = @task_list.stats
 end
 ```
 
-One action. `set_task_item` and `next_location` come from `BaseController` — written once, inherited by four controllers.
+The computation lives in `TaskList#stats`, returning a `Data.define` value object:
+
+```ruby
+Stats = Data.define(:total, :done, :pending, :pct, :assigned, :comments_count,
+                    :last_activity, :preview_items, :list_comments)
+
+def stats
+  items = task_items
+  total = items.count
+  done  = items.completed.count
+
+  Stats.new(
+    total:, done:,
+    pending:        total - done,
+    pct:            total > 0 ? (done * 100.0 / total).round : 0,
+    assigned:       items.where.not(assigned_user_id: nil).count,
+    comments_count: comments.count,
+    last_activity:  items.order(updated_at: :desc).pick(:updated_at) || created_at,
+    preview_items:  items.incomplete.order(created_at: :desc).limit(5).includes(:assigned_user),
+    list_comments:  comments.chronological.includes(:user)
+  )
+end
+```
+
+One method, one call site, one source of truth. The same convergence applies to all four patterns:
 
 ```mermaid
-flowchart TD
-  subgraph Before["4A: 60 lines copied"]
-    WI[ItemsController<br/>5 methods]
-    WC[CompleteController<br/>same 5 copied]
-    WIN[IncompleteController<br/>same 5 copied]
-    WM[MovesController<br/>same 5 copied]
+flowchart LR
+  subgraph Before["4B: logic in controllers"]
+    WC1["Web::ListsController#show<br/>7 lines stats"]
+    AC1["API::ListsController#show<br/>7 lines stats (identical)"]
+    WC2["Web::ItemsController#index<br/>5 lines filter"]
+    AC2["API::ItemsController#index<br/>5 lines filter (identical)"]
+    AUTH["6 controllers<br/>identical auth query"]
   end
 
-  subgraph After["4B: 1 base, 4 inheritors"]
-    BC["BaseController<br/>5 methods, written once"]
-    WI2[ItemsController]
-    WC2[CompleteController]
-    WIN2[IncompleteController]
-    WM2[MovesController]
+  subgraph After["5A: logic in models"]
+    TLS["TaskList#stats<br/>Data.define, written once"]
+    TIF["TaskItem.filter_by<br/>scope, written once"]
+    AO["Account#owner_or_admin?<br/>predicate, written once"]
   end
 
-  BC --> WI2
-  BC --> WC2
-  BC --> WIN2
-  BC --> WM2
+  WC1 -->|"extracted"| TLS
+  AC1 -->|"extracted"| TLS
+  WC2 -->|"extracted"| TIF
+  AC2 -->|"extracted"| TIF
+  AUTH -->|"extracted"| AO
 
   style Before fill:#fde8e8
   style After fill:#e8fde8
-  style BC fill:#e8f4fd
 ```
 
-**Pattern 2: Predicate centralizes a cross-family query**
-
-```ruby
-# ApplicationController — one source of truth
-def owner_or_admin?
-  Current.account.memberships.owner_or_admin.exists?(user: Current.user)
-end
-```
-
-Guard methods stay in each controller — HTTP responses differ per family — but the query has one home. Changing authorization means editing one line, not six.
-
-**Pattern 3: What 4B cannot fix**
-
-Both `ListsController#show` actions compute identical stats:
-
-```ruby
-# In BOTH Web and API ListsController#show — identical:
-items          = @task_list.task_items
-@items_total   = items.count
-@items_done    = items.completed.count
-@items_pending = @items_total - @items_done
-@items_pct     = @items_total > 0 ? (@items_done * 100.0 / @items_total).round : 0
-@preview_items = items.incomplete.order(created_at: :desc).limit(5).includes(:assigned_user)
-@list_comments = @task_list.comments.chronological.includes(:user)
-```
-
-Seven lines, character-for-character identical, in two files. Inline action logic — not private helpers. A base controller can't extract it. The computation belongs on `TaskList` as model methods. That's 5A's territory.
-
----
-
-## 🤖 The agent's view
-
-Before 4B, editing `next_location` meant changing four files. An agent that found one left three inconsistent. After: one file, one edit. The class hierarchy guides the agent to where shared behavior lives.
-
-The `owner_or_admin?` predicate has the same benefit — six queries become one. But guard methods (`guard_owner_or_admin!` with per-family responses) remain duplicated. The predicate is shared; the HTTP response is not.
-
-The remaining duplication costs agents most. The stats block sits inside action bodies — no named method for `grep` to surface. An agent adding "overdue count" to task list stats finds the Web version, misses the API copy. Until 5A moves this to the model, every agent mutation on task list stats is a silent divergence.
+Multiple controllers converge on the same model method. Written once, called everywhere.
 
 ---
 
 ## ➡️ What comes next
 
-The controller-level gradient is complete. Families 1–4: 79.48 → 87.13 using only controllers, concerns, base controllers, and standard routing.
+5A moved queries, predicates, and computed results to models. But controllers still duplicate side effects — the code that runs after a record is saved:
 
-What remains is business logic in action bodies — the 7-line stats block, the 5-line item filter, the invitation orchestration with mailer and notification dispatch. Branch `5A-fat-models` moves it into model methods — a single source of truth for both families. The controllers did their job. Now the models take over. ✌️
+- Both `InvitationsController#create` actions send the same email and notification after save.
+- Both `TaskListTransfer` creation actions send acceptance emails after save.
+- Both `RegistrationsController#create` actions trigger the same post-registration setup.
+
+These are lifecycle events, not queries or predicates. A model method cannot own them because they are triggered by a specific moment in a record's lifecycle, not by a question about state. Rails has a native tool: model callbacks — `after_create_commit`, `after_destroy_commit`.
+
+Branch `5B-model-callbacks` moves side-effect duplication into the model lifecycle. ✌️
 
 ---
 
 ## 🏛️ Thesis checkpoint
 
-Standard Rails tools absorbed the duplication 4A created — Principle 4 at the consolidation layer. The framework's own patterns, used with discipline, cleaned up the mess the framework's own patterns created. Rubycritic 87.13 — highest score in the arc. Principle 1 holds: the deduplication reshuffled controller hierarchies without touching a single test assertion.
+This is the paradigm shift the [Manifesto](/docs/governance/MANIFESTO.md) argues for. "Fat models, skinny controllers" is not a slogan — it is Principle 4 applied to where business logic lives. The codebase shrank by 41 lines while gaining 9 model methods — duplication eliminated, not relocated. Principle 1 made the migration safe.
 
-The deeper lesson: `CommentAuthorization` is structurally flawed and correct for this moment. Gathering scattered pieces in one imperfect container makes the next extraction visible. Intermediate abstractions exist not to be permanent, but to make the next step obvious.
+Nine methods across nine models is clean. But as the app scales, strict "put it on the model that owns the data" risks god objects — 2000-line query clearinghouses. The boundary between direct model responsibility and delegated query object responsibility is 5D's territory.
+
+---
+
+## 🤖 The agent's view
+
+Before 5A, an agent asked to "change how completion percentage is calculated" had to find and update two controllers and one view template — three files with the same formula, none referencing each other. After 5A, it edits `TaskList#stats` once. The model method is the single source of truth, and both controllers call it by name.
+
+The `Data.define` pattern gives agents structural confidence. `@stats = @task_list.stats` — a named struct with defined fields, not seven implicit instance variables plus hidden view queries. The agent knows the exact shape of what the view receives.
+
+The remaining duplication is side effects: mailer and notification dispatch still copied between controller families. That duplication is different in kind — not a computation, but a lifecycle event. 5B addresses it with model callbacks.
 
 ---
 
@@ -229,8 +217,8 @@ The deeper lesson: `CommentAuthorization` is structurally flawed and correct for
 Prerequisites: [mise](https://mise.jdx.dev/) (manages Ruby, Node, Mailpit)
 
 ```sh
-git clone git@github.com:railswhey/app.git -b 4B-controller-deduplication 4B-controller-deduplication
-cd 4B-controller-deduplication
+git clone git@github.com:railswhey/app.git -b 5A-fat-models 5A-fat-models
+cd 5A-fat-models
 mise install                 # Ruby 4.0.1 + Node 22 + Mailpit 1.29.2
 bin/setup                    # bundle install, db:prepare, starts dev server
 ```

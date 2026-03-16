@@ -21,13 +21,9 @@ class API::V1::Account::MembershipsController < API::V1::BaseController
       return
     end
 
-    if @membership.owner?
-      render_json_with_failure(status: :unprocessable_entity, message: "Cannot remove the account owner.")
-      return
-    end
-
-    if @membership.user == Current.user
-      render_json_with_failure(status: :unprocessable_entity, message: "Cannot remove yourself.")
+    unless @membership.removable_by?(Current.user)
+      message = @membership.owner? ? "Cannot remove the account owner." : "Cannot remove yourself."
+      render_json_with_failure(status: :unprocessable_entity, message: message)
       return
     end
 

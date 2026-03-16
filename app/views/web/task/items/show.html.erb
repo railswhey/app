@@ -90,7 +90,7 @@
 
   <%# ── Comments ── %>
   <% task_list = Current.task_list %>
-  <% comments = @task_item.comments.chronological.includes(:user) %>
+  <% comments = @comments %>
   <div class="comments-section">
     <h3 class="comments-heading">
       💬 Comments <span class="comments-count">(<%= comments.size %>)</span>

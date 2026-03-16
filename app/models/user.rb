@@ -65,4 +65,8 @@ class User < ApplicationRecord
   before_destroy prepend: true do
     account.destroy!
   end
+
+  def self.find_by_reset_password_token(token)
+    find_by_token_for(:reset_password, token)
+  end
 end

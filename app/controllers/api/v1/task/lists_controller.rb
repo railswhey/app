@@ -16,13 +16,7 @@ class API::V1::Task::ListsController < API::V1::BaseController
   end
 
   def show
-    items               = @task_list.task_items
-    @items_total        = items.count
-    @items_done         = items.completed.count
-    @items_pending      = @items_total - @items_done
-    @items_pct          = @items_total > 0 ? (@items_done * 100.0 / @items_total).round : 0
-    @preview_items      = items.incomplete.order(created_at: :desc).limit(5).includes(:assigned_user)
-    @list_comments      = @task_list.comments.chronological.includes(:user)
+    @stats = @task_list.stats
   end
 
   def create

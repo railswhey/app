@@ -14,7 +14,7 @@ class API::V1::Account::Invitations::AcceptancesController < API::V1::BaseContro
       return
     end
 
-    if Current.user && @invitation.account.memberships.exists?(user: Current.user)
+    if Current.user && !@invitation.acceptable_by?(Current.user)
       render_json_with_failure(status: :unprocessable_entity, message: "You are already a member of this account.")
       return
     end

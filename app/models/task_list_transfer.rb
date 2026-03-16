@@ -10,6 +10,14 @@ class TaskListTransfer < ApplicationRecord
 
   enum :status, { pending: 0, accepted: 1, rejected: 2 }
 
+  def self.resolve_recipient(email)
+    email = email.to_s.strip.downcase
+    user = User.find_by(email: email)
+    return [ nil, "No user found with that email." ] unless user
+    return [ nil, "Target user has no account." ] unless user.account
+    [ user, nil ]
+  end
+
   validates :from_account_id, :to_account_id, :task_list_id, presence: true
   validates :task_list_id, uniqueness: { conditions: -> { where(status: :pending) },
                                          message: "already has a pending transfer" }

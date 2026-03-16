@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class Web::Task::List::CommentsController < Web::BaseController
-  include CommentAuthorization
-
   before_action :authenticate_user!
 
   def create
@@ -49,9 +47,13 @@ class Web::Task::List::CommentsController < Web::BaseController
   private
 
   def require_comment_author!
-    return true if comment_author?
+    return true if @comment.authored_by?(Current.user)
 
     redirect_to task_list_path(@task_list), alert: "You can only modify your own comments."
     false
+  end
+
+  def comment_params
+    params.require(:comment).permit(:body)
   end
 end

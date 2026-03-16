@@ -6,17 +6,11 @@ class Web::Task::ItemsController < Web::Task::Item::BaseController
   before_action :set_task_item, only: %i[show edit update destroy]
 
   def index
-    task_items = Current.task_items
-
-    @task_items =
-      case params[:filter]
-      when "completed" then task_items.completed.order(completed_at: :desc)
-      when "incomplete" then task_items.incomplete.order(created_at: :desc)
-      else task_items.order(Arel.sql("task_items.completed_at DESC NULLS FIRST, task_items.created_at DESC"))
-      end
+    @task_items = Current.task_items.filter_by(params[:filter])
   end
 
   def show
+    @comments = @task_item.comments.chronological.includes(:user)
   end
 
   def new

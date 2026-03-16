@@ -16,4 +16,26 @@ class Account < ApplicationRecord
   validates :uuid, presence: true, format: /\A[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\z/
 
   normalizes :name, with: -> { _1.strip }
+
+  SearchResults = Data.define(:task_items, :task_lists, :comments)
+
+  def owner_or_admin?(user)
+    memberships.owner_or_admin.exists?(user: user)
+  end
+
+  def search(query)
+    query = query.to_s.strip
+
+    if query.length < 2
+      return SearchResults.new(task_items: TaskItem.none, task_lists: TaskList.none, comments: Comment.none)
+    end
+
+    SearchResults.new(
+      task_items: TaskItem.joins(:task_list).where(task_lists: { account_id: id })
+                    .search(query).includes(:task_list).order(created_at: :desc).limit(20),
+      task_lists: task_lists.search(query).limit(10),
+      comments:   Comment.for_account(id).search(query)
+                    .includes(:user, :commentable).order(created_at: :desc).limit(10)
+    )
+  end
 end

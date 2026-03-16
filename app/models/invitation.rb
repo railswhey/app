@@ -17,6 +17,10 @@ class Invitation < ApplicationRecord
   def accepted? = accepted_at.present?
   def pending?  = accepted_at.nil?
 
+  def acceptable_by?(user)
+    pending? && !account.memberships.exists?(user: user)
+  end
+
   def accept!(user)
     return false if accepted?
 

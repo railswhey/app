@@ -7,7 +7,7 @@
     <%= link_to("🗂️ View Items", task_list_items_path(@task_list), class: "button btn-secondary") %>
     <% if @task_list.normal? %>
       <%= link_to("✏️ Edit", edit_task_list_path(@task_list), class: "button btn-secondary") %>
-      <% if Current.account.memberships.owner_or_admin.exists?(user: Current.user) %>
+      <% if @can_transfer %>
         <%= link_to("↗️ Transfer", new_task_list_transfer_path(@task_list), class: "button btn-secondary") %>
       <% end %>
       <%= link_to(
@@ -37,71 +37,60 @@
   </div>
 
   <%# ── Summary ── %>
-  <%
-    all_items           = @task_list.task_items
-    total               = all_items.count
-    completed_count     = all_items.completed.count
-    incomplete_count    = total - completed_count
-    assigned_count      = all_items.where.not(assigned_user_id: nil).count
-    pct                 = total > 0 ? (completed_count * 100.0 / total).round : 0
-    list_comments_count = @task_list.comments.count
-    last_activity       = all_items.order(updated_at: :desc).pick(:updated_at) || @task_list.created_at
-  %>
   <div class="list-summary">
     <p class="list-summary-heading">📊 Summary</p>
 
     <div class="summary-stats">
       <div class="summary-stat">
-        <span class="summary-stat-value"><%= total %></span>
+        <span class="summary-stat-value"><%= @stats.total %></span>
         <span class="summary-stat-label">Total</span>
       </div>
       <div class="summary-stat summary-stat--done">
-        <span class="summary-stat-value"><%= completed_count %></span>
+        <span class="summary-stat-value"><%= @stats.done %></span>
         <span class="summary-stat-label">✅ Done</span>
       </div>
       <div class="summary-stat summary-stat--pending">
-        <span class="summary-stat-value"><%= incomplete_count %></span>
+        <span class="summary-stat-value"><%= @stats.pending %></span>
         <span class="summary-stat-label">⬜ Pending</span>
       </div>
       <div class="summary-stat">
-        <span class="summary-stat-value"><%= assigned_count %></span>
+        <span class="summary-stat-value"><%= @stats.assigned %></span>
         <span class="summary-stat-label">👤 Assigned</span>
       </div>
       <div class="summary-stat">
-        <span class="summary-stat-value"><%= list_comments_count %></span>
+        <span class="summary-stat-value"><%= @stats.comments_count %></span>
         <span class="summary-stat-label">💬 Comments</span>
       </div>
     </div>
 
-    <% if total > 0 %>
+    <% if @stats.total > 0 %>
       <div class="summary-progress">
         <div class="progress-bar">
-          <div class="progress-fill" style="width: <%= pct %>%"></div>
+          <div class="progress-fill" style="width: <%= @stats.pct %>%"></div>
         </div>
-        <span class="progress-pct"><%= pct %>% complete</span>
+        <span class="progress-pct"><%= @stats.pct %>% complete</span>
       </div>
     <% end %>
 
     <div class="summary-meta">
-      <span class="summary-meta-activity">🕐 Last activity: <%= time_ago_in_words(last_activity) %> ago</span>
-      <% if total > 0 && incomplete_count == 0 %>
+      <span class="summary-meta-activity">🕐 Last activity: <%= time_ago_in_words(@stats.last_activity) %> ago</span>
+      <% if @stats.total > 0 && @stats.pending == 0 %>
         <span class="summary-badge summary-badge--done">🎉 All done!</span>
-      <% elsif total > 0 && completed_count == 0 %>
+      <% elsif @stats.total > 0 && @stats.done == 0 %>
         <span class="summary-badge summary-badge--pending">🚀 Not started</span>
       <% end %>
     </div>
   </div>
 
   <%# ── Comments ── %>
-  <% comments = @task_list.comments.chronological.includes(:user) %>
   <div class="comments-section">
     <h3 class="comments-heading">
-      💬 Comments <span class="comments-count">(<%= comments.size %>)</span>
+      💬 Comments <span class="comments-count">(<%= @stats.list_comments.size %>)</span>
     </h3>
 
-    <% if comments.any? %>
+    <% if @stats.list_comments.any? %>
       <div class="comments-list">
-        <% comments.each do |comment| %>
+        <% @stats.list_comments.each do |comment| %>
           <%= render "task/shared/comments/comment", comment:, task_list: @task_list, task_item: nil %>
         <% end %>
       </div>

@@ -23,4 +23,8 @@ class Comment < ApplicationRecord
       task_list_ids.presence || [ 0 ]
     )
   end
+
+  def authored_by?(user)
+    user_id == user.id
+  end
 end

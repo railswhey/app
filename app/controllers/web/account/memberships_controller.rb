@@ -17,14 +17,12 @@ class Web::Account::MembershipsController < Web::BaseController
       return
     end
 
-    if @membership.owner?
-      redirect_to account_management_path, alert: "Cannot remove the account owner."
+    unless @membership.removable_by?(Current.user)
+      message = @membership.owner? ? "Cannot remove the account owner." : "Cannot remove yourself."
+      redirect_to account_management_path, alert: message
       return
     end
-    if @membership.user == Current.user
-      redirect_to account_management_path, alert: "Cannot remove yourself."
-      return
-    end
+
     @membership.destroy!
     redirect_to account_management_path, notice: "Member removed.", status: :see_other
   end

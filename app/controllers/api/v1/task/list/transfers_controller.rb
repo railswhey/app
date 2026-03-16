@@ -7,16 +7,10 @@ class API::V1::Task::List::TransfersController < API::V1::BaseController
     set_transfer_task_list! or return
     guard_transfer_owner_or_admin! or return
 
-    to_email = params.dig(:task_list_transfer, :to_email)&.strip&.downcase
-    to_user  = User.find_by(email: to_email)
+    to_user, error = TaskListTransfer.resolve_recipient(params.dig(:task_list_transfer, :to_email))
 
-    unless to_user
-      render_json_with_failure(status: :unprocessable_entity, message: "No user found with that email.")
-      return
-    end
-
-    unless to_user.account
-      render_json_with_failure(status: :unprocessable_entity, message: "Target user has no account.")
+    if error
+      render_json_with_failure(status: :unprocessable_entity, message: error)
       return
     end
 

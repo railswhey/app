@@ -9,7 +9,7 @@ class Web::Account::Invitations::AcceptancesController < Web::BaseController
       redirect_to new_user_session_path, notice: "This invitation has already been accepted."
       return
     end
-    if Current.user && @invitation.account.memberships.exists?(user: Current.user)
+    if Current.user && !@invitation.acceptable_by?(Current.user)
       redirect_to home_path, notice: "You are already a member of this account."
       return
     end

@@ -10,7 +10,7 @@
 <% end %>
 
 <% if @query.length >= 2 %>
-  <% total = @task_items.size + @task_lists.size + @comments.size %>
+  <% total = @results.task_items.size + @results.task_lists.size + @results.comments.size %>
 
   <% if total > 0 %>
     <p class="text-muted" style="margin-bottom:1.25rem">
@@ -18,10 +18,10 @@
     </p>
   <% end %>
 
-  <% if @task_items.any? %>
+  <% if @results.task_items.any? %>
     <div class="search-section">
-      <p class="section-label">✅ Tasks (<%= @task_items.size %>)</p>
-      <% @task_items.each do |item| %>
+      <p class="section-label">✅ Tasks (<%= @results.task_items.size %>)</p>
+      <% @results.task_items.each do |item| %>
         <a href="<%= task_list_item_path(item.task_list, item) %>" class="search-result-card">
           <span class="search-result-icon"><%= item.completed? ? "☑" : "☐" %></span>
           <span class="search-result-body">
@@ -39,10 +39,10 @@
     </div>
   <% end %>
 
-  <% if @task_lists.any? %>
+  <% if @results.task_lists.any? %>
     <div class="search-section">
-      <p class="section-label">📋 Lists (<%= @task_lists.size %>)</p>
-      <% @task_lists.each do |list| %>
+      <p class="section-label">📋 Lists (<%= @results.task_lists.size %>)</p>
+      <% @results.task_lists.each do |list| %>
         <a href="<%= task_list_path(list) %>" class="search-result-card">
           <span class="search-result-icon"><%= list.inbox? ? "📥" : "📋" %></span>
           <span class="search-result-body">
@@ -57,10 +57,10 @@
     </div>
   <% end %>
 
-  <% if @comments.any? %>
+  <% if @results.comments.any? %>
     <div class="search-section">
-      <p class="section-label">💬 Comments (<%= @comments.size %>)</p>
-      <% @comments.each do |comment| %>
+      <p class="section-label">💬 Comments (<%= @results.comments.size %>)</p>
+      <% @results.comments.each do |comment| %>
         <% comment_path = comment.commentable_type == "TaskItem" ?
               task_list_item_path(comment.commentable.task_list, comment.commentable) :
               task_list_path(comment.commentable) %>

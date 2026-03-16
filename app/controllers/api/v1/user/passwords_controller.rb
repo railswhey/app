@@ -30,7 +30,7 @@ class API::V1::User::PasswordsController < API::V1::BaseController
   private
 
   def set_user_by_token
-    @user = User.find_by_token_for(:reset_password, params[:token])
+    @user = User.find_by_reset_password_token(params[:token])
 
     return if @user
 

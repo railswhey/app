@@ -15,16 +15,10 @@ class Web::Task::List::TransfersController < Web::BaseController
     set_transfer_task_list! or return
     guard_transfer_owner_or_admin! or return
 
-    to_email = params.dig(:task_list_transfer, :to_email)&.strip&.downcase
-    to_user  = User.find_by(email: to_email)
+    to_user, error = TaskListTransfer.resolve_recipient(params.dig(:task_list_transfer, :to_email))
 
-    unless to_user
-      redirect_to new_task_list_transfer_path(@transfer_task_list), alert: "No user found with that email."
-      return
-    end
-
-    unless to_user.account
-      redirect_to new_task_list_transfer_path(@transfer_task_list), alert: "Target user has no account."
+    if error
+      redirect_to new_task_list_transfer_path(@transfer_task_list), alert: error
       return
     end
 

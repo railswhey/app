@@ -7,6 +7,14 @@ class Notification < ApplicationRecord
   scope :unread,        -> { where(read_at: nil) }
   scope :read,          -> { where.not(read_at: nil) }
   scope :chronological, -> { order(created_at: :desc) }
+  scope :filter_by, ->(type) {
+    case type
+    when "unread"    then unread
+    when "transfers" then where(action: %w[transfer_requested transfer_accepted transfer_rejected])
+    when "invites"   then where(action: %w[invitation_received invitation_accepted])
+    else all
+    end
+  }
 
   validates :action, presence: true
 

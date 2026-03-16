@@ -5,16 +5,11 @@ class API::V1::Task::Item::MovesController < API::V1::Task::Item::BaseController
   before_action :set_task_item
 
   def create
-    source_list = @task_list
     target_list = Current.account.task_lists.find_by(id: params[:target_list_id])
 
-    unless target_list
-      render_json_with_failure(status: :unprocessable_entity, message: "Target list not found.")
-      return
-    end
-
-    if target_list == source_list
-      render_json_with_failure(status: :unprocessable_entity, message: "Task is already in that list.")
+    unless @task_item.movable_to?(target_list)
+      message = target_list ? "Task is already in that list." : "Target list not found."
+      render_json_with_failure(status: :unprocessable_entity, message: message)
       return
     end
 

@@ -10,6 +10,21 @@ class TaskItem < ApplicationRecord
   scope :incomplete,   -> { where(completed_at: nil) }
   scope :assigned_to,  ->(user_id) { where(assigned_user_id: user_id) }
   scope :search,       ->(q) { where("task_items.name LIKE ? OR task_items.description LIKE ?", "%#{q}%", "%#{q}%") }
+  scope :for_account, ->(account_id) { joins(:task_list).where(task_lists: { account_id: account_id }) }
+  scope :assignment_filter_by, ->(value) {
+    case value
+    when "completed"  then completed
+    when "incomplete" then incomplete
+    else all
+    end
+  }
+  scope :filter_by, ->(value) {
+    case value
+    when "completed" then completed.order(completed_at: :desc)
+    when "incomplete" then incomplete.order(created_at: :desc)
+    else order(Arel.sql("task_items.completed_at DESC NULLS FIRST, task_items.created_at DESC"))
+    end
+  }
 
   validates :name, presence: true
 
@@ -44,5 +59,9 @@ class TaskItem < ApplicationRecord
     self.completed = false
 
     save!
+  end
+
+  def movable_to?(target_list)
+    target_list.present? && target_list != task_list
   end
 end
