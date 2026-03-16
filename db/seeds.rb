@@ -134,20 +134,19 @@ puts "  📋 Alice's lists: Inbox (#{alice_inbox.task_items.count}), Side Projec
 
 # ── Cross-user: transfer request (demo → alice) ─────────────────────────────
 unless TaskListTransfer.exists?(task_list: empty_a)
-  transfer = TaskListTransfer.create!(
+  TaskListTransfer.create!(
     task_list: empty_a,
     from_account: account,
     to_account: alice_account,
-    transferred_by: demo
+    transferred_by: demo,
+    to_user: alice
   )
-  Notification.create!(user: alice, notifiable: transfer, action: "transfer_requested")
   puts "  🔁 Transfer: demo offered 'Sandbox A' to alice (pending)"
 end
 
 # ── Cross-user: invitation (demo → alice) ────────────────────────────────────
 unless account.invitations.exists?(email: alice.email)
-  invitation = account.invitations.create!(email: alice.email, invited_by: demo)
-  Notification.create!(user: alice, notifiable: invitation, action: "invitation_received")
+  account.invitations.create!(email: alice.email, invited_by: demo)
   puts "  ✉️  Invitation: demo invited alice to join demo's workspace"
 end
 

@@ -14,6 +14,9 @@ class Invitation < ApplicationRecord
   scope :pending,  -> { where(accepted_at: nil) }
   scope :accepted, -> { where.not(accepted_at: nil) }
 
+  after_create_commit :send_invite_email
+  after_create_commit :notify_existing_invitee
+
   def accepted? = accepted_at.present?
   def pending?  = accepted_at.nil?
 
@@ -39,11 +42,16 @@ class Invitation < ApplicationRecord
     true
   end
 
-  def notify_invitee!(invitee_user)
-    Notification.create!(
-      user:       invitee_user,
-      notifiable: self,
-      action:     "invitation_received"
-    )
+  private
+
+  def send_invite_email
+    Account::InvitationMailer.invite(self).deliver_later
+  end
+
+  def notify_existing_invitee
+    invitee = User.find_by(email: email)
+    return unless invitee
+
+    Notification.create!(user: invitee, notifiable: self, action: "invitation_received")
   end
 end

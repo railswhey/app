@@ -14,15 +14,15 @@
   <img src="/docs/assets/logo.png" alt="Rails Whey App" width="180" height="180">
 </p>
 
-A full-stack task management app built with Ruby on Rails. This branch moves query and mutation logic from controllers to models — the classic "fat models, skinny controllers" pattern. Business logic that was duplicated between Web and API controllers now lives in model methods, scopes, and `Data.define` value objects. Controllers keep only HTTP concerns.
+A full-stack task management app built with Ruby on Rails. This branch moves side effects — emails and notifications — from controllers to model callbacks. After 5A put queries and predicates in models, the only duplication left between Web and API controllers was side-effect orchestration. `after_create_commit` callbacks eliminate it. Controllers no longer contain side-effect logic.
 
 | | |
 |---|---|
-| **Branch** | `5A-fat-models` |
+| **Branch** | `5B-model-callbacks` |
 | **Ruby** | 4.0 |
 | **Rails** | 8.1 |
-| **Rubycritic** | 91.51 |
-| **LOC** | 1640 |
+| **Rubycritic** | 91.23 |
+| **LOC** | 1638 |
 
 **Table of contents:**
 
@@ -30,6 +30,7 @@ A full-stack task management app built with Ruby on Rails. This branch moves que
 - [📊 The numbers](#-the-numbers)
 - [🤔 The problem](#-the-problem)
 - [🔬 The evidence](#-the-evidence)
+- [🔪 The sharp knife](#-the-sharp-knife)
 - [➡️ What comes next](#️-what-comes-next)
 - [🏛️ Thesis checkpoint](#️-thesis-checkpoint)
 - [🤖 The agent's view](#-the-agents-view)
@@ -41,174 +42,229 @@ A full-stack task management app built with Ruby on Rails. This branch moves que
 
 ## 🎯 The concept
 
-> **One rule:** if two controllers compute the same thing, the model should compute it once.
+> **One rule:** if every creation path should trigger the effect, the model owns the event.
 
-4B applied controller-layer tools — base controllers, shared predicates, a concern — and eliminated duplication in private methods. But identical business logic remained in action bodies. Controller tools can extract private helpers. They cannot extract inline action logic.
+5A moved queries and predicates to models. But both Web and API controllers still duplicated side-effect orchestration — email dispatch and notification creation after a record is saved. Three pairs of controllers carried the same post-save code, character-for-character. 5A's tools (scopes, predicates, value objects) cannot extract these. They are not queries or computations. They are events tied to a lifecycle moment.
 
-Families 1–4 optimized controller *structure* — file organization, inheritance, namespaces. None changed *where business logic lives*. Structural optimization reduces the cost of having logic in controllers; behavioral placement removes the duplication that structural tools cannot reach.
+A side effect differs from a query in a fundamental way: a query can live on any object that has the data. A side effect is tied to the moment after persistence — "after this record is created, do X." Rails has a native mechanism: `after_create_commit`. The `_commit` variant ensures the side effect only fires after the database transaction succeeds — a rolled-back save never sends an email. And it fires for every creation path — controllers, seeds, console, scripts.
 
-Each extraction follows one of four patterns, chosen by what the logic does:
+The developer must decide: is this side effect truly an invariant of the lifecycle event? The answer determines which tool to use:
 
 ```mermaid
 flowchart TD
-  Q{"What does the<br/>duplicated logic do?"}
-  Q -->|"Composes queries"| S["**Scope**<br/>TaskItem.filter_by(value)<br/>Account.search(query)"]
-  Q -->|"Answers yes/no"| P["**Predicate**<br/>Account#owner_or_admin?(user)<br/>TaskItem#movable_to?(target_list)"]
-  Q -->|"Bundles computed fields"| V["**Data.define**<br/>TaskList::Stats"]
-  Q -->|"Names a framework call"| C["**Class method**<br/>User.find_by_reset_password_token<br/>TaskListTransfer.resolve_recipient"]
+  Q{"Does the side effect<br/>belong to record creation?"}
+  Q -->|"Yes — fires on<br/>every creation path"| CB["**Callback**<br/>after_create_commit<br/>(Invitation email, Transfer notification)"]
+  Q -->|"No — no record<br/>is created"| CM["**Class method**<br/>User.send_reset_password_email<br/>(explicit call, not lifecycle-bound)"]
 
-  style S fill:#e8f4fd
-  style P fill:#e8f4fd
-  style V fill:#e8f4fd
-  style C fill:#e8f4fd
+  style CB fill:#e8f4fd
+  style CM fill:#e8f4fd
 ```
-
-The `CommentAuthorization` concern from 4B was deleted. Its authorization became `Comment#authored_by?(user)` on the model; `comment_params` was inlined as HTTP plumbing.
 
 ---
 
 ## 📊 The numbers
 
-| | Before (4B) | After (5A) |
+| | Before (5A) | After (5B) |
 |---|---|---|
-| Models with business logic methods | 0 | 9 |
-| `Data.define` value objects | 0 | 2 |
-| Model scopes added | 0 | 5 |
-| Model predicates added | 0 | 5 |
-| Controller concerns | 1 | 0 (deleted) |
-| Controllers simplified | — | 21 |
-| Net line delta | — | −41 |
-| Rubycritic | 87.13 | 91.51 |
+| Models with `after_create_commit` callbacks | 1 (`User`) | 3 (`User`, `Invitation`, `TaskListTransfer`) |
+| Controller side-effect lines (duplicated) | 9 (across 3 pairs) | 0 |
+| Controllers simplified | — | 6 |
+| Model class methods added | — | 1 (`send_reset_password_email`) |
+| Rubycritic | 91.51 | 91.23 |
 
-Rubycritic jumped +4.38 points — the highest score in the arc. Controllers shrank more than models grew because model methods are written once where they were previously written twice (or six times, for authorization). −41 net lines: duplication eliminated, not relocated. Business logic in the right layer produces better quality metrics than any structural reorganization.
+The score dipped −0.28 points. Callbacks add model complexity — more methods, more implicit behavior — without reducing the kind of duplication Rubycritic measures. The value is in the controller layer: six controllers lost their side-effect orchestration, and that logic now exists in exactly one place per event. LOC dropped from 1640 to 1638.
 
 ---
 
 ## 🤔 The problem
 
-After 4B, action-body duplication was the last category remaining. The worst case — `ListsController#show`, 7 identical lines in both Web and API:
+After 5A, both Web and API controllers shared identical side-effect blocks in three places:
 
 ```ruby
-# In BOTH Web::Task::ListsController#show AND API::V1::Task::ListsController#show:
-items               = @task_list.task_items
-@items_total        = items.count
-@items_done         = items.completed.count
-@items_pending      = @items_total - @items_done
-@items_pct          = @items_total > 0 ? (@items_done * 100.0 / @items_total).round : 0
-@preview_items      = items.incomplete.order(created_at: :desc).limit(5).includes(:assigned_user)
-@list_comments      = @task_list.comments.chronological.includes(:user)
+# In BOTH Web and API InvitationsController#create:
+Account::InvitationMailer.invite(@invitation).deliver_later
+
+if (invitee = User.find_by(email: @invitation.email))
+  @invitation.notify_invitee!(invitee)
+end
 ```
 
-The view compounded the problem — running additional queries (`assigned_count`, `last_activity`, `comments_count`) that the controller hadn't provided. Two sources of truth for the same data.
+```ruby
+# In BOTH Web and API TransfersController#create:
+Notification.create!(user: to_user, notifiable: @transfer, action: "transfer_requested")
+Task::ListTransferMailer.transfer_requested(@transfer).deliver_later
+```
 
-The pattern repeated: a 5-line filter in both `ItemsController#index`, a 20-line search in both `SearchesController#show`, identical auth checks in six controllers, identical `acceptable_by?` guards in two acceptance controllers.
+```ruby
+# In BOTH Web and API PasswordsController#create:
+user = User.find_by(email: params.require(:user).require(:email))
+if user
+  UserMailer.with(user: user, token: user.generate_token_for(:reset_password))
+    .reset_password.deliver_later
+end
+```
+
+A different tool is needed.
 
 ---
 
 ## 🔬 The evidence
 
-**Stats computation becomes a value object**
-
-Before — 7 lines in each controller. After — one call:
+**Callbacks replace controller-side orchestration.** Before (5A), both invitation controllers had 4 side-effect lines after save. After (5B), the controller just calls `.save`:
 
 ```ruby
-# Web::Task::ListsController
-def show
-  @stats = @task_list.stats
-  @can_transfer = owner_or_admin?
-end
-
-# API::V1::Task::ListsController
-def show
-  @stats = @task_list.stats
+# Web::Account::InvitationsController#create (after 5B)
+def create
+  guard_owner_or_admin! or return
+  @account = Current.account
+  @invitation = @account.invitations.new(invitation_params.merge(invited_by: Current.user))
+  if @invitation.save
+    redirect_to account_management_path, notice: "Invitation sent to #{@invitation.email}."
+  else
+    render :new, status: :unprocessable_entity
+  end
 end
 ```
 
-The computation lives in `TaskList#stats`, returning a `Data.define` value object:
+The email and notification live in the model:
 
 ```ruby
-Stats = Data.define(:total, :done, :pending, :pct, :assigned, :comments_count,
-                    :last_activity, :preview_items, :list_comments)
+class Invitation < ApplicationRecord
+  after_create_commit :send_invite_email
+  after_create_commit :notify_existing_invitee
 
-def stats
-  items = task_items
-  total = items.count
-  done  = items.completed.count
+  private
 
-  Stats.new(
-    total:, done:,
-    pending:        total - done,
-    pct:            total > 0 ? (done * 100.0 / total).round : 0,
-    assigned:       items.where.not(assigned_user_id: nil).count,
-    comments_count: comments.count,
-    last_activity:  items.order(updated_at: :desc).pick(:updated_at) || created_at,
-    preview_items:  items.incomplete.order(created_at: :desc).limit(5).includes(:assigned_user),
-    list_comments:  comments.chronological.includes(:user)
-  )
+  def send_invite_email
+    Account::InvitationMailer.invite(self).deliver_later
+  end
+
+  def notify_existing_invitee
+    invitee = User.find_by(email: email)
+    return unless invitee
+
+    Notification.create!(user: invitee, notifiable: self, action: "invitation_received")
+  end
 end
 ```
 
-One method, one call site, one source of truth. The same convergence applies to all four patterns:
+`after_create_commit` handles creation invariants (always send the email). Explicit methods handle conditional operations (accept or reject).
+
+**Virtual attributes as a seam.** `TaskListTransfer` stores `to_account` but the notification goes to a specific user. The model uses a virtual attribute to receive controller-provided context:
+
+```ruby
+class TaskListTransfer < ApplicationRecord
+  attr_accessor :to_user
+
+  after_create_commit :notify_recipient
+  after_create_commit :send_transfer_email
+
+  private
+
+  def notify_recipient
+    return unless to_user
+    Notification.create!(user: to_user, notifiable: self, action: "transfer_requested")
+  end
+
+  def send_transfer_email
+    Task::ListTransferMailer.transfer_requested(self).deliver_later
+  end
+end
+```
+
+The `return unless to_user` guard makes this a conditional callback, not a universal invariant — an exception to the "one rule." Transfers created without `to_user` (seeds, console, data migrations) skip the notification because they are not user-initiated. The coupling is visible and named — `attr_accessor :to_user` — not hidden.
+
+**Password reset stays explicit.** No record is created, so a callback is wrong:
+
+```ruby
+# User model
+def self.send_reset_password_email(email)
+  user = find_by(email: email)
+  return unless user
+
+  UserMailer.with(user: user, token: user.generate_token_for(:reset_password))
+    .reset_password.deliver_later
+end
+```
+
+Both controllers replace three lines with one call: `User.send_reset_password_email(email)`.
 
 ```mermaid
-flowchart LR
-  subgraph Before["4B: logic in controllers"]
-    WC1["Web::ListsController#show<br/>7 lines stats"]
-    AC1["API::ListsController#show<br/>7 lines stats (identical)"]
-    WC2["Web::ItemsController#index<br/>5 lines filter"]
-    AC2["API::ItemsController#index<br/>5 lines filter (identical)"]
-    AUTH["6 controllers<br/>identical auth query"]
+flowchart TD
+  subgraph Before["5A: side effects in controllers"]
+    WC["Web::InvitationsController#create<br/>4 lines: email + notification"]
+    AC["API::InvitationsController#create<br/>4 lines: email + notification (identical)"]
   end
 
-  subgraph After["5A: logic in models"]
-    TLS["TaskList#stats<br/>Data.define, written once"]
-    TIF["TaskItem.filter_by<br/>scope, written once"]
-    AO["Account#owner_or_admin?<br/>predicate, written once"]
+  subgraph After["5B: side effects in model"]
+    INV["Invitation model<br/>after_create_commit :send_invite_email<br/>after_create_commit :notify_existing_invitee"]
+    WC2["Web::InvitationsController#create<br/>@invitation.save + redirect"]
+    AC2["API::InvitationsController#create<br/>@invitation.save + render"]
   end
 
-  WC1 -->|"extracted"| TLS
-  AC1 -->|"extracted"| TLS
-  WC2 -->|"extracted"| TIF
-  AC2 -->|"extracted"| TIF
-  AUTH -->|"extracted"| AO
+  WC -->|"extracted"| INV
+  AC -->|"extracted"| INV
+  INV -.->|"fires on save"| WC2
+  INV -.->|"fires on save"| AC2
 
   style Before fill:#fde8e8
   style After fill:#e8fde8
+  style INV fill:#e8f4fd
 ```
 
-Multiple controllers converge on the same model method. Written once, called everywhere.
+---
+
+## 🔪 The sharp knife
+
+Callbacks are a sharp knife. They cut duplication cleanly — but they cut in directions you might not expect.
+
+**What you gain:** Side effects can never be forgotten. If `Invitation` has an `after_create_commit` that sends an email, every creation path sends the email. The guarantee is total.
+
+**What you pay:** Side effects are invisible to the caller. A developer reading `@invitation.save` sees a save. The email, the notification — all hidden behind the model. It's like wiring a light switch that secretly also opens the garage door.
+
+Seeds are the concrete proof. Before 5B, seeds created invitations with explicit `Notification.create!` calls and no emails. After 5B, seeds call `create!` and callbacks handle everything — notifications created automatically, emails delivered to Mailpit in development. No creation path escapes.
+
+This is the design for the standard domain lifecycle. But production applications have operational contexts outside it — and the framework provides the escape hatches:
+
+```mermaid
+flowchart TD
+  OP{"Operational context?"}
+  OP -->|"Standard user flow"| CB["Callbacks fire normally<br/>Emails sent, notifications created"]
+  OP -->|"Bulk import<br/>(millions of records)"| IA["insert_all / upsert_all<br/>Bypasses ActiveRecord entirely<br/>No objects loaded, no callbacks"]
+  OP -->|"Admin correction<br/>(needs validations, not side effects)"| CA["CurrentAttributes suppression<br/>Current.suppress_notifications = true<br/>Callback guards check the flag"]
+
+  style CB fill:#e8fde8
+  style IA fill:#fff3cd
+  style CA fill:#fff3cd
+```
+
+**Bulk imports** cannot instantiate a million AR objects and fire a million welcome emails. `insert_all` operates at the database level, bypassing AR instantiation entirely.
+
+**Administrative operations** need validations but not downstream notifications — `insert_all` doesn't help because you lose the validation layer. `CurrentAttributes` provides a thread-safe lever: set a context flag, guard the callback, reset in `ensure`. The application pauses side effects for one thread while the default behavior remains intact for all others.
+
+The callback enforces the domain invariant for organic flows. The bypass patterns handle the operational reality that not every `INSERT` is an organic user action.
 
 ---
 
 ## ➡️ What comes next
 
-5A moved queries, predicates, and computed results to models. But controllers still duplicate side effects — the code that runs after a record is saved:
+Controllers say `Task::List::TransfersController`. Models say `TaskListTransfer`. After 5A and 5B, models carry real weight — stats, scopes, callbacks, predicates — but still use the flat names that `rails generate` gave them. The controller layer speaks domain vocabulary. The model layer speaks scaffold vocabulary.
 
-- Both `InvitationsController#create` actions send the same email and notification after save.
-- Both `TaskListTransfer` creation actions send acceptance emails after save.
-- Both `RegistrationsController#create` actions trigger the same post-registration setup.
-
-These are lifecycle events, not queries or predicates. A model method cannot own them because they are triggered by a specific moment in a record's lifecycle, not by a question about state. Rails has a native tool: model callbacks — `after_create_commit`, `after_destroy_commit`.
-
-Branch `5B-model-callbacks` moves side-effect duplication into the model lifecycle. ✌️
+Branch `5C-unified-vocabulary` aligns model names with the domain vocabulary that controllers already established. `TaskList` becomes `Task::List`. `TaskItem` becomes `Task::Item`. `TaskListTransfer` becomes `Task::List::Transfer`. The stack speaks one language from routes to models. ✌️
 
 ---
 
 ## 🏛️ Thesis checkpoint
 
-This is the paradigm shift the [Manifesto](/docs/governance/MANIFESTO.md) argues for. "Fat models, skinny controllers" is not a slogan — it is Principle 4 applied to where business logic lives. The codebase shrank by 41 lines while gaining 9 model methods — duplication eliminated, not relocated. Principle 1 made the migration safe.
-
-Nine methods across nine models is clean. But as the app scales, strict "put it on the model that owns the data" risks god objects — 2000-line query clearinghouses. The boundary between direct model responsibility and delegated query object responsibility is 5D's territory.
+`after_create_commit` is a native Rails tool — Principle 4, no architectural additives needed. Side effects that were duplicated across Web and API controllers now fire once from the model lifecycle. The model owns the event, not the HTTP layer. Principle 1 validates the extraction: tests assert on the behavioral outcome (email sent, notification created), not on which layer triggered it. But callbacks are not binary — "always fire" is the default, not the only mode. `insert_all` for bulk operations and `CurrentAttributes` suppression for admin tasks are the framework's own escape hatches. The domain invariant holds for organic flows. The breaker box exists for everything else.
 
 ---
 
 ## 🤖 The agent's view
 
-Before 5A, an agent asked to "change how completion percentage is calculated" had to find and update two controllers and one view template — three files with the same formula, none referencing each other. After 5A, it edits `TaskList#stats` once. The model method is the single source of truth, and both controllers call it by name.
+Before 5B, an agent asked to "add a notification when an invitation is created" would update both Web and API controllers. After 5B, it adds one callback to `Invitation`. One file, one edit, every creation path gets the new behavior.
 
-The `Data.define` pattern gives agents structural confidence. `@stats = @task_list.stats` — a named struct with defined fields, not seven implicit instance variables plus hidden view queries. The agent knows the exact shape of what the view receives.
-
-The remaining duplication is side effects: mailer and notification dispatch still copied between controller families. That duplication is different in kind — not a computation, but a lifecycle event. 5B addresses it with model callbacks.
+The trade-off mirrors the human one. An agent reading `InvitationsController#create` sees `@invitation.save` followed by a redirect — it does not see the email or the notification. The answer requires loading the model file. The bypass patterns matter too: an agent writing a data migration must know to use `insert_all` instead of `Invitation.create!` — otherwise a million invitation emails fire.
 
 ---
 
@@ -217,8 +273,8 @@ The remaining duplication is side effects: mailer and notification dispatch stil
 Prerequisites: [mise](https://mise.jdx.dev/) (manages Ruby, Node, Mailpit)
 
 ```sh
-git clone git@github.com:railswhey/app.git -b 5A-fat-models 5A-fat-models
-cd 5A-fat-models
+git clone git@github.com:railswhey/app.git -b 5B-model-callbacks 5B-model-callbacks
+cd 5B-model-callbacks
 mise install                 # Ruby 4.0.1 + Node 22 + Mailpit 1.29.2
 bin/setup                    # bundle install, db:prepare, starts dev server
 ```

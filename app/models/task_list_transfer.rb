@@ -8,6 +8,8 @@ class TaskListTransfer < ApplicationRecord
 
   has_secure_token :token
 
+  attr_accessor :to_user
+
   enum :status, { pending: 0, accepted: 1, rejected: 2 }
 
   def self.resolve_recipient(email)
@@ -23,6 +25,9 @@ class TaskListTransfer < ApplicationRecord
                                          message: "already has a pending transfer" }
   validate  :accounts_must_differ
   validate  :task_list_must_belong_to_from_account
+
+  after_create_commit :notify_recipient
+  after_create_commit :send_transfer_email
 
   def accept!(user)
     return false unless pending?
@@ -72,5 +77,15 @@ class TaskListTransfer < ApplicationRecord
     unless task_list.account_id == from_account_id
       errors.add(:task_list, "does not belong to source account")
     end
+  end
+
+  def notify_recipient
+    return unless to_user
+
+    Notification.create!(user: to_user, notifiable: self, action: "transfer_requested")
+  end
+
+  def send_transfer_email
+    Task::ListTransferMailer.transfer_requested(self).deliver_later
   end
 end

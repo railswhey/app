@@ -18,12 +18,6 @@ class API::V1::Account::InvitationsController < API::V1::BaseController
     @account = Current.account
     @invitation = @account.invitations.new(invitation_params.merge(invited_by: Current.user))
     if @invitation.save
-      Account::InvitationMailer.invite(@invitation).deliver_later
-
-      if (invitee = User.find_by(email: @invitation.email))
-        @invitation.notify_invitee!(invitee)
-      end
-
       render :show, status: :created
     else
       render_json_with_model_failure(@invitation)

@@ -22,12 +22,6 @@ class Web::Account::InvitationsController < Web::BaseController
     @account = Current.account
     @invitation = @account.invitations.new(invitation_params.merge(invited_by: Current.user))
     if @invitation.save
-      Account::InvitationMailer.invite(@invitation).deliver_later
-
-      if (invitee = User.find_by(email: @invitation.email))
-        @invitation.notify_invitee!(invitee)
-      end
-
       redirect_to account_management_path, notice: "Invitation sent to #{@invitation.email}."
     else
       render :new, status: :unprocessable_entity

@@ -69,4 +69,12 @@ class User < ApplicationRecord
   def self.find_by_reset_password_token(token)
     find_by_token_for(:reset_password, token)
   end
+
+  def self.send_reset_password_email(email)
+    user = find_by(email: email)
+    return unless user
+
+    UserMailer.with(user: user, token: user.generate_token_for(:reset_password))
+      .reset_password.deliver_later
+  end
 end

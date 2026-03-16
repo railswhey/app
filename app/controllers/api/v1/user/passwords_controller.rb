@@ -4,14 +4,7 @@ class API::V1::User::PasswordsController < API::V1::BaseController
   before_action :set_user_by_token, only: %i[update]
 
   def create
-    user = User.find_by(email: params.require(:user).require(:email))
-
-    if user
-      UserMailer.with(
-        user: user,
-        token: user.generate_token_for(:reset_password)
-      ).reset_password.deliver_later
-    end
+    User.send_reset_password_email(params.require(:user).require(:email))
 
     render(status: :ok, json: { status: :success, type: :object, data: {} })
   end
