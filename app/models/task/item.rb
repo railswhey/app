@@ -13,15 +13,15 @@ class Task::Item < ApplicationRecord
   scope :for_account, ->(account_id) { joins(:task_list).where(task_lists: { account_id: account_id }) }
   scope :assignment_filter_by, ->(value) {
     case value
-    when "completed"  then completed
-    when "incomplete" then incomplete
+    when Task::COMPLETED  then completed
+    when Task::INCOMPLETE then incomplete
     else all
     end
   }
   scope :filter_by, ->(value) {
     case value
-    when "completed" then completed.order(completed_at: :desc)
-    when "incomplete" then incomplete.order(created_at: :desc)
+    when Task::COMPLETED  then completed.order(completed_at: :desc)
+    when Task::INCOMPLETE then incomplete.order(created_at: :desc)
     else order(Arel.sql("task_items.completed_at DESC NULLS FIRST, task_items.created_at DESC"))
     end
   }
@@ -47,6 +47,10 @@ class Task::Item < ApplicationRecord
 
   def incomplete?
     !completed?
+  end
+
+  def status
+    completed? ? Task::COMPLETED : Task::INCOMPLETE
   end
 
   def complete!

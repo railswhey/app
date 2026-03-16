@@ -7,11 +7,11 @@
       task_item_assignments_path,
       class: @filter.nil? ? "active" : nil %>
   <%= link_to "Incomplete (#{@item_counts[:incomplete]})",
-      task_item_assignments_path(filter: "incomplete"),
-      class: @filter == "incomplete" ? "active" : nil %>
+      task_item_assignments_path(filter: Task::INCOMPLETE),
+      class: @filter == Task::INCOMPLETE ? "active" : nil %>
   <%= link_to "Completed (#{@item_counts[:completed]})",
-      task_item_assignments_path(filter: "completed"),
-      class: @filter == "completed" ? "active" : nil %>
+      task_item_assignments_path(filter: Task::COMPLETED),
+      class: @filter == Task::COMPLETED ? "active" : nil %>
 </p>
 
 <% if @task_items.any? %>
@@ -41,9 +41,9 @@
 <% else %>
   <div class="empty-state">
     <span class="empty-icon">📋</span>
-    <% if @filter == "completed" %>
+    <% if @filter == Task::COMPLETED %>
       <p>No completed tasks.</p>
-    <% elsif @filter == "incomplete" %>
+    <% elsif @filter == Task::INCOMPLETE %>
       <p>No incomplete tasks.</p>
     <% else %>
       <p>No tasks assigned to you yet.</p>

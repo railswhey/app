@@ -46,7 +46,7 @@
       <span class="detail-label">Status</span>
       <span class="detail-value">
         <span class="chip <%= @task_item.completed? ? "chip-success" : "chip-neutral" %>">
-          <%= @task_item.completed? ? "completed" : "incomplete" %>
+          <%= @task_item.status %>
         </span>
       </span>
     </div>

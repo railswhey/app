@@ -23,8 +23,8 @@ class Web::Task::Item::BaseController < Web::BaseController
   def next_location
     return task_item_assignments_url if params[:return_to] == "task_item_assignments"
     case params[:filter]
-    when "completed" then task_items_url(filter: "completed")
-    when "incomplete" then task_items_url(filter: "incomplete")
+    when Task::COMPLETED  then task_items_url(filter: Task::COMPLETED)
+    when Task::INCOMPLETE then task_items_url(filter: Task::INCOMPLETE)
     when "show" then task_item_url(@task_item)
     else task_items_url
     end

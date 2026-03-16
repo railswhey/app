@@ -14,15 +14,15 @@
   <img src="/docs/assets/logo.png" alt="Rails Whey App" width="180" height="180">
 </p>
 
-A full-stack task management app built with Ruby on Rails. This branch introduces the second PORO. `User::Token` was doing two jobs — persisting tokens and implementing cryptography — in one 55-line file. `User::Token::Secret` gives the crypto side its own home: a plain Ruby object that knows what a token is without knowing how it's stored.
+A full-stack task management app built with Ruby on Rails. This branch names the task status vocabulary. `"completed"` and `"incomplete"` were typed ~19 times across 6 files — magic strings with nothing connecting them. `Task::COMPLETED` and `Task::INCOMPLETE` give those values one canonical home. A `Task::Item#status` method puts the boolean-to-string translation in one place.
 
 | | |
 |---|---|
-| **Branch** | `6B-token-secret` |
+| **Branch** | `6C-task-status` |
 | **Ruby** | 4.0 |
 | **Rails** | 8.1 |
-| **Rubycritic** | 91.46 |
-| **LOC** | 1712 |
+| **Rubycritic** | 91.45 |
+| **LOC** | 1717 |
 
 **Table of contents:**
 
@@ -41,202 +41,158 @@ A full-stack task management app built with Ruby on Rails. This branch introduce
 
 ## 🎯 The concept
 
-> **One rule:** when pure functions share a file with persistence logic, the pure functions need their own home.
+> **One rule:** if the code speaks a word in multiple places, give it one canonical home.
 
-`User::Token` was 55 lines doing two jobs. Persistence: `belongs_to :user`, `before_validation :refresh`, `refresh!` with retry. Cryptography: salt derivation, secret construction, SHA256 checksumming, token parsing. Four of eight methods never touched the database — a crypto library entangled inside a persistence model.
+Not every domain concept that needs a name needs a class. `Task::COMPLETED` and `Task::INCOMPLETE` replace ~19 scattered string literals across model scopes, a helper, a controller, and views. A `Task::Item#status` method puts the boolean-to-string translation in one place.
 
-`User::Token::Secret` separates the two. The naming follows 6A's natural-language pattern: a **token** is the persisted record (short, checksum, user_id in the database). A **secret** is the cryptographic value — generated, parsed, checksummed. The code already spoke this word: the existing method was called `secret_value`.
+The code already spoke these words — `scope :completed`, `completed?`, `incomplete?`. The constants don't invent anything. They anchor what was already there, so a typo becomes a `NameError` instead of a silent fall-through.
 
-This pairs with 6A: `Account::Member` named authorization, `User::Token::Secret` names cryptographic identity. Two POROs, two domain concepts that were hiding inside infrastructure.
+```mermaid
+flowchart TD
+  subgraph Before["6B: ~19 scattered string literals"]
+    M["Model scopes<br/>'completed' / 'incomplete'"]
+    H["Helper<br/>'completed' / 'incomplete'"]
+    C["Controller<br/>'completed' / 'incomplete'"]
+    V["Views<br/>'completed' / 'incomplete'"]
+  end
+
+  subgraph After["6C: 2 constants, ~19 references"]
+    TC["Task::COMPLETED<br/>Task::INCOMPLETE"]
+    M2["Model scopes → Task::COMPLETED"]
+    H2["Helper → Task::COMPLETED"]
+    C2["Controller → Task::COMPLETED"]
+    V2["Views → Task::COMPLETED / @task_item.status"]
+  end
+
+  TC --> M2
+  TC --> H2
+  TC --> C2
+  TC --> V2
+
+  style Before fill:#fde8e8
+  style After fill:#e8fde8
+  style TC fill:#e8f4fd
+```
+
+This is the third naming extraction in Family 6. `Account::Member` named authorization (PORO). `User::Token::Secret` named cryptographic identity (PORO). `Task::COMPLETED` / `Task::INCOMPLETE` names completion status (constants). The tool matches the concept's weight: classes for behavior, constants for vocabulary.
 
 ---
 
 ## 📊 The numbers
 
-| | Before (6A) | After (6B) |
+| | Before (6B) | After (6C) |
 |---|---|---|
-| Lines in User::Token | 55 | 32 |
-| Lines in User::Token::Secret | — | 47 |
-| New files | — | 1 |
-| Modified files | — | 2 |
+| Constants added to `Task` | 0 | 2 |
+| Methods added to `Task::Item` | — | 1 (`status`) |
+| String literals replaced | — | ~19 |
+| New files | — | 0 |
+| Modified files | — | 6 |
 | Behavioral test changes | — | 0 |
-| Rubycritic | 91.36 | 91.46 |
+| Rubycritic | 91.46 | 91.45 |
 
-55 lines of mixed concerns became 32 + 47. The total grew because naming has a cost — each responsibility gets its own constants, validations, and boundaries. The question is not "why did the code get bigger?" but "can you now change the hashing algorithm without reading past `belongs_to :user`?" You can.
+Rubycritic holds at -0.01. Static analysis sees a string literal and a constant reference as identical complexity — both are one token, one comparison. But a developer sees the difference between a typo that silently falls through and a `NameError` that stops the build. The structural complexity is identical; the semantic clarity is night and day.
 
 ---
 
 ## 🤔 The problem
 
-The token started simple: a `short` column, a `checksum` column, a `belongs_to :user`. Then authentication needed to verify tokens without storing the raw secret — so crypto methods appeared. Then the API needed parsing. Then views needed display. Each addition was small. The method count grew from 2 to 8, but the class still "worked."
+The strings `"completed"` and `"incomplete"` appeared ~19 times across 6 files. Each occurrence was an independent decision to type the same word — the string equivalent of magic numbers. A typo in any one — `"complted"` in a helper, `"imcomplete"` in a view — silently falls through to the `else` branch of a `case` statement.
 
-Nobody noticed that half the methods have nothing to do with the database:
+The sprawl happened organically. The status started as scope names: `scope :completed`. Then filtering needed it as a URL parameter. Then the helper needed it for link generation. Then the view for tab highlighting. Then the controller for redirect logic. Each addition was local and small. Nobody noticed because every layer had its own reason to use the word, and the string always worked.
 
 ```mermaid
 flowchart LR
-  S["Simple AR model<br/>short + checksum<br/>belongs_to :user"] -->|"+ token auth"| T["+ salt_parts<br/>+ secret_value"]
-  T -->|"+ API parsing"| P["+ parse_value<br/>+ checksum"]
-  P -->|"+ display"| F["8 methods<br/>4 persistence<br/>4 pure crypto"]
+  S["scope :completed<br/>scope :incomplete"] -->|"+ filtering"| F["params[:filter]<br/>'completed'"]
+  F -->|"+ links"| H["helper<br/>filter: 'completed'"]
+  H -->|"+ tabs"| V["view<br/>@filter == 'completed'"]
+  V -->|"+ redirects"| C["controller<br/>when 'completed'"]
 
   style S fill:#e8fde8
-  style T fill:#fff3cd
-  style P fill:#fff3cd
-  style F fill:#fde8e8
+  style F fill:#fff3cd
+  style H fill:#fff3cd
+  style V fill:#fde8e8
+  style C fill:#fde8e8
 ```
-
-The crypto methods are pure functions — they take strings and return strings. They never call `self`, never access instance variables, never touch the database. They lived on an ActiveRecord class because that's where the token model was.
-
-`Account::Member::Authorization` called `User::Token.parse_value` and `User::Token.checksum` to verify API tokens — reaching into a persistence class for pure computation.
 
 ---
 
 ## 🔬 The evidence
 
-**Pattern 1: Crypto logic moves to the PORO**
+**Pattern 1: Constants replace scattered strings**
 
-`User::Token::Secret` — 47 lines, zero database access:
+The `Task` module gains two constants:
 
 ```ruby
-class User::Token::Secret
-  include ActiveModel::Model
-  include ActiveModel::Attributes
-
-  SHORT_LENGTH = 8
-  LONG_LENGTH = 32
-  LONG_MASKED = "X" * LONG_LENGTH
-  VALUE_SEPARATOR = "_"
-
-  attribute :short, :string
-  attribute :long, :string
-
-  validates :long, presence: true, length: { is: LONG_LENGTH }
-  validates :short, presence: true, length: { is: SHORT_LENGTH }
-
-  def self.parse(arg)
-    arg.split(VALUE_SEPARATOR)
-  end
-
-  def self.salt_parts(short:)
-    a, b, c, d, e, f, g, h = short.chars
-    [ "#{h}#{c}", "#{e}#{g}", "#{b}#{d}", "#{f}#{a}" ]
-  end
-
-  def self.secret_value(short:, long:)
-    salt1, salt2, salt3, salt4 = salt_parts(short:)
-    "#{salt2}_#{salt3}.:#{long}:.#{salt4}-#{salt1}"
-  end
-
-  def self.checksum(...)
-    Digest::SHA256.hexdigest(secret_value(...))
-  end
-
-  def value
-    "#{short}#{VALUE_SEPARATOR}#{long || LONG_MASKED}"
-  end
-
-  def generate(secure_random: SecureRandom)
-    self.short = secure_random.base58(SHORT_LENGTH)
-    self.long = secure_random.base58(LONG_LENGTH)
-    self
-  end
+module Task
+  COMPLETED  = "completed"
+  INCOMPLETE = "incomplete"
 end
 ```
 
-Every method is a pure function or operates on `ActiveModel::Attributes` state.
-
-The AR model slims to 32 lines of persistence and delegation:
+Every `case` statement, link helper, and view that used raw strings now references the constant:
 
 ```ruby
-class User::Token < ApplicationRecord
-  belongs_to :user
-
-  attribute :long, :string
-
-  before_validation :refresh, on: :create
-
-  validates :long, presence: true, length: { is: Secret::LONG_LENGTH }
-  validates :short, presence: true, length: { is: Secret::SHORT_LENGTH }
-
-  def value
-    Secret.new(short:, long:).value
+# Before — magic strings
+scope :filter_by, ->(value) {
+  case value
+  when "completed"  then completed.order(completed_at: :desc)
+  when "incomplete" then incomplete.order(created_at: :desc)
+  else order(Arel.sql("..."))
   end
+}
 
-  def refresh(secure_random: SecureRandom)
-    Secret.new.generate(secure_random:).then do |secret|
-      self.short = secret.short
-      self.long = secret.long
-      self.checksum = Secret.checksum(short:, long:)
-    end
+# After — constants
+scope :filter_by, ->(value) {
+  case value
+  when Task::COMPLETED  then completed.order(completed_at: :desc)
+  when Task::INCOMPLETE then incomplete.order(created_at: :desc)
+  else order(Arel.sql("..."))
   end
+}
+```
 
-  def refresh!(...)
-    attempts ||= 1
-    refresh(...).then { save! }.then { self }
-  rescue ActiveRecord::RecordNotUnique
-    retry if (attempts += 1) <= 3
-  end
+The same pattern applies across all six modified files: helper link generation, controller redirect logic, view filter tabs, and empty-state messages all reference `Task::COMPLETED` and `Task::INCOMPLETE` instead of raw strings.
+
+**Pattern 2: Status gets a method**
+
+```ruby
+# Before — inline derivation in the view
+<%= @task_item.completed? ? "completed" : "incomplete" %>
+
+# After — named method on the model
+<%= @task_item.status %>
+
+# Task::Item
+def status
+  completed? ? Task::COMPLETED : Task::INCOMPLETE
 end
 ```
 
-Every method either persists data or delegates to `Secret`. The crypto operations are gone.
-
-**Pattern 2: Authorization references the Secret directly**
-
-```ruby
-# Before (6A) — Authorization calls AR class methods
-short, long = User::Token.parse_value(member.user_token)
-checksum = User::Token.checksum(short:, long:)
-
-# After (6B) — Authorization calls the PORO
-short, long = User::Token::Secret.parse(member.user_token)
-checksum = User::Token::Secret.checksum(short:, long:)
-```
-
-Two lines changed. The query — `where(user_tokens: { short:, checksum: })` — is identical.
-
-```mermaid
-flowchart TD
-  subgraph Before["6A: User::Token = 55 lines"]
-    UT["User::Token<br/>belongs_to + refresh + refresh!<br/>+ parse_value + salt_parts + secret_value + checksum"]
-  end
-
-  subgraph After["6B: separated"]
-    UT2["User::Token<br/>32 lines<br/>belongs_to + refresh + refresh!"]
-    UTS["User::Token::Secret<br/>47 lines<br/>parse + salt_parts + secret_value + checksum + generate"]
-  end
-
-  UT -.->|"persistence stays"| UT2
-  UT -.->|"crypto extracts"| UTS
-  UT2 -->|"delegates to"| UTS
-
-  style Before fill:#fde8e8
-  style UT2 fill:#e8fde8
-  style UTS fill:#e8f4fd
-```
+The boolean-to-string translation moves from the view to the model. One definition, one place to change.
 
 ---
 
 ## ➡️ What comes next
 
-The member has a name. The secret has a name. Both were domain concepts that outgrew their infrastructure homes. Both needed their own classes.
+Family 6 has named three domain concepts: authorization (PORO), cryptographic identity (PORO), completion status (constants). Each was a concept the code already used but never owned.
 
-But not every domain concept that lacks a name needs a class. The strings `"completed"` and `"incomplete"` appear across 6 files. Each occurrence independently types the same word. A typo in any one silently falls through to the wrong branch of a `case` statement.
+But naming isn't the only thing models carry that doesn't belong to them. `Account` has 25 lines of search assembly. `Task::List` has 17 lines of stats computation. Neither model needs to know how to assemble those results.
 
-Branch `6C-task-status` canonicalizes the vocabulary. `Task::COMPLETED` and `Task::INCOMPLETE` give those values a home. No new files, no new classes — two constants and a method. Family 6's naming principle applies at every scale: POROs for authorization and cryptography, constants for scattered string literals. ✌️
+Branch `6D-query-objects` extracts two query objects. `Account::Search` assembles search results. `Task::List::Stats` computes 9 statistics from 7 queries. Each AR model drops to ~35 lines and a one-line delegation. ✌️
 
 ---
 
 ## 🏛️ Thesis checkpoint
 
-Cryptographic identity extracted into a PORO — Principle 4 applied at the security boundary. The token generation, validation, and rotation logic lives in one object instead of scattered across controllers and models. Principle 8 ensures every security decision is traceable to its source.
+Constants that name state transitions — Principle 4 at its simplest. No state machine gem. Just Ruby constants that make implicit status logic explicit. Principle 1 holds: the tests assert on HTTP responses carrying status values, not on how those values are defined internally. The flat Rubycritic score proves what static analysis can and cannot see: it cannot distinguish a magic string from a typed constant. The value is not in reduced complexity — it is in changing silent fall-throughs into loud `NameError`s.
 
 ---
 
 ## 🤖 The agent's view
 
-Before 6B, an agent modifying the hashing algorithm must load `user/token.rb` — 55 lines mixing persistence and crypto. The agent processes noise to reach the signal. After 6B, crypto lives in `user/token/secret.rb` — 47 lines doing one thing. The file name is a roadmap: an agent that sees `Secret` knows it will find cryptographic operations, not database callbacks.
+Before 6C, renaming the status vocabulary — changing `"completed"` to `"done"` — means finding ~19 string literals across 6 files. Grepping for a common English word is noisy. Missing one produces a silent bug. After 6C, the agent changes two constants in `task.rb`. Every reference is a constant lookup, so missing one produces a `NameError` — visible, loud, caught by any test run.
 
-The trade-off is file count — two files instead of one. But the hop is one level deep, and the naming clarity pays for it immediately. An agent working on authentication never touches persistence. An agent working on token storage never touches cryptography.
+The `Task::Item#status` method eliminates inline derivation. Before 6C, a view displayed `@task_item.completed? ? "completed" : "incomplete"`. After 6C, `@task_item.status` is a method call the agent follows to one definition.
 
 ---
 
@@ -245,8 +201,8 @@ The trade-off is file count — two files instead of one. But the hop is one lev
 Prerequisites: [mise](https://mise.jdx.dev/) (manages Ruby, Node, Mailpit)
 
 ```sh
-git clone git@github.com:railswhey/app.git -b 6B-token-secret 6B-token-secret
-cd 6B-token-secret
+git clone git@github.com:railswhey/app.git -b 6C-task-status 6C-task-status
+cd 6C-task-status
 mise install                 # Ruby 4.0.1 + Node 22 + Mailpit 1.29.2
 bin/setup                    # bundle install, db:prepare, starts dev server
 ```
