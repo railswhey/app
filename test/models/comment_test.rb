@@ -41,7 +41,7 @@ class Task::CommentTest < ActiveSupport::TestCase
     assert comments.any?
   end
 
-  test "for_account returns comments belonging to the account and excludes others" do
+  test "search_comments returns comments belonging to the account and excludes others" do
     account_one = accounts(:one)
     account_two = accounts(:two)
 
@@ -57,7 +57,7 @@ class Task::CommentTest < ActiveSupport::TestCase
     comment_other_item = item_two.comments.create!(body: "other account item", user: users(:two))
     comment_other_list = list_two.comments.create!(body: "other account list", user: users(:two))
 
-    result = Task::Comment.for_account(account_one.id)
+    result = account_one.search_comments("on")
 
     assert result.exists?(id: comment_on_item.id),  "should include item comment from account one"
     assert result.exists?(id: comment_on_list.id),  "should include list comment from account one"

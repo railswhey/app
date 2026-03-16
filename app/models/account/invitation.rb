@@ -21,16 +21,14 @@ class Account::Invitation < ApplicationRecord
   def pending?  = accepted_at.nil?
 
   def acceptable_by?(user)
-    pending? && !account.memberships.exists?(user: user)
+    pending? && !account.member?(user)
   end
 
   def accept!(user)
     return false if accepted?
 
     transaction do
-      account.memberships.find_or_create_by!(user: user) do |m|
-        m.role = :collaborator
-      end
+      account.add_member(user, role: :collaborator)
       update_column(:accepted_at, Time.current)
 
       User::Notification.create!(

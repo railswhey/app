@@ -23,6 +23,16 @@ class Account < ApplicationRecord
     memberships.owner_or_admin.exists?(user: user)
   end
 
+  def member?(user)
+    memberships.exists?(user: user)
+  end
+
+  def add_member(user, role:)
+    memberships.find_or_create_by!(user: user) do |m|
+      m.role = role
+    end
+  end
+
   def search(query)
     query = query.to_s.strip
 
@@ -31,11 +41,22 @@ class Account < ApplicationRecord
     end
 
     SearchResults.new(
-      task_items: Task::Item.joins(:task_list).where(task_lists: { account_id: id })
-                    .search(query).includes(:task_list).order(created_at: :desc).limit(20),
+      task_items: Task::Item.for_account(id).search(query)
+                    .includes(:task_list).order(created_at: :desc).limit(20),
       task_lists: task_lists.search(query).limit(10),
-      comments:   Task::Comment.for_account(id).search(query)
-                    .includes(:user, :commentable).order(created_at: :desc).limit(10)
+      comments:   search_comments(query)
     )
+  end
+
+  def search_comments(query)
+    task_item_ids = Task::Item.for_account(id).ids
+    task_list_ids = task_lists.ids
+
+    Task::Comment.where(
+      "(commentable_type = 'Task::Item' AND commentable_id IN (?)) OR " \
+      "(commentable_type = 'Task::List' AND commentable_id IN (?))",
+      task_item_ids.presence || [ 0 ],
+      task_list_ids.presence || [ 0 ]
+    ).search(query).includes(:user, :commentable).order(created_at: :desc).limit(10)
   end
 end

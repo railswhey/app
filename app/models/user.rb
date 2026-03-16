@@ -48,7 +48,7 @@ class User < ApplicationRecord
       personal: true
     )
 
-    account.memberships.create!(user: self, role: :owner)
+    account.add_member(self, role: :owner)
 
     account.task_lists.inbox.create!
 

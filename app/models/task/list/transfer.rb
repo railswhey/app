@@ -31,7 +31,7 @@ class Task::List::Transfer < ApplicationRecord
 
   def accept!(user)
     return false unless pending?
-    return false unless to_account.memberships.owner_or_admin.exists?(user: user)
+    return false unless to_account.owner_or_admin?(user)
 
     transaction do
       task_list.update!(account_id: to_account_id)
@@ -52,7 +52,7 @@ class Task::List::Transfer < ApplicationRecord
 
   def reject!(user)
     return false unless pending?
-    return false unless to_account.memberships.owner_or_admin.exists?(user: user)
+    return false unless to_account.owner_or_admin?(user)
 
     transaction do
       update!(status: :rejected)

@@ -14,15 +14,15 @@
   <img src="/docs/assets/logo.png" alt="Rails Whey App" width="180" height="180">
 </p>
 
-A full-stack task management app built with Ruby on Rails. This branch unifies the vocabulary between controllers and models. After 5A and 5B pushed business logic into models, those models still used flat scaffold names — `TaskList`, `Invitation`, `TaskListTransfer`. Controllers already spoke `Task::List::`, `Account::`, `Task::List::Transfer`. 5C closes the gap: 8 models renamed, 4 tables migrated, the stack speaks one language from routes to models.
+A full-stack task management app built with Ruby on Rails. This branch applies Tell Don't Ask — moving logic to the model that owns the data it touches. Callers still reached through Account's associations when the model already had the methods. Six moves fix this: three use existing methods, two consolidate duplicates, one relocates a misplaced query. Net change: +8 lines.
 
 | | |
 |---|---|
-| **Branch** | `5C-unified-vocabulary` |
+| **Branch** | `5D-model-authority` |
 | **Ruby** | 4.0 |
 | **Rails** | 8.1 |
-| **Rubycritic** | 91.18 |
-| **LOC** | 1641 |
+| **Rubycritic** | 91.21 |
+| **LOC** | 1646 |
 
 **Table of contents:**
 
@@ -30,7 +30,6 @@ A full-stack task management app built with Ruby on Rails. This branch unifies t
 - [📊 The numbers](#-the-numbers)
 - [🤔 The problem](#-the-problem)
 - [🔬 The evidence](#-the-evidence)
-- [🔧 The table name strategy](#-the-table-name-strategy)
 - [➡️ What comes next](#️-what-comes-next)
 - [🏛️ Thesis checkpoint](#️-thesis-checkpoint)
 - [🤖 The agent's view](#-the-agents-view)
@@ -42,161 +41,160 @@ A full-stack task management app built with Ruby on Rails. This branch unifies t
 
 ## 🎯 The concept
 
-> **One rule:** the model's name should match the controller's namespace.
+> **One rule:** ask the model that owns the data; don't reach through its associations.
 
-The stack speaks two dialects. Controllers say `Task::List::TransfersController`. Models say `TaskListTransfer`. A developer tracing a bug from controller to database must mentally translate every reference — invisible friction that compounds with every lookup.
+Imagine bypassing a department head to instruct their team directly. That's what callers were doing — chaining through Account's associations instead of asking Account. `Transfer#accept!` queried `to_account.memberships.owner_or_admin.exists?(...)` when `Account#owner_or_admin?` already answered that question. The code was already written. It was just in the wrong place.
 
-This branch aligns the two. `TaskList` becomes `Task::List`. `Invitation` becomes `Account::Invitation`. `TaskListTransfer` becomes `Task::List::Transfer`. Eight models renamed, four tables migrated, zero behavioral changes.
-
-Two models stay flat: `User` and `Account`. They are top-level domain roots — the namespaces themselves, not members of someone else's namespace.
+Six moves, three diagnostic patterns. No new files, no new abstractions.
 
 ---
 
 ## 📊 The numbers
 
-| | Before (5B) | After (5C) |
+| | Before (5C) | After (5D) |
 |---|---|---|
-| Models with flat names | 8 | 0 |
-| Models namespaced | 0 | 8 |
-| Table rename migrations | — | 4 |
-| Files with updated references | — | ~60 |
+| New methods on Account | — | 3 (`member?`, `add_member`, `search_comments`) |
+| Methods removed from other models | — | 1 (`Task::Comment.for_account`) |
+| Existing methods used instead of bypass | — | 3 |
+| Files changed | — | 10 |
 | Behavioral test changes | — | 0 |
-| Rubycritic | 91.23 | 91.18 |
+| Rubycritic | 91.18 | 91.21 |
 
-~60 files touched for zero behavioral change. The score dipped −0.05 points — structural renames don't move quality needles. The value is elsewhere: a `grep` for `Task::List` now finds controllers, views, and models in the same search.
+Account grew by three methods and 20 lines. The rest lost 12. Net: +8 lines. The numbers are small because the code was already written — it was just sitting in the wrong place.
+
+The growth direction matters. Account now carries five domain-query methods (`owner_or_admin?`, `search`, `member?`, `add_member`, `search_comments`). Five is manageable. But strict Tell Don't Ask creates gravitational pull: if every question about an account must pass through the Account class, it drifts toward a clearinghouse — 80 methods obscuring its identity as a tenant. The line between "owns this logic" and "should delegate this logic" is the next pressure point.
 
 ---
 
 ## 🤔 The problem
 
-After 5A and 5B, models carry real weight. `Task::List` has a `Stats` value object, scopes, callbacks, and validations. `Account::Invitation` has lifecycle callbacks and a token-based accept flow. These are domain objects with behavior — living at the wrong address.
+After 5C, models carry real weight — stats, scopes, predicates, callbacks. But callers still bypass them.
 
-The gap exists because `rails generate model TaskList` creates `app/models/task_list.rb` with `class TaskList`. When controllers gained namespaces in Family 3, models stayed behind. Nobody goes back to rename a working model. A 10-line model with a flat name is a minor inconsistency. A 50-line model with stats, scopes, and callbacks — still named `TaskList` while its controller says `Task::List` — is a vocabulary failure.
+Rails makes this easy. `to_account.memberships.owner_or_admin.exists?(user: user)` reads like plain English. It works, tests pass, the feature ships. Nobody notices because the caller gets the right answer. But the logic lives in the caller instead of the model that owns the data. When membership rules change, every caller that reached through must be found and updated independently.
 
-Two common mistakes when deciding what to namespace:
+The locally convenient choice is the globally expensive one.
 
-- **Assuming namespace conflicts where none exist.** `User::Notification` (model) and `Web::User::Notification::InboxController` (controller) are different Ruby constants. No conflict.
-- **Treating polymorphic models as cross-domain.** `Comment` is polymorphic, but both commentable types belong to `Task::`. Polymorphic means flexible association, not that the model belongs everywhere. `Task::Comment` is the honest name.
+```mermaid
+flowchart LR
+  D["Developer thinks:<br/>'I need to check if this user<br/>is an admin of the target account'"]
+  D -->|"Convenient"| A["Chain the association<br/>to_account.memberships<br/>.owner_or_admin.exists?(...)"]
+  D -->|"Correct"| B["Ask the model<br/>to_account<br/>.owner_or_admin?(user)"]
+
+  A -->|"Rules change"| C["Hunt every caller"]
+  B -->|"Rules change"| E["Edit one method"]
+
+  style A fill:#fde8e8
+  style B fill:#e8fde8
+  style C fill:#fde8e8
+  style E fill:#e8fde8
+```
+
+Five callers across four files bypassed Account's interface. Six moves fix all of them.
 
 ---
 
 ## 🔬 The evidence
 
-**The move map:**
+**Pattern 1: Use the method that already exists**
 
-| Before | After | File |
-|---|---|---|
-| `TaskList` | `Task::List` | `app/models/task/list.rb` |
-| `TaskItem` | `Task::Item` | `app/models/task/item.rb` |
-| `Comment` | `Task::Comment` | `app/models/task/comment.rb` |
-| `TaskListTransfer` | `Task::List::Transfer` | `app/models/task/list/transfer.rb` |
-| `UserToken` | `User::Token` | `app/models/user/token.rb` |
-| `Notification` | `User::Notification` | `app/models/user/notification.rb` |
-| `Invitation` | `Account::Invitation` | `app/models/account/invitation.rb` |
-| `Membership` | `Account::Membership` | `app/models/account/membership.rb` |
-
-**Table renames:**
-
-| Before | After |
-|---|---|
-| `comments` | `task_comments` |
-| `notifications` | `user_notifications` |
-| `invitations` | `account_invitations` |
-| `memberships` | `account_memberships` |
-
-Tables that already matched (`task_lists`, `task_items`, `user_tokens`, `task_list_transfers`) needed no migration. Polymorphic `commentable_type` columns required data migration to update stored class names (`"TaskItem"` → `"Task::Item"`).
-
-**The namespace module pattern:**
+Signal: a caller chains through an association to produce an answer a model method already provides.
 
 ```ruby
-# app/models/task.rb — pure namespace module
-module Task
-  def self.table_name_prefix = "task_"
+# Before — Transfer and views reach through the association
+to_account.memberships.owner_or_admin.exists?(user: user)
+
+# After — ask the model
+to_account.owner_or_admin?(user)
+```
+
+Same fix in views — `Current.account.owner_or_admin?(Current.user)` replaces raw membership queries in ERB. Same fix in `Account#search` — `Task::Item.for_account(id)` replaces a manual join.
+
+**Pattern 2: Consolidate duplicate operations on the owning model**
+
+Signal: multiple callers perform the same mutation with different idioms.
+
+```ruby
+# Before — Invitation uses find_or_create_by!, User uses create!
+account.memberships.find_or_create_by!(user: user) { |m| m.role = :collaborator }
+account.memberships.create!(user: self, role: :owner)
+
+# After — both tell Account
+account.add_member(user, role: :collaborator)
+account.add_member(self, role: :owner)
+```
+
+`Account#member?` absorbs the membership existence check the same way — `Invitation#acceptable_by?` asks `account.member?(user)` instead of reaching into `account.memberships.exists?`.
+
+**Pattern 3: Relocate the query to the model that owns the data**
+
+Signal: a method's name contains another model's name, or it queries tables it doesn't own.
+
+```ruby
+# Before — Task::Comment queries Account's tables
+def self.for_account(account_id)
+  task_item_ids = Task::Item.joins(:task_list).where(task_lists: { account_id: }).ids
+  task_list_ids = Task::List.where(account_id:).ids
+  where(...)
 end
 
-# app/models/task/list.rb — carries 5A's stats and 5B's callbacks
-class Task::List < ApplicationRecord
-  belongs_to :account
-  has_many :task_items, class_name: "Task::Item", foreign_key: :task_list_id, dependent: :destroy
-  has_many :comments, as: :commentable, class_name: "Task::Comment", dependent: :destroy
-
-  Stats = Data.define(:total, :done, :pending, :pct, :assigned, :comments_count,
-                      :last_activity, :preview_items, :list_comments)
+# After — Account queries its own tables
+def search_comments(query)
+  task_item_ids = Task::Item.for_account(id).ids
+  task_list_ids = task_lists.ids
+  Task::Comment.where(...).search(query).includes(:user, :commentable)
+    .order(created_at: :desc).limit(10)
 end
 ```
 
+The method moved to Account because Account owns `task_lists`. The name lost the foreign prefix: `for_account` → `search_comments`.
+
 ```mermaid
-flowchart LR
-  subgraph Before["5B: two dialects"]
-    C1["Task::List::TransfersController"]
-    M1["TaskListTransfer"]
-    C2["Account::InvitationsController"]
-    M2["Invitation"]
+flowchart TD
+  subgraph Before["5C: callers bypass Account"]
+    T["Transfer#accept!<br/>to_account.memberships..."]
+    I["Invitation#accept!<br/>account.memberships..."]
+    U["User#after_create<br/>account.memberships..."]
+    TC["Task::Comment.for_account<br/>queries Account's tables"]
+    V["Views<br/>raw membership queries"]
   end
 
-  subgraph After["5C: one language"]
-    C3["Task::List::TransfersController"]
-    M3["Task::List::Transfer"]
-    C4["Account::InvitationsController"]
-    M4["Account::Invitation"]
+  subgraph After["5D: callers tell Account"]
+    A["Account<br/>owner_or_admin?(user)<br/>member?(user)<br/>add_member(user, role:)<br/>search_comments(query)"]
   end
 
-  C1 -.->|"translates to"| M1
-  C3 -->|"matches"| M3
-  C2 -.->|"translates to"| M2
-  C4 -->|"matches"| M4
+  T -->|"now calls"| A
+  I -->|"now calls"| A
+  U -->|"now calls"| A
+  TC -->|"absorbed into"| A
+  V -->|"now calls"| A
 
   style Before fill:#fde8e8
   style After fill:#e8fde8
 ```
 
-Dashed arrows are lookups across naming conventions. Solid arrows are direct matches.
-
----
-
-## 🔧 The table name strategy
-
-Rails derives table names differently depending on the namespace type:
-
-```mermaid
-flowchart TD
-  N{"Namespace type?"}
-  N -->|"Module<br/>(Task)"| P["table_name_prefix<br/>Define once → all children auto-derive<br/>Task::List → task_lists"]
-  N -->|"AR class<br/>(User, Account)"| C["compute_table_name<br/>Rails derives from parent automatically<br/>User::Token → user_tokens"]
-  N -->|"Multi-level<br/>(Task::List::Transfer)"| M["Module prefix + class derivation<br/>task_ + list_ + transfers → task_list_transfers"]
-
-  style P fill:#e8fde8
-  style C fill:#e8f4fd
-  style M fill:#fff3cd
-```
-
-**`table_name_prefix` is the systemic cure.** Without it, every model inside `Task::` needs its own `self.table_name` declaration. A new `Task::Label` model would silently look for a `labels` table instead of `task_labels` — a cryptic failure, not a helpful error. The module-level prefix eliminates the human memory component: define it once, every nested model auto-derives.
-
-The only explicit `foreign_key` needed is on `Task::List`'s `has_many :task_items` — Rails demodulizes `Task::List` to `List` and derives `list_id` instead of `task_list_id`.
-
 ---
 
 ## ➡️ What comes next
 
-The stack speaks one language. But vocabulary alignment doesn't fix who owns the logic. Callers still reach through `Account`'s associations to check authorization and create memberships. `Task::List::Transfer#accept!` calls `to_account.memberships.owner_or_admin.exists?(user: user)` when `Account#owner_or_admin?` already answers that.
+Models own their logic. But `Current` — a framework utility meant to hold request-scoped state — still does domain work. Its `member!` method spans 40+ lines of SQL: LEFT JOINs, dynamic conditions, token checksums. That's not shared state. It's authorization logic that resolves a user into a scoped member — a domain concept with no name and no class.
 
-Branch `5D-model-authority` applies Tell Don't Ask: move logic to the model that owns the data. Six moves, three patterns — no new files, no new abstractions. Just code moving to where it belongs. ✌️
+Branch `6A-member-object` introduces `Account::Member` — the first PORO in the arc. The SQL moves to `Account::Member::Authorization`. `Current` shrinks from 82 to ~20 lines. The public interface doesn't change — `Current.user`, `Current.account`, `Current.task_list` all continue to work. The concept hiding inside infrastructure gets a class, a name, and a home. ✌️
 
 ---
 
 ## 🏛️ Thesis checkpoint
 
-Naming is design. One word for one concept — Principle 4 at the semantic level. The vocabulary unification uses nothing but standard Rails conventions: modules, `table_name_prefix`, namespaced models. The `table_name_prefix` on the `Task` module teaches the framework to read the new vocabulary instead of fighting its conventions. The `set_fixture_class` overrides for class-based namespaces (`Account::`, `User::`) are the compounding friction that remains — a trade-off that scales poorly as models accumulate.
+This branch completes the behavioral migration. Controllers are thin HTTP translators. Models own business logic, authorization, and state transitions — the Rails Way answer to service objects, Principle 4 at its most demanding.
+
+But Tell Don't Ask is about the conversation between objects, not physical location. As the application scales, `Account#search_comments` can become a one-line delegation to a `CommentQuery` — the model stays a semantic router, the query logic lives in a focused, testable class. Separating interface from implementation prevents Tell Don't Ask from creating the fat model problem it was meant to solve.
 
 ---
 
 ## 🤖 The agent's view
 
-5C eliminates the translation step. Before, an agent seeing `Task::List::TransfersController` had to know it maps to `TaskListTransfer` at `app/models/task_list_transfer.rb` — a lookup across two naming conventions. After, the namespace is the file path: `task/list/transfer.rb`. One language from routes to models.
+Before 5D, changing membership rules meant editing six locations across five files — and two search strategies to find them all (one `grep` for the method name, another for the raw association chain). After 5D: one file. Callers delegate, so they follow automatically.
 
-Search precision improves too. Before 5C, `TaskList` found model code; `Task::List` found controller code. An agent building a mental map searched twice. After 5C, `Task::List` finds everything — model, controller, view, route. One search, complete results.
-
-The `set_fixture_class` mapping in `test_helper.rb` remains a friction point for class-based namespaces (`Account::`, `User::`). Module namespaces (`Task::`) avoid it via `table_name_prefix`. A future model added to `Account::` needs a manual fixture entry — the agent won't know that unless it reads `test_helper.rb` proactively.
+The fat model risk matters for agents too. An LLM loading a 2000-line model to find one method burns context on noise. At five methods, Account is clean. At eighty, the signal drowns. Delegating queries to focused objects keeps the token cost of understanding any single operation low.
 
 ---
 
@@ -205,8 +203,8 @@ The `set_fixture_class` mapping in `test_helper.rb` remains a friction point for
 Prerequisites: [mise](https://mise.jdx.dev/) (manages Ruby, Node, Mailpit)
 
 ```sh
-git clone git@github.com:railswhey/app.git -b 5C-unified-vocabulary 5C-unified-vocabulary
-cd 5C-unified-vocabulary
+git clone git@github.com:railswhey/app.git -b 5D-model-authority 5D-model-authority
+cd 5D-model-authority
 mise install                 # Ruby 4.0.1 + Node 22 + Mailpit 1.29.2
 bin/setup                    # bundle install, db:prepare, starts dev server
 ```

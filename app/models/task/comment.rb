@@ -11,19 +11,6 @@ class Task::Comment < ApplicationRecord
   scope :chronological, -> { order(created_at: :asc) }
   scope :search, ->(q) { where("body LIKE ?", "%#{q}%") }
 
-  # Returns comments visible to a given account (across both commentable types).
-  def self.for_account(account_id)
-    task_item_ids = Task::Item.joins(:task_list).where(task_lists: { account_id: }).ids
-    task_list_ids = Task::List.where(account_id:).ids
-
-    where(
-      "(commentable_type = 'Task::Item' AND commentable_id IN (?)) OR " \
-      "(commentable_type = 'Task::List' AND commentable_id IN (?))",
-      task_item_ids.presence || [ 0 ],
-      task_list_ids.presence || [ 0 ]
-    )
-  end
-
   def authored_by?(user)
     user_id == user.id
   end

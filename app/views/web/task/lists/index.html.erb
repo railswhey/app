@@ -37,7 +37,7 @@
               <option value="items">👁 View items</option>
               <option value="edit">✏️ Edit</option>
               <% unless task_list.inbox? %>
-                <% if Current.account.memberships.owner_or_admin.exists?(user: Current.user) %>
+                <% if Current.account.owner_or_admin?(Current.user) %>
                   <option value="transfer">↗️ Transfer</option>
                 <% end %>
                 <option value="delete">🗑️ Delete</option>

@@ -37,7 +37,7 @@
 </div>
 
 <% if @transfer.pending? %>
-  <% if Current.user && @transfer.to_account.memberships.owner_or_admin.exists?(user: Current.user) %>
+  <% if Current.user && @transfer.to_account.owner_or_admin?(Current.user) %>
     <div class="action-group" style="max-width: 480px; margin-top: 1rem;">
       <%= link_to "✅ Accept Transfer",
             account_transfers_response_path(token: @transfer.token, action_type: "accept"),

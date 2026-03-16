@@ -10,7 +10,7 @@ demo.password_confirmation = "123123123"
 demo.save!
 
 account = demo.account
-inbox = account.task_lists.inbox.first
+inbox = account.inbox
 
 puts "  ✅ User: bob@email.com / 123123123 (username: bob)"
 
@@ -119,7 +119,7 @@ puts "  📥 Inbox: #{inbox.task_items.count} items"
 
 # ── Alice's task list ─────────────────────────────────────────────────────────
 alice_account = alice.account
-alice_inbox = alice_account.task_lists.inbox.first
+alice_inbox = alice_account.inbox
 
 [ "Read chapter 5", "Reply to recruiter", "Grocery run" ].each do |name|
   alice_inbox.task_items.find_or_create_by!(name:)

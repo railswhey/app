@@ -44,7 +44,7 @@ class Web::Task::ListsController < Web::BaseController
   def destroy
     @task_list.destroy!
 
-    inbox = Current.account.task_lists.inbox.first
+    inbox = Current.account.inbox
     self.current_task_list_id = inbox&.id
 
     redirect_to task_list_items_path(inbox), notice: "Task list was successfully destroyed."
