@@ -15,9 +15,7 @@ class Account < ApplicationRecord
   validates :name, presence: true
   validates :uuid, presence: true, format: /\A[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\z/
 
-  normalizes :name, with: -> { _1.strip }
-
-  SearchResults = Data.define(:task_items, :task_lists, :comments)
+  normalizes :name, with: -> { it.strip }
 
   def owner_or_admin?(user)
     memberships.owner_or_admin.exists?(user: user)
@@ -28,35 +26,10 @@ class Account < ApplicationRecord
   end
 
   def add_member(user, role:)
-    memberships.find_or_create_by!(user: user) do |m|
-      m.role = role
-    end
+    memberships.find_or_create_by!(user: user) { it.role = role }
   end
 
   def search(query)
-    query = query.to_s.strip
-
-    if query.length < 2
-      return SearchResults.new(task_items: Task::Item.none, task_lists: Task::List.none, comments: Task::Comment.none)
-    end
-
-    SearchResults.new(
-      task_items: Task::Item.for_account(id).search(query)
-                    .includes(:task_list).order(created_at: :desc).limit(20),
-      task_lists: task_lists.search(query).limit(10),
-      comments:   search_comments(query)
-    )
-  end
-
-  def search_comments(query)
-    task_item_ids = Task::Item.for_account(id).ids
-    task_list_ids = task_lists.ids
-
-    Task::Comment.where(
-      "(commentable_type = 'Task::Item' AND commentable_id IN (?)) OR " \
-      "(commentable_type = 'Task::List' AND commentable_id IN (?))",
-      task_item_ids.presence || [ 0 ],
-      task_list_ids.presence || [ 0 ]
-    ).search(query).includes(:user, :commentable).order(created_at: :desc).limit(10)
+    Account::Search.new(self).with(query.to_s.strip)
   end
 end

@@ -14,15 +14,15 @@
   <img src="/docs/assets/logo.png" alt="Rails Whey App" width="180" height="180">
 </p>
 
-A full-stack task management app built with Ruby on Rails. This branch names the task status vocabulary. `"completed"` and `"incomplete"` were typed ~19 times across 6 files — magic strings with nothing connecting them. `Task::COMPLETED` and `Task::INCOMPLETE` give those values one canonical home. A `Task::Item#status` method puts the boolean-to-string translation in one place.
+A full-stack task management app built with Ruby on Rails. This branch extracts two query objects — `Account::Search` and `Task::List::Stats` — from models where computed query logic had grown to dominate the host. Each AR model sheds the computation into a plain Ruby object and keeps a one-line delegation. Account drops from 58 to 35 lines, `Task::List` from 50 to 35.
 
 | | |
 |---|---|
-| **Branch** | `6C-task-status` |
+| **Branch** | `6D-query-objects` |
 | **Ruby** | 4.0 |
 | **Rails** | 8.1 |
-| **Rubycritic** | 91.45 |
-| **LOC** | 1717 |
+| **Rubycritic** | 91.58 |
+| **LOC** | 1735 |
 
 **Table of contents:**
 
@@ -41,158 +41,217 @@ A full-stack task management app built with Ruby on Rails. This branch names the
 
 ## 🎯 The concept
 
-> **One rule:** if the code speaks a word in multiple places, give it one canonical home.
+> **One rule:** when a computation outgrows its host model, give the computation its own object.
 
-Not every domain concept that needs a name needs a class. `Task::COMPLETED` and `Task::INCOMPLETE` replace ~19 scattered string literals across model scopes, a helper, a controller, and views. A `Task::Item#status` method puts the boolean-to-string translation in one place.
+6A–6C named domain concepts — authorization became `Account::Member`, cryptographic identity became `User::Token::Secret`, task status became `Task::COMPLETED` / `Task::INCOMPLETE`. Each gave a *thing* its own name. 6D names a different kind of thing: a *responsibility*. The query logic isn't missing a name — it's missing a home.
 
-The code already spoke these words — `scope :completed`, `completed?`, `incomplete?`. The constants don't invent anything. They anchor what was already there, so a typo becomes a `NameError` instead of a silent fall-through.
+`Account::Search` assembles search results across task items, task lists, and comments. `Task::List::Stats` computes 9 statistics from 7 queries. Both are plain Ruby classes that take a model, assemble data from its relations, and return a typed `Data.define` result.
 
-```mermaid
-flowchart TD
-  subgraph Before["6B: ~19 scattered string literals"]
-    M["Model scopes<br/>'completed' / 'incomplete'"]
-    H["Helper<br/>'completed' / 'incomplete'"]
-    C["Controller<br/>'completed' / 'incomplete'"]
-    V["Views<br/>'completed' / 'incomplete'"]
-  end
-
-  subgraph After["6C: 2 constants, ~19 references"]
-    TC["Task::COMPLETED<br/>Task::INCOMPLETE"]
-    M2["Model scopes → Task::COMPLETED"]
-    H2["Helper → Task::COMPLETED"]
-    C2["Controller → Task::COMPLETED"]
-    V2["Views → Task::COMPLETED / @task_item.status"]
-  end
-
-  TC --> M2
-  TC --> H2
-  TC --> C2
-  TC --> V2
-
-  style Before fill:#fde8e8
-  style After fill:#e8fde8
-  style TC fill:#e8f4fd
-```
-
-This is the third naming extraction in Family 6. `Account::Member` named authorization (PORO). `User::Token::Secret` named cryptographic identity (PORO). `Task::COMPLETED` / `Task::INCOMPLETE` names completion status (constants). The tool matches the concept's weight: classes for behavior, constants for vocabulary.
+The AR models keep the public API. `account.search(query)` and `list.stats` still work — each delegates to its query object in a single line. Controllers, views, and tests don't change. The computation moved; the interface didn't.
 
 ---
 
 ## 📊 The numbers
 
-| | Before (6B) | After (6C) |
+| | Before (6C) | After (6D) |
 |---|---|---|
-| Constants added to `Task` | 0 | 2 |
-| Methods added to `Task::Item` | — | 1 (`status`) |
-| String literals replaced | — | ~19 |
-| New files | — | 0 |
-| Modified files | — | 6 |
+| Lines in Account | 58 | 35 |
+| Lines in Task::List | 50 | 35 |
+| Lines in Account::Search | — | 40 |
+| Lines in Task::List::Stats | — | 34 |
+| New files | — | 2 |
 | Behavioral test changes | — | 0 |
-| Rubycritic | 91.46 | 91.45 |
+| Rubycritic | 91.45 | 91.58 |
 
-Rubycritic holds at -0.01. Static analysis sees a string literal and a constant reference as identical complexity — both are one token, one comparison. But a developer sees the difference between a typo that silently falls through and a `NameError` that stops the build. The structural complexity is identical; the semantic clarity is night and day.
+Total LOC grew slightly — compressed inline code expanded into properly structured classes with private helpers and `Data` return types. Rubycritic ticked up +0.13 because smaller, focused classes score better on per-file complexity.
 
 ---
 
 ## 🤔 The problem
 
-The strings `"completed"` and `"incomplete"` appeared ~19 times across 6 files. Each occurrence was an independent decision to type the same word — the string equivalent of magic numbers. A typo in any one — `"complted"` in a helper, `"imcomplete"` in a view — silently falls through to the `else` branch of a `case` statement.
+Two models carried computed query logic that dominated their host.
 
-The sprawl happened organically. The status started as scope names: `scope :completed`. Then filtering needed it as a URL parameter. Then the helper needed it for link generation. Then the view for tab highlighting. Then the controller for redirect logic. Each addition was local and small. Nobody noticed because every layer had its own reason to use the word, and the string always worked.
+Account was 58 lines — 25 were search: a `SearchResults` data class, 3-model assembly, polymorphic comment scoping. Task::List was 50 lines — 17 were stats: a `Stats` data class with 9 fields, 7 queries. In both cases, the remaining ~33 lines were the model's actual identity — associations, validations, scopes.
+
+Neither model needs to know how to assemble cross-model search results or compute derived statistics. Those are responsibilities *performed on* the model's data, not properties *of* the model.
 
 ```mermaid
 flowchart LR
-  S["scope :completed<br/>scope :incomplete"] -->|"+ filtering"| F["params[:filter]<br/>'completed'"]
-  F -->|"+ links"| H["helper<br/>filter: 'completed'"]
-  H -->|"+ tabs"| V["view<br/>@filter == 'completed'"]
-  V -->|"+ redirects"| C["controller<br/>when 'completed'"]
+  S1["Single method<br/>on the model"] -->|"+ data class"| S2["Results shape<br/>+ private helpers"]
+  S2 -->|"+ more queries"| S3["Half the file<br/>is computation"]
 
-  style S fill:#e8fde8
-  style F fill:#fff3cd
-  style H fill:#fff3cd
-  style V fill:#fde8e8
-  style C fill:#fde8e8
+  style S1 fill:#e8fde8
+  style S2 fill:#fff3cd
+  style S3 fill:#fde8e8
 ```
+
+Each started as a single method on the model that owns the data — `account.search(query)` was the natural starting point, `list.stats` was the natural place. Then each grew. Each addition was small and local. But the accumulation shifted each model's center of gravity from what it *is* to what it *computes*. The model was doing two jobs, and the second job was winning.
+
+This is the same gravitational pull that put authorization in Current (fixed by 6A) and crypto in User::Token (fixed by 6B). The data lives inside a model, so any code that uses that data gravitates there — path of least resistance.
 
 ---
 
 ## 🔬 The evidence
 
-**Pattern 1: Constants replace scattered strings**
+**Pattern 1: Account sheds search**
 
-The `Task` module gains two constants:
+Account after extraction — 35 lines, one-line delegation:
 
 ```ruby
-module Task
-  COMPLETED  = "completed"
-  INCOMPLETE = "incomplete"
+class Account < ApplicationRecord
+  # ... associations, validations, membership methods ...
+
+  def search(query)
+    Account::Search.new(self).with(query.to_s.strip)
+  end
 end
 ```
 
-Every `case` statement, link helper, and view that used raw strings now references the constant:
+The query object — 40 lines, owns the Results data class and the polymorphic comment scoping:
 
 ```ruby
-# Before — magic strings
-scope :filter_by, ->(value) {
-  case value
-  when "completed"  then completed.order(completed_at: :desc)
-  when "incomplete" then incomplete.order(created_at: :desc)
-  else order(Arel.sql("..."))
+class Account::Search
+  Results = Data.define(:task_items, :task_lists, :comments)
+
+  attr_reader :account
+
+  def initialize(account)
+    @account = account
   end
-}
 
-# After — constants
-scope :filter_by, ->(value) {
-  case value
-  when Task::COMPLETED  then completed.order(completed_at: :desc)
-  when Task::INCOMPLETE then incomplete.order(created_at: :desc)
-  else order(Arel.sql("..."))
+  def empty
+    Results.new(task_items: Task::Item.none, task_lists: Task::List.none, comments: Task::Comment.none)
   end
-}
-```
 
-The same pattern applies across all six modified files: helper link generation, controller redirect logic, view filter tabs, and empty-state messages all reference `Task::COMPLETED` and `Task::INCOMPLETE` instead of raw strings.
+  def with(query)
+    return empty if query.size <= 1
 
-**Pattern 2: Status gets a method**
+    Results.new(
+      task_items: task_items.search(query).includes(:task_list).order(created_at: :desc).limit(20),
+      task_lists: task_lists.search(query).limit(10),
+      comments:   comments(query)
+    )
+  end
 
-```ruby
-# Before — inline derivation in the view
-<%= @task_item.completed? ? "completed" : "incomplete" %>
+  private
 
-# After — named method on the model
-<%= @task_item.status %>
+  def task_lists = account.task_lists
+  def task_items = Task::Item.for_account(account.id)
 
-# Task::Item
-def status
-  completed? ? Task::COMPLETED : Task::INCOMPLETE
+  def comments(query)
+    Task::Comment.where(
+      "(commentable_type = 'Task::Item' AND commentable_id IN (?)) OR " \
+      "(commentable_type = 'Task::List' AND commentable_id IN (?))",
+      task_items.ids.presence || [0],
+      task_lists.ids.presence || [0]
+    ).search(query).includes(:user, :commentable).order(created_at: :desc).limit(10)
+  end
 end
 ```
 
-The boolean-to-string translation moves from the view to the model. One definition, one place to change.
+**Pattern 2: Task::List sheds stats**
+
+Task::List after extraction — 35 lines, one-line delegation:
+
+```ruby
+class Task::List < ApplicationRecord
+  # ... associations, scopes, validations ...
+
+  def stats
+    Task::List::Stats.new(self).call
+  end
+end
+```
+
+The query object — 34 lines, owns the Result data class and the 7-query computation:
+
+```ruby
+class Task::List::Stats
+  Result = Data.define(:total, :done, :pending, :pct, :assigned, :comments_count,
+                       :last_activity, :preview_items, :list_comments)
+
+  attr_reader :task_list
+
+  def initialize(task_list)
+    @task_list = task_list
+  end
+
+  def call
+    total = task_items.count
+    done  = task_items.completed.count
+
+    Result.new(
+      total:, done:,
+      pending:        total - done,
+      pct:            total > 0 ? (done * 100.0 / total).round : 0,
+      assigned:       task_items.where.not(assigned_user_id: nil).count,
+      comments_count: comments.count,
+      last_activity:  task_items.order(updated_at: :desc).pick(:updated_at) || task_list.created_at,
+      preview_items:  task_items.incomplete.order(created_at: :desc).limit(5).includes(:assigned_user),
+      list_comments:  comments.chronological.includes(:user)
+    )
+  end
+
+  private
+
+  def task_items = task_list.task_items
+  def comments = task_list.comments
+end
+```
+
+```mermaid
+flowchart TD
+  subgraph Before["6C: query logic inside models"]
+    A1["Account (58 lines)<br/>associations + validations + search assembly"]
+    TL1["Task::List (50 lines)<br/>associations + scopes + stats computation"]
+  end
+
+  subgraph After["6D: query logic extracted"]
+    A2["Account (35 lines)<br/>associations + validations + delegation"]
+    AS["Account::Search (40 lines)<br/>Results data class + query assembly"]
+    TL2["Task::List (35 lines)<br/>associations + scopes + delegation"]
+    TLS["Task::List::Stats (34 lines)<br/>Result data class + 7-query computation"]
+  end
+
+  A1 -.->|"search extracts"| AS
+  TL1 -.->|"stats extracts"| TLS
+  A2 -->|"delegates"| AS
+  TL2 -->|"delegates"| TLS
+
+  style Before fill:#fde8e8
+  style A2 fill:#e8fde8
+  style TL2 fill:#e8fde8
+  style AS fill:#e8f4fd
+  style TLS fill:#e8f4fd
+```
+
+Red: models with mixed responsibilities. Green: models after extraction. Blue: query objects with single responsibilities.
 
 ---
 
 ## ➡️ What comes next
 
-Family 6 has named three domain concepts: authorization (PORO), cryptographic identity (PORO), completion status (constants). Each was a concept the code already used but never owned.
+The query logic has a home. Each model is lighter, each query object is focused, and the public API hasn't changed.
 
-But naming isn't the only thing models carry that doesn't belong to them. `Account` has 25 lines of search assembly. `Task::List` has 17 lines of stats computation. Neither model needs to know how to assemble those results.
+But authority is still scattered. Account answers Membership's questions. `Task::Item` joins across domain boundaries through `for_account`. Notification actions are magic strings across four files.
 
-Branch `6D-query-objects` extracts two query objects. `Account::Search` assembles search results. `Task::List::Stats` computes 9 statistics from 7 queries. Each AR model drops to ~35 lines and a one-line delegation. ✌️
+Branch `6E-declared-authority` applies one principle: each model declares its own authority. If it's your data, it's your responsibility. Twenty-eight files change. ✌️
 
 ---
 
 ## 🏛️ Thesis checkpoint
 
-Constants that name state transitions — Principle 4 at its simplest. No state machine gem. Just Ruby constants that make implicit status logic explicit. Principle 1 holds: the tests assert on HTTP responses carrying status values, not on how those values are defined internally. The flat Rubycritic score proves what static analysis can and cannot see: it cannot distinguish a magic string from a typed constant. The value is not in reduced complexity — it is in changing silent fall-throughs into loud `NameError`s.
+Query objects are plain Ruby classes — Principle 4 applied to the data access layer. Each query has one job, one file, one test surface. Principle 8 ensures the query logic is traceable to its source requirements. The indirection cost is real: delegation chains are longer than inline methods. But the model stays pristine as a semantic router — `account.search(query)` reads as a sentence — while the query object holds the implementation in isolation.
 
 ---
 
 ## 🤖 The agent's view
 
-Before 6C, renaming the status vocabulary — changing `"completed"` to `"done"` — means finding ~19 string literals across 6 files. Grepping for a common English word is noisy. Missing one produces a silent bug. After 6C, the agent changes two constants in `task.rb`. Every reference is a constant lookup, so missing one produces a `NameError` — visible, loud, caught by any test run.
+Before 6D, an agent modifying search loads `account.rb` — 58 lines mixing associations, validations, and search logic. It must separate which methods serve search and which serve Account's identity. After 6D, search lives in `account/search.rb` — 40 lines where every method serves search. One file, one concern. Same for stats: `task/list/stats.rb` — 34 lines, one `call` method, one `Result` data class. Adding a field means adding one line to the `Result` definition and one line to the `call` method.
 
-The `Task::Item#status` method eliminates inline derivation. Before 6C, a view displayed `@task_item.completed? ? "completed" : "incomplete"`. After 6C, `@task_item.status` is a method call the agent follows to one definition.
+The `Data.define` return types are legible contracts. An agent can inspect `Results` to know the available fields — `task_items`, `task_lists`, `comments` — without reading the implementation. The shape is declared in the type, not scattered across method bodies.
+
+The trade-off is navigation cost. Tracing a search query means following the delegation chain across two files instead of reading one 58-line file top to bottom. Each file the agent opens is focused and self-contained — the counter is cleaner, but the walk is longer.
 
 ---
 
@@ -201,8 +260,8 @@ The `Task::Item#status` method eliminates inline derivation. Before 6C, a view d
 Prerequisites: [mise](https://mise.jdx.dev/) (manages Ruby, Node, Mailpit)
 
 ```sh
-git clone git@github.com:railswhey/app.git -b 6C-task-status 6C-task-status
-cd 6C-task-status
+git clone git@github.com:railswhey/app.git -b 6D-query-objects 6D-query-objects
+cd 6D-query-objects
 mise install                 # Ruby 4.0.1 + Node 22 + Mailpit 1.29.2
 bin/setup                    # bundle install, db:prepare, starts dev server
 ```

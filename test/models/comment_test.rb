@@ -57,7 +57,7 @@ class Task::CommentTest < ActiveSupport::TestCase
     comment_other_item = item_two.comments.create!(body: "other account item", user: users(:two))
     comment_other_list = list_two.comments.create!(body: "other account list", user: users(:two))
 
-    result = account_one.search_comments("on")
+    result = account_one.search("on").comments
 
     assert result.exists?(id: comment_on_item.id),  "should include item comment from account one"
     assert result.exists?(id: comment_on_list.id),  "should include list comment from account one"
