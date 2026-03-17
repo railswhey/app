@@ -6,10 +6,14 @@ class Task::Comment < ApplicationRecord
 
   validates :body, presence: true
 
-  normalizes :body, with: -> { _1.strip }
+  normalizes :body, with: -> { it.strip }
 
+  scope :search,        -> { where("body LIKE ?", "%#{it}%") }
   scope :chronological, -> { order(created_at: :asc) }
-  scope :search, ->(q) { where("body LIKE ?", "%#{q}%") }
+  scope :for_account,   ->(account) {
+    where(commentable_type: "Task::Item", commentable_id: account.task_items.select(:id))
+    .or(where(commentable_type: "Task::List", commentable_id: account.task_lists.select(:id)))
+  }
 
   def authored_by?(user)
     user_id == user.id

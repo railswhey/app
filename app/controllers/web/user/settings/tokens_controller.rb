@@ -8,9 +8,9 @@ class Web::User::Settings::TokensController < Web::BaseController
   end
 
   def update
-    Current.user.user_token.refresh!
+    Current.user.token.refresh!
 
-    cookies.encrypted[:user_token] = { value: Current.user.user_token.value, expires: 30.seconds.from_now }
+    cookies.encrypted[:user_token] = { value: Current.user.token.value, expires: 30.seconds.from_now }
 
     redirect_to(edit_user_settings_token_path, notice: "API token updated.")
   end

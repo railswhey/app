@@ -72,7 +72,7 @@ class APIV1UserRegistrationsTest < ActionDispatch::IntegrationTest
     json_data = api_v1_adapter.assert_response_with_success(:created)
 
     assert_equal(
-      User.find_by(email: params[:user][:email]).user_token.short,
+      User.find_by(email: params[:user][:email]).token.short,
       json_data["user_token"].split("_").first
     )
   end

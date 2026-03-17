@@ -3,18 +3,21 @@
 class Task::List < ApplicationRecord
   belongs_to :account
 
-  has_many :task_items, class_name: "Task::Item", foreign_key: :task_list_id, dependent: :destroy
-  has_many :comments, as: :commentable, class_name: "Task::Comment", dependent: :destroy
+  has_many :task_items, foreign_key: :task_list_id, dependent: :destroy, class_name: "Task::Item"
+  has_many :comments, as: :commentable, dependent: :destroy, class_name: "Task::Comment"
 
   scope :inbox, -> { where(inbox: true) }
-  scope :search, ->(q) { where("task_lists.name LIKE ? OR task_lists.description LIKE ?", "%#{q}%", "%#{q}%") }
+  scope :search, -> { where("task_lists.name LIKE ? OR task_lists.description LIKE ?", "%#{it}%", "%#{it}%") }
 
   validates :name, presence: true
 
-  before_validation :set_inbox_name, if: :inbox?
+  before_validation(if: :inbox?) do
+    it.name = "Inbox"
+    it.description = "This is your default list, it cannot be deleted."
+  end
 
-  normalizes(:name, with: -> { _1.strip })
-  normalizes(:description, with: -> { _1.strip })
+  normalizes(:name, with: -> { it.strip })
+  normalizes(:description, with: -> { it.strip })
 
   def normal?
     !inbox?
@@ -22,12 +25,5 @@ class Task::List < ApplicationRecord
 
   def stats
     Task::List::Stats.new(self).call
-  end
-
-  private
-
-  def set_inbox_name
-    self.name = "Inbox"
-    self.description = "This is your default list, it cannot be deleted."
   end
 end

@@ -13,10 +13,7 @@
 </div>
 
 <div class="filter-tabs" style="margin:1rem 0">
-  <%= link_to "All",       user_notification_inbox_index_path,                       class: @filter == "all"       ? "active" : nil %>
-  <%= link_to "Unread (#{@unread_count})", user_notification_inbox_index_path(filter: "unread"), class: @filter == "unread" ? "active" : nil %>
-  <%= link_to "🔁 Transfers", user_notification_inbox_index_path(filter: "transfers"), class: @filter == "transfers" ? "active" : nil %>
-  <%= link_to "✉️ Invites",  user_notification_inbox_index_path(filter: "invites"),   class: @filter == "invites"   ? "active" : nil %>
+  <%= notification_filter_links(unread_count: @unread_count, filter: @filter) %>
 </div>
 
 <% if @notifications.any? %>

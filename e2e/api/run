@@ -54,7 +54,7 @@ TOKEN_A=$(cd "$PROJECT_ROOT" && bin/rails runner "
     password: '$TEST_PASSWORD',
     password_confirmation: '$TEST_PASSWORD'
   )
-  print user.user_token.value
+  print user.token.value
 " 2>/dev/null)
 
 if [ -z "$TOKEN_A" ]; then
@@ -69,7 +69,7 @@ TOKEN_B=$(cd "$PROJECT_ROOT" && bin/rails runner "
     password: '$TEST_PASSWORD',
     password_confirmation: '$TEST_PASSWORD'
   )
-  print user.user_token.value
+  print user.token.value
 " 2>/dev/null)
 
 if [ -z "$TOKEN_B" ]; then

@@ -3,22 +3,22 @@
 class User < ApplicationRecord
   has_secure_password
 
-  has_many :memberships, class_name: "Account::Membership", dependent: :destroy
+  has_many :memberships, dependent: :destroy, class_name: "Account::Membership"
   has_many :accounts, through: :memberships
 
   has_many :task_lists, through: :accounts
 
-  has_one :ownership, -> { owner }, class_name: "Account::Membership", inverse_of: :user, dependent: nil
+  has_one :ownership, -> { owner }, inverse_of: :user, dependent: nil, class_name: "Account::Membership"
   has_one :account, through: :ownership
   has_one :inbox, through: :account
 
-  has_one :user_token, class_name: "User::Token", dependent: :destroy
+  has_one :token, dependent: :destroy
 
-  has_many :assigned_task_items,  class_name: "Task::Item",           foreign_key: :assigned_user_id,  dependent: :nullify
-  has_many :sent_invitations,     class_name: "Account::Invitation",  foreign_key: :invited_by_id,     dependent: :destroy
-  has_many :initiated_transfers,  class_name: "Task::List::Transfer", foreign_key: :transferred_by_id, dependent: :destroy
-  has_many :notifications, class_name: "User::Notification", dependent: :destroy
-  has_many :comments, class_name: "Task::Comment", dependent: :destroy
+  has_many :notifications,       dependent: :destroy
+  has_many :comments,            dependent: :destroy, class_name: "Task::Comment"
+  has_many :sent_invitations,    foreign_key: :invited_by_id, dependent: :destroy,  class_name: "Account::Invitation"
+  has_many :assigned_task_items, foreign_key: :assigned_user_id,  dependent: :nullify, class_name: "Task::Item"
+  has_many :initiated_transfers, foreign_key: :transferred_by_id, dependent: :destroy, class_name: "Task::List::Transfer"
 
   with_options presence: true do
     validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }, uniqueness: true
@@ -33,33 +33,21 @@ class User < ApplicationRecord
   normalizes :email, with: -> { _1.strip.downcase }
   normalizes :username, with: -> { _1.strip.downcase }
 
-  generates_token_for :reset_password, expires_in: 15.minutes do
-    password_salt&.last(10)
-  end
-
-  generates_token_for :email_confirmation, expires_in: 24.hours do
-    email
-  end
+  generates_token_for(:reset_password, expires_in: 15.minutes) { password_salt&.last(10) }
+  generates_token_for(:email_confirmation, expires_in: 24.hours) { email }
 
   after_create do
-    account = Account.create!(
-      uuid: SecureRandom.uuid,
-      name: "#{email.split("@").first}'s workspace",
-      personal: true
-    )
+    account = Account.create!(uuid: SecureRandom.uuid, name: "#{email.split("@").first}'s workspace", personal: true)
 
     account.add_member(self, role: :owner)
 
     account.task_lists.inbox.create!
 
-    create_user_token!
+    create_token!
   end
 
   after_create_commit do
-    UserMailer.with(
-      user: self,
-      token: generate_token_for(:email_confirmation)
-    ).email_confirmation.deliver_later
+    UserMailer.with(user: self, token: generate_token_for(:email_confirmation)).email_confirmation.deliver_later
   end
 
   before_destroy prepend: true do
@@ -72,9 +60,21 @@ class User < ApplicationRecord
 
   def self.send_reset_password_email(email)
     user = find_by(email: email)
+
     return unless user
 
-    UserMailer.with(user: user, token: user.generate_token_for(:reset_password))
-      .reset_password.deliver_later
+    UserMailer.with(user: user, token: user.generate_token_for(:reset_password)).reset_password.deliver_later
+  end
+
+  def initials
+    username = username.to_s
+
+    return username[0, 2].upcase if username.present?
+
+    email = email.to_s
+
+    parts = email.split("@").first.to_s.split(/[._-]/)
+
+    parts.size >= 2 ? "#{parts[0][0]}#{parts[1][0]}".upcase : email[0, 2].upcase
   end
 end

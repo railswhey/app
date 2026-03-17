@@ -1,15 +1,16 @@
 # frozen_string_literal: true
 
 class Account < ApplicationRecord
-  has_many :memberships, class_name: "Account::Membership", dependent: :destroy
+  has_many :memberships,        dependent: :destroy
   has_many :users,              through: :memberships
-  has_many :task_lists,         class_name: "Task::List", dependent: :destroy
-  has_many :invitations,        class_name: "Account::Invitation", dependent: :destroy
-  has_many :outgoing_transfers, class_name: "Task::List::Transfer", foreign_key: :from_account_id, dependent: :destroy
-  has_many :incoming_transfers, class_name: "Task::List::Transfer", foreign_key: :to_account_id,   dependent: :destroy
+  has_many :task_lists,         dependent: :destroy, class_name: "Task::List"
+  has_many :task_items,         through: :task_lists
+  has_many :invitations,        dependent: :destroy
+  has_many :outgoing_transfers, foreign_key: :from_account_id, dependent: :destroy, class_name: "Task::List::Transfer"
+  has_many :incoming_transfers, foreign_key: :to_account_id,   dependent: :destroy, class_name: "Task::List::Transfer"
 
-  has_one :ownership, -> { owner }, class_name: "Account::Membership", inverse_of: :account, dependent: nil
-  has_one :inbox,     -> { inbox }, class_name: "Task::List",          inverse_of: :account, dependent: nil
+  has_one :inbox,     -> { inbox }, inverse_of: :account, dependent: nil, class_name: "Task::List"
+  has_one :ownership, -> { owner }, inverse_of: :account, dependent: nil, class_name: "Account::Membership"
   has_one :owner, through: :ownership, source: :user
 
   validates :name, presence: true
@@ -17,17 +18,9 @@ class Account < ApplicationRecord
 
   normalizes :name, with: -> { it.strip }
 
-  def owner_or_admin?(user)
-    memberships.owner_or_admin.exists?(user: user)
-  end
-
-  def member?(user)
-    memberships.exists?(user: user)
-  end
-
-  def add_member(user, role:)
-    memberships.find_or_create_by!(user: user) { it.role = role }
-  end
+  def member?(user)           = memberships.granted_to?(user)
+  def add_member(user, role:) = memberships.grant(user, role:)
+  def owner_or_admin?(user)   = memberships.owner_or_admin?(user)
 
   def search(query)
     Account::Search.new(self).with(query.to_s.strip)

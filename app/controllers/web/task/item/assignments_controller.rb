@@ -5,7 +5,7 @@ class Web::Task::Item::AssignmentsController < Web::BaseController
 
   def index
     @filter = params[:filter]
-    items = Task::Item.for_account(Current.account_id).assigned_to(Current.user.id)
+    items = Current.account.task_items.assigned_to(Current.user.id)
 
     @task_items = items.assignment_filter_by(@filter)
       .order(created_at: :desc).limit(100).includes(:task_list)

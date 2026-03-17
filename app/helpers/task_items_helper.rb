@@ -1,18 +1,6 @@
 # frozen_string_literal: true
 
 module TaskItemsHelper
-  def task_lists_selector
-    safe_join([
-      tag.br,
-      select_tag(
-        "task_list",
-        options_from_collection_for_select(Current.task_lists, "id", "name", Current.task_list_id),
-        style: "width: 97%;",
-        onchange: "Turbo.visit(`/task/lists/${this.value}/items`)"
-      )
-    ])
-  end
-
   def link_to_task_item_filters
     style = "color: var(--text) !important;"
 
@@ -20,10 +8,14 @@ module TaskItemsHelper
     completed = { title: "Completed", path: task_list_items_path(Current.task_list_id, filter: Task::COMPLETED), style: }
     incomplete = { title: "Incomplete", path: task_list_items_path(Current.task_list_id, filter: Task::INCOMPLETE), style: }
 
+    filter_as = ->(options) {
+      options.merge!(title: "#{options[:title]} (#{@task_items.size})", style: "color: #ffb300 !important; font-weight: 600;")
+    }
+
     case params[:filter]
-    when Task::INCOMPLETE then set_current_task_items_filter(incomplete)
-    when Task::COMPLETED  then set_current_task_items_filter(completed)
-    else set_current_task_items_filter(all)
+    when Task::INCOMPLETE then filter_as[incomplete]
+    when Task::COMPLETED  then filter_as[completed]
+    else filter_as[all]
     end
 
     safe_join([
@@ -53,11 +45,5 @@ module TaskItemsHelper
         (link_to("+ Add Your First Task", new_task_list_item_path(Current.task_list_id), class: "button") if filter.nil?)
       ].compact)
     end
-  end
-
-  private
-
-  def set_current_task_items_filter(options)
-    options.merge!(title: "#{options[:title]} (#{@task_items.size})", style: "color: #ffb300 !important; font-weight: 600;")
   end
 end

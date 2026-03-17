@@ -2,15 +2,14 @@
 
 class Task::Item < ApplicationRecord
   belongs_to :task_list, class_name: "Task::List"
-  belongs_to :assigned_user, class_name: "User", optional: true
+  belongs_to :assigned_user, optional: true, class_name: "User"
 
-  has_many :comments, as: :commentable, class_name: "Task::Comment", dependent: :destroy
+  has_many :comments, as: :commentable, dependent: :destroy, class_name: "Task::Comment"
 
-  scope :completed,    -> { where.not(completed_at: nil) }
-  scope :incomplete,   -> { where(completed_at: nil) }
-  scope :assigned_to,  ->(user_id) { where(assigned_user_id: user_id) }
-  scope :search,       ->(q) { where("task_items.name LIKE ? OR task_items.description LIKE ?", "%#{q}%", "%#{q}%") }
-  scope :for_account, ->(account_id) { joins(:task_list).where(task_lists: { account_id: account_id }) }
+  scope :completed,   -> { where.not(completed_at: nil) }
+  scope :incomplete,  -> { where(completed_at: nil) }
+  scope :assigned_to, -> { where(assigned_user_id: it) }
+  scope :search,      -> { where("task_items.name LIKE ? OR task_items.description LIKE ?", "%#{it}%", "%#{it}%") }
   scope :assignment_filter_by, ->(value) {
     case value
     when Task::COMPLETED  then completed

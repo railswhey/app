@@ -29,14 +29,12 @@ class Account::Invitation < ApplicationRecord
 
     transaction do
       account.add_member(user, role: :collaborator)
+
       update_column(:accepted_at, Time.current)
 
-      User::Notification.create!(
-        user:       invited_by,
-        notifiable: self,
-        action:     "invitation_accepted"
-      )
+      User::Notification.create!(user: invited_by, notifiable: self, action: User::Notification::INVITATION_ACCEPTED)
     end
+
     true
   end
 
@@ -47,9 +45,10 @@ class Account::Invitation < ApplicationRecord
   end
 
   def notify_existing_invitee
-    invitee = User.find_by(email: email)
+    invitee = User.find_by(email:)
+
     return unless invitee
 
-    User::Notification.create!(user: invitee, notifiable: self, action: "invitation_received")
+    User::Notification.create!(user: invitee, notifiable: self, action: User::Notification::INVITATION_RECEIVED)
   end
 end

@@ -14,15 +14,15 @@
   <img src="/docs/assets/logo.png" alt="Rails Whey App" width="180" height="180">
 </p>
 
-A full-stack task management app built with Ruby on Rails. This branch extracts two query objects — `Account::Search` and `Task::List::Stats` — from models where computed query logic had grown to dominate the host. Each AR model sheds the computation into a plain Ruby object and keeps a one-line delegation. Account drops from 58 to 35 lines, `Task::List` from 50 to 35.
+A full-stack task management app built with Ruby on Rails. This branch applies one principle across the codebase: each model declares its own authority. Membership gains class methods that answer its own questions. Account declares `has_many :task_items, through: :task_lists`. Notification declares action constants with an enum. Helpers reorganize by domain. 28 files change; no behavioral tests change.
 
 | | |
 |---|---|
-| **Branch** | `6D-query-objects` |
+| **Branch** | `6E-declared-authority` |
 | **Ruby** | 4.0 |
 | **Rails** | 8.1 |
-| **Rubycritic** | 91.58 |
-| **LOC** | 1735 |
+| **Rubycritic** | 91.72 |
+| **LOC** | 1717 |
 
 **Table of contents:**
 
@@ -41,65 +41,121 @@ A full-stack task management app built with Ruby on Rails. This branch extracts 
 
 ## 🎯 The concept
 
-> **One rule:** when a computation outgrows its host model, give the computation its own object.
+> **One rule:** if it's your data, it's your responsibility to answer questions about it.
 
-6A–6C named domain concepts — authorization became `Account::Member`, cryptographic identity became `User::Token::Secret`, task status became `Task::COMPLETED` / `Task::INCOMPLETE`. Each gave a *thing* its own name. 6D names a different kind of thing: a *responsibility*. The query logic isn't missing a name — it's missing a home.
+6A–6D made targeted extractions — a PORO for authorization, a PORO for crypto, constants for status, query objects for search. Each fixed one problem in one place. 6E applies the principle across the entire codebase.
 
-`Account::Search` assembles search results across task items, task lists, and comments. `Task::List::Stats` computes 9 statistics from 7 queries. Both are plain Ruby classes that take a model, assemble data from its relations, and return a typed `Data.define` result.
+Three categories of authority were misplaced:
 
-The AR models keep the public API. `account.search(query)` and `list.stats` still work — each delegates to its query object in a single line. Controllers, views, and tests don't change. The computation moved; the interface didn't.
+```mermaid
+flowchart LR
+  subgraph Misplaced["Authority in the wrong place"]
+    Q["🔍 Query<br/>Account answered<br/>Membership's questions"]
+    V["📝 Vocabulary<br/>5 action strings<br/>scattered across 4 files"]
+    C["🧮 Computation<br/>ApplicationHelper:<br/>81 lines, 3 domains"]
+  end
+
+  subgraph Declared["Authority declared by its owner"]
+    Q2["Membership<br/>answers its own questions"]
+    V2["Notification<br/>declares its own vocabulary"]
+    C2["Domain helpers<br/>own their domain"]
+  end
+
+  Q --> Q2
+  V --> V2
+  C --> C2
+
+  style Misplaced fill:#fde8e8
+  style Declared fill:#e8fde8
+```
+
+Each piece of logic was correct. Each sat in the wrong place.
 
 ---
 
 ## 📊 The numbers
 
-| | Before (6C) | After (6D) |
+| | Before (6D) | After (6E) |
 |---|---|---|
-| Lines in Account | 58 | 35 |
-| Lines in Task::List | 50 | 35 |
-| Lines in Account::Search | — | 40 |
-| Lines in Task::List::Stats | — | 34 |
-| New files | — | 2 |
+| Modified files | — | 28 |
+| New files | — | 0 |
 | Behavioral test changes | — | 0 |
-| Rubycritic | 91.45 | 91.58 |
+| Rubycritic | 91.58 | 91.72 |
 
-Total LOC grew slightly — compressed inline code expanded into properly structured classes with private helpers and `Data` return types. Rubycritic ticked up +0.13 because smaller, focused classes score better on per-file complexity.
+**Model shifts:**
+
+| Model | Before | After | Change |
+|---|---|---|---|
+| Account | 35 lines | 28 lines | −7 (membership methods delegate) |
+| Account::Membership | 17 lines | 23 lines | +6 (gains class methods + role constants) |
+| Account::Search | 39 lines | 25 lines | −14 (raw SQL → scope calls) |
+| User::Notification | 27 lines | 41 lines | +14 (gains constants + enum) |
+| Task::Comment | 17 lines | 21 lines | +4 (gains `for_account` scope) |
+
+**Helper shifts:**
+
+| Helper | Before | After |
+|---|---|---|
+| ApplicationHelper | 81 lines | 33 lines |
+| UsersHelper | 4 lines | 56 lines |
+| TaskListsHelper | 4 lines | 15 lines |
+| TaskItemsHelper | 63 lines | 49 lines |
+
+Models that gained authority grew. Files that lost misplaced logic shrank. Twenty-eight files changed; zero behavioral tests changed.
 
 ---
 
 ## 🤔 The problem
 
-Two models carried computed query logic that dominated their host.
+Code landed where it was convenient for the caller, not where it belongs by domain. It's like keeping your socks in the kitchen just because it's closer to the laundry room — convenient for you, disastrous for anyone else navigating the house.
 
-Account was 58 lines — 25 were search: a `SearchResults` data class, 3-model assembly, polymorphic comment scoping. Task::List was 50 lines — 17 were stats: a `Stats` data class with 9 fields, 7 queries. In both cases, the remaining ~33 lines were the model's actual identity — associations, validations, scopes.
+Five places where authority was misplaced:
 
-Neither model needs to know how to assemble cross-model search results or compute derived statistics. Those are responsibilities *performed on* the model's data, not properties *of* the model.
+**Account answered Membership's questions.** `owner_or_admin?`, `member?`, `add_member` were one-liner wrappers. The data — the role column — lives in Membership. But Account answered the questions, because the caller had an account and a user.
 
-```mermaid
-flowchart LR
-  S1["Single method<br/>on the model"] -->|"+ data class"| S2["Results shape<br/>+ private helpers"]
-  S2 -->|"+ more queries"| S3["Half the file<br/>is computation"]
+**Task::Item knew about Account's tables.** The `for_account` scope joined `task_lists` and filtered by `account_id`. The relationship path existed but wasn't declared — `has_many :task_items, through: :task_lists`.
 
-  style S1 fill:#e8fde8
-  style S2 fill:#fff3cd
-  style S3 fill:#fde8e8
-```
+**Account::Search built raw SQL with string interpolation.** It loaded all `task_item_ids` and `task_list_ids` into Ruby arrays for an OR clause. The database could handle subqueries. Nobody asked it to.
 
-Each started as a single method on the model that owns the data — `account.search(query)` was the natural starting point, `list.stats` was the natural place. Then each grew. Each addition was small and local. But the accumulation shifted each model's center of gravity from what it *is* to what it *computes*. The model was doing two jobs, and the second job was winning.
+**Notification actions were magic strings.** `"transfer_accepted"` and `"invitation_received"` appeared as raw literals across four files — `Account::Invitation`, `Task::List::Transfer`, `User::Notification`'s filter scope, and `ApplicationHelper`. No constants, no enum. A typo silently stored garbage.
 
-This is the same gravitational pull that put authorization in Current (fixed by 6A) and crypto in User::Token (fixed by 6B). The data lives inside a model, so any code that uses that data gravitates there — path of least resistance.
+**ApplicationHelper mixed three domains** — navigation chrome, notification helpers reaching into `User::Notification`'s domain, and `user_initials` computing from `User` attributes. 81 lines because Rails generates one helper and everything gravitates there. `task_lists_selector` lived in `TaskItemsHelper` instead of `TaskListsHelper`.
 
 ---
 
 ## 🔬 The evidence
 
-**Pattern 1: Account sheds search**
+**Pattern 1: Membership answers its own questions**
 
-Account after extraction — 35 lines, one-line delegation:
+```ruby
+class Account::Membership < ApplicationRecord
+  OWNER = "owner"
+  ADMIN = "admin"
+  COLLABORATOR = "collaborator"
+
+  enum :role, { owner: OWNER, admin: ADMIN, collaborator: COLLABORATOR }
+  scope :owner_or_admin, -> { where(role: [OWNER, ADMIN]) }
+
+  def self.owner_or_admin?(user) = owner_or_admin.exists?(user: user)
+  def self.granted_to?(user)     = exists?(user: user)
+  def self.grant(user, role:)    = find_or_create_by!(user: user) { it.role = role }
+
+  def removable_by?(user)        = !owner? && self.user != user
+end
+```
+
+Account delegates without changing its public API:
 
 ```ruby
 class Account < ApplicationRecord
-  # ... associations, validations, membership methods ...
+  has_many :memberships, dependent: :destroy
+  has_many :task_lists, dependent: :destroy, class_name: "Task::List"
+  has_many :task_items, through: :task_lists
+  # ...
+
+  def member?(user)           = memberships.granted_to?(user)
+  def add_member(user, role:) = memberships.grant(user, role:)
+  def owner_or_admin?(user)   = memberships.owner_or_admin?(user)
 
   def search(query)
     Account::Search.new(self).with(query.to_s.strip)
@@ -107,151 +163,123 @@ class Account < ApplicationRecord
 end
 ```
 
-The query object — 40 lines, owns the Results data class and the polymorphic comment scoping:
+The class methods work on association proxies — `account.memberships.owner_or_admin?(user)` is scoped to that account automatically.
+
+**Pattern 2: Account declares `has_many :task_items, through: :task_lists`**
 
 ```ruby
-class Account::Search
-  Results = Data.define(:task_items, :task_lists, :comments)
+# Before — Task::Item joins across the boundary
+scope :for_account, ->(account_id) {
+  joins(:task_list).where(task_lists: { account_id: account_id })
+}
+# Callers: Task::Item.for_account(Current.account_id)
 
-  attr_reader :account
+# After — Account declares the path
+has_many :task_items, through: :task_lists
+# Callers: Current.account.task_items
+```
 
-  def initialize(account)
-    @account = account
-  end
+**Pattern 3: Comments gain a subquery scope**
 
-  def empty
-    Results.new(task_items: Task::Item.none, task_lists: Task::List.none, comments: Task::Comment.none)
-  end
+```ruby
+# Before — raw SQL, loads IDs into memory
+Task::Comment.where(
+  "(commentable_type = 'Task::Item' AND commentable_id IN (?)) OR ...",
+  task_items.ids.presence || [0],
+  task_lists.ids.presence || [0]
+)
 
-  def with(query)
-    return empty if query.size <= 1
-
-    Results.new(
-      task_items: task_items.search(query).includes(:task_list).order(created_at: :desc).limit(20),
-      task_lists: task_lists.search(query).limit(10),
-      comments:   comments(query)
-    )
-  end
-
-  private
-
-  def task_lists = account.task_lists
-  def task_items = Task::Item.for_account(account.id)
-
-  def comments(query)
-    Task::Comment.where(
-      "(commentable_type = 'Task::Item' AND commentable_id IN (?)) OR " \
-      "(commentable_type = 'Task::List' AND commentable_id IN (?))",
-      task_items.ids.presence || [0],
-      task_lists.ids.presence || [0]
-    ).search(query).includes(:user, :commentable).order(created_at: :desc).limit(10)
-  end
+# After — subqueries stay in the database
+class Task::Comment < ApplicationRecord
+  scope :for_account, ->(account) {
+    where(commentable_type: "Task::Item", commentable_id: account.task_items.select(:id))
+    .or(where(commentable_type: "Task::List", commentable_id: account.task_lists.select(:id)))
+  }
 end
 ```
 
-**Pattern 2: Task::List sheds stats**
-
-Task::List after extraction — 35 lines, one-line delegation:
+**Pattern 4: Notification declares its vocabulary**
 
 ```ruby
-class Task::List < ApplicationRecord
-  # ... associations, scopes, validations ...
+class User::Notification < ApplicationRecord
+  UNREAD = "unread"
+  INVITES = "invites"
+  TRANSFERS = "transfers"
 
-  def stats
-    Task::List::Stats.new(self).call
-  end
+  ACTIONS = [
+    INVITATION_RECEIVED = "invitation_received",
+    INVITATION_ACCEPTED = "invitation_accepted",
+    TRANSFER_REQUESTED  = "transfer_requested",
+    TRANSFER_ACCEPTED   = "transfer_accepted",
+    TRANSFER_REJECTED   = "transfer_rejected"
+  ].freeze
+
+  enum :action, ACTIONS.to_h { [it, it] }
+
+  scope :filter_by, ->(type) {
+    case type
+    when UNREAD    then unread
+    when INVITES   then where(action: [INVITATION_RECEIVED, INVITATION_ACCEPTED])
+    when TRANSFERS then where(action: [TRANSFER_REQUESTED, TRANSFER_ACCEPTED, TRANSFER_REJECTED])
+    else all
+    end
+  }
 end
 ```
 
-The query object — 34 lines, owns the Result data class and the 7-query computation:
-
-```ruby
-class Task::List::Stats
-  Result = Data.define(:total, :done, :pending, :pct, :assigned, :comments_count,
-                       :last_activity, :preview_items, :list_comments)
-
-  attr_reader :task_list
-
-  def initialize(task_list)
-    @task_list = task_list
-  end
-
-  def call
-    total = task_items.count
-    done  = task_items.completed.count
-
-    Result.new(
-      total:, done:,
-      pending:        total - done,
-      pct:            total > 0 ? (done * 100.0 / total).round : 0,
-      assigned:       task_items.where.not(assigned_user_id: nil).count,
-      comments_count: comments.count,
-      last_activity:  task_items.order(updated_at: :desc).pick(:updated_at) || task_list.created_at,
-      preview_items:  task_items.incomplete.order(created_at: :desc).limit(5).includes(:assigned_user),
-      list_comments:  comments.chronological.includes(:user)
-    )
-  end
-
-  private
-
-  def task_items = task_list.task_items
-  def comments = task_list.comments
-end
-```
+An invalid action now raises `ArgumentError` instead of silently storing garbage. A typo in a constant raises `NameError` instead of silently persisting.
 
 ```mermaid
 flowchart TD
-  subgraph Before["6C: query logic inside models"]
-    A1["Account (58 lines)<br/>associations + validations + search assembly"]
-    TL1["Task::List (50 lines)<br/>associations + scopes + stats computation"]
+  subgraph Before["6D: authority scattered"]
+    A1["Account<br/>answers Membership's questions"]
+    TI["Task::Item<br/>for_account joins Account's tables"]
+    AS["Account::Search<br/>raw SQL, loads IDs into memory"]
+    UN["User::Notification<br/>no constants, no enum"]
+    AH["ApplicationHelper<br/>81 lines, 3 domains"]
   end
 
-  subgraph After["6D: query logic extracted"]
-    A2["Account (35 lines)<br/>associations + validations + delegation"]
-    AS["Account::Search (40 lines)<br/>Results data class + query assembly"]
-    TL2["Task::List (35 lines)<br/>associations + scopes + delegation"]
-    TLS["Task::List::Stats (34 lines)<br/>Result data class + 7-query computation"]
+  subgraph After["6E: each model declares authority"]
+    AM["Account::Membership<br/>owner_or_admin? / granted_to? / grant"]
+    A2["Account<br/>has_many :task_items, through: :task_lists"]
+    TC["Task::Comment<br/>for_account scope with subqueries"]
+    UN2["User::Notification<br/>ACTIONS array + enum + filter constants"]
+    UH["UsersHelper<br/>56 lines, notifications only"]
   end
 
-  A1 -.->|"search extracts"| AS
-  TL1 -.->|"stats extracts"| TLS
-  A2 -->|"delegates"| AS
-  TL2 -->|"delegates"| TLS
+  A1 -->|"delegates to"| AM
+  TI -->|"replaced by"| A2
+  AS -->|"simplified by"| TC
+  UN -->|"gains"| UN2
+  AH -->|"splits into"| UH
 
   style Before fill:#fde8e8
-  style A2 fill:#e8fde8
-  style TL2 fill:#e8fde8
-  style AS fill:#e8f4fd
-  style TLS fill:#e8f4fd
+  style After fill:#e8fde8
 ```
-
-Red: models with mixed responsibilities. Green: models after extraction. Blue: query objects with single responsibilities.
 
 ---
 
 ## ➡️ What comes next
 
-The query logic has a home. Each model is lighter, each query object is focused, and the public API hasn't changed.
+Authority is declared. But association names inside namespaces still repeat what the namespace already says. `Task::List` calls its children `task_items` — inside the `Task::` namespace, the `task_` prefix is redundant.
 
-But authority is still scattered. Account answers Membership's questions. `Task::Item` joins across domain boundaries through `for_account`. Notification actions are magic strings across four files.
-
-Branch `6E-declared-authority` applies one principle: each model declares its own authority. If it's your data, it's your responsibility. Twenty-eight files change. ✌️
+Branch `6F-contextual-names` drops the prefix inside namespaces. `Task::List` calls children `items`. Account keeps the full names at the boundary — `task_lists` — because from Account's perspective, the prefix IS the context. Forty-two files change. Zero net line change. Zero behavioral test changes. ✌️
 
 ---
 
 ## 🏛️ Thesis checkpoint
 
-Query objects are plain Ruby classes — Principle 4 applied to the data access layer. Each query has one job, one file, one test surface. Principle 8 ensures the query logic is traceable to its source requirements. The indirection cost is real: delegation chains are longer than inline methods. But the model stays pristine as a semantic router — `account.search(query)` reads as a sentence — while the query object holds the implementation in isolation.
+Authorization logic declared explicitly across the codebase — Principle 4 at the policy layer. No authorization gem. The authority is the model's own knowledge of its membership structure, formalized and made consistent. Every permission check traces back to a model predicate.
 
 ---
 
 ## 🤖 The agent's view
 
-Before 6D, an agent modifying search loads `account.rb` — 58 lines mixing associations, validations, and search logic. It must separate which methods serve search and which serve Account's identity. After 6D, search lives in `account/search.rb` — 40 lines where every method serves search. One file, one concern. Same for stats: `task/list/stats.rb` — 34 lines, one `call` method, one `Result` data class. Adding a field means adding one line to the `Result` definition and one line to the `call` method.
+Before 6E, every lookup starts in the wrong file. Account-scoped task items? Discover `Task::Item.for_account` on a 71-line file. Comments? Parse raw SQL in Account::Search. Valid notification actions? Grep four files. Each question sends the agent to someone else's house.
 
-The `Data.define` return types are legible contracts. An agent can inspect `Results` to know the available fields — `task_items`, `task_lists`, `comments` — without reading the implementation. The shape is declared in the type, not scattered across method bodies.
+After 6E, every lookup starts in the right file. Account (28 lines) shows `has_many :task_items, through: :task_lists`. `Task::Comment.for_account(account)` is a standard composable scope. `User::Notification` (41 lines) lists every valid action in the `ACTIONS` array. For rendering, `UsersHelper` (56 lines) uses pattern matching on `[action, notifiable]` tuples.
 
-The trade-off is navigation cost. Tracing a search query means following the delegation chain across two files instead of reading one 58-line file top to bottom. Each file the agent opens is focused and self-contained — the counter is cleaner, but the walk is longer.
+Magic strings are the highest-risk pattern for agents. `action: "transfer_accepted"` has no programmatic check — a typo silently persists. `User::Notification::TRANSFER_ACCEPTED` raises `NameError` at load time. The shift from runtime silence to load-time failure is the practical benefit. Raw SQL is similarly opaque — agents can't compose or safely modify it. Subqueries through `.select(:id)` are standard ActiveRecord that any agent understands.
 
 ---
 
@@ -260,8 +288,8 @@ The trade-off is navigation cost. Tracing a search query means following the del
 Prerequisites: [mise](https://mise.jdx.dev/) (manages Ruby, Node, Mailpit)
 
 ```sh
-git clone git@github.com:railswhey/app.git -b 6D-query-objects 6D-query-objects
-cd 6D-query-objects
+git clone git@github.com:railswhey/app.git -b 6E-declared-authority 6E-declared-authority
+cd 6E-declared-authority
 mise install                 # Ruby 4.0.1 + Node 22 + Mailpit 1.29.2
 bin/setup                    # bundle install, db:prepare, starts dev server
 ```

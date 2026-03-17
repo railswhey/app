@@ -31,7 +31,7 @@ class Account::Member::Authorization
 
     checksum = User::Token::Secret.checksum(short:, long:)
 
-    users_left_joins.joins(:user_token).where(user_tokens: { short:, checksum: })
+    users_left_joins.joins(:token).where(user_tokens: { short:, checksum: })
   end
 
   def users_left_joins
