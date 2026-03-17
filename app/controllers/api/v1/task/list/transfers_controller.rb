@@ -18,11 +18,12 @@ class API::V1::Task::List::TransfersController < API::V1::BaseController
       list:           @transfer_task_list,
       from_account:   Current.account,
       to_account:     to_user.account,
-      transferred_by: Current.user,
-      to_user:        to_user
+      transferred_by: Current.user
     )
 
-    if @transfer.save
+    @transfer.facilitation.request(to: to_user)
+
+    if @transfer.persisted?
       render :show, status: :created
     else
       render_json_with_model_failure(@transfer)

@@ -50,9 +50,8 @@ class WebTaskListTransfersTest < ActionDispatch::IntegrationTest
     sender = users(:one)
     list = create_task_list(member!(sender).account, name: "Transferable")
 
-    # User.create! triggers an after_create that creates an account — destroy it to simulate no-account
+    # User.create! without Registration gives a bare user with no account
     bare_user = User.create!(username: "bareuser", email: "bare@example.com", password: "password123")
-    bare_user.memberships.destroy_all
 
     web_adapter.sign_in(sender)
 

@@ -23,6 +23,6 @@ class Account < ApplicationRecord
   def owner_or_admin?(user)   = memberships.owner_or_admin?(user)
 
   def search(query)
-    Account::Search.new(self).with(query.to_s.strip)
+    Search.new(self).by(query)
   end
 end

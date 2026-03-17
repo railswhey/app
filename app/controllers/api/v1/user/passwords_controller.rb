@@ -4,7 +4,7 @@ class API::V1::User::PasswordsController < API::V1::BaseController
   before_action :set_user_by_token, only: %i[update]
 
   def create
-    User.send_reset_password_email(params.require(:user).require(:email))
+    User::PasswordReset.request(email: params.require(:user).require(:email))
 
     render(status: :ok, json: { status: :success, type: :object, data: {} })
   end
@@ -23,7 +23,7 @@ class API::V1::User::PasswordsController < API::V1::BaseController
   private
 
   def set_user_by_token
-    @user = User.find_by_reset_password_token(params[:token])
+    @user = User::PasswordReset.find_by(token: params[:token])
 
     return if @user
 

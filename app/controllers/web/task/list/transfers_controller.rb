@@ -26,11 +26,12 @@ class Web::Task::List::TransfersController < Web::BaseController
       list:           @transfer_task_list,
       from_account:   Current.account,
       to_account:     to_user.account,
-      transferred_by: Current.user,
-      to_user:        to_user
+      transferred_by: Current.user
     )
 
-    if @transfer.save
+    @transfer.facilitation.request(to: to_user)
+
+    if @transfer.persisted?
       redirect_to task_list_path(@transfer_task_list), notice: "Transfer request sent to #{to_user.email}."
     else
       render :new, status: :unprocessable_entity

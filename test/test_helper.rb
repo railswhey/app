@@ -59,11 +59,11 @@ module ActiveSupport
     end
 
     def complete_task(task)
-      task.tap { _1.update_column(:completed_at, Time.current) }
+      task.tap { it.update_column(:completed_at, Time.current) }
     end
 
     def incomplete_task(task)
-      task.tap { _1.update_column(:completed_at, nil) }
+      task.tap { it.update_column(:completed_at, nil) }
     end
 
     def create_comment(user, commentable, body: "A test comment")

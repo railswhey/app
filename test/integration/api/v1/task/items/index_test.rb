@@ -49,7 +49,7 @@ class APIV1TaskItemsIndexTest < ActionDispatch::IntegrationTest
 
     assert_equal 2, collection.size
 
-    tasks_json_by_id = collection.index_by { _1[:id] }
+    tasks_json_by_id = collection.index_by { it[:id] }
 
     assert_not_nil tasks_json_by_id[task1.id]
     assert_not_nil tasks_json_by_id[task2.id]

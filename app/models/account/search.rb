@@ -13,7 +13,9 @@ class Account::Search
     Results.new(task_lists: Task::List.none, task_items: Task::Item.none, comments: Task::Comment.none)
   end
 
-  def with(query)
+  def by(query)
+    query = query.to_s.strip
+
     return empty if query.size <= 1
 
     Results.new(

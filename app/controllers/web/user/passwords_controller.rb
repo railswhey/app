@@ -11,7 +11,7 @@ class Web::User::PasswordsController < Web::BaseController
   end
 
   def create
-    User.send_reset_password_email(params.require(:user).require(:email))
+    User::PasswordReset.request(email: params.require(:user).require(:email))
 
     redirect_to new_user_session_path, notice: "Check your email to reset your password."
   end
@@ -35,7 +35,7 @@ class Web::User::PasswordsController < Web::BaseController
   private
 
   def set_user_by_token
-    @user = User.find_by_reset_password_token(params[:token])
+    @user = User::PasswordReset.find_by(token: params[:token])
 
     return if @user
 

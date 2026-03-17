@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class Task::List::Transfer < ApplicationRecord
-  attr_accessor :to_user
-
   belongs_to :list, foreign_key: :task_list_id, class_name: "Task::List"
   belongs_to :to_account,     class_name: "Account"
   belongs_to :from_account,   class_name: "Account"
@@ -28,38 +26,16 @@ class Task::List::Transfer < ApplicationRecord
   validate  :accounts_must_differ
   validate  :list_must_belong_to_from_account
 
-  after_create_commit :notify_recipient
-  after_create_commit :send_transfer_email
+  def facilitation
+    Facilitation.new(self)
+  end
 
   def accept!(user)
-    return false unless pending?
-    return false unless to_account.owner_or_admin?(user)
-
-    transaction do
-      list.update!(account_id: to_account_id)
-
-      update_columns(status: self.class.statuses[:accepted])
-
-      Task::List::Transfer.where(task_list_id: task_list_id, status: :pending)
-                          .where.not(id: id)
-                          .update_all(status: self.class.statuses[:rejected])
-
-      User::Notification.create!(user: transferred_by, notifiable: self, action: User::Notification::TRANSFER_ACCEPTED)
-    end
-    true
+    facilitation.accept(by: user)
   end
 
   def reject!(user)
-    return false unless pending?
-    return false unless to_account.owner_or_admin?(user)
-
-    transaction do
-      update!(status: :rejected)
-
-      User::Notification.create!(user: transferred_by, notifiable: self, action: User::Notification::TRANSFER_REJECTED)
-    end
-
-    true
+    facilitation.reject(by: user)
   end
 
   private
@@ -74,15 +50,5 @@ class Task::List::Transfer < ApplicationRecord
     unless list.account_id == from_account_id
       errors.add(:list, "does not belong to source account")
     end
-  end
-
-  def notify_recipient
-    return unless to_user
-
-    User::Notification.create!(user: to_user, notifiable: self, action: User::Notification::TRANSFER_REQUESTED)
-  end
-
-  def send_transfer_email
-    Task::ListTransferMailer.transfer_requested(self).deliver_later
   end
 end

@@ -24,6 +24,6 @@ class APIV1TaskListsIndexTest < ActionDispatch::IntegrationTest
 
     assert collection.all? { member!(user).task_lists.exists?(_1[:id]) }
 
-    assert_equal new_task_list.id, collection.find { _1[:name] == "Foo" }[:id]
+    assert_equal new_task_list.id, collection.find { it[:name] == "Foo" }[:id]
   end
 end

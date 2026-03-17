@@ -30,41 +30,11 @@ class User < ApplicationRecord
     validates :password, confirmation: true, length: { minimum: 8 }, if: -> { new_record? || password.present? }
   end
 
-  normalizes :email, with: -> { _1.strip.downcase }
-  normalizes :username, with: -> { _1.strip.downcase }
+  normalizes :email, with: -> { it.strip.downcase }
+  normalizes :username, with: -> { it.strip.downcase }
 
   generates_token_for(:reset_password, expires_in: 15.minutes) { password_salt&.last(10) }
   generates_token_for(:email_confirmation, expires_in: 24.hours) { email }
-
-  after_create do
-    account = Account.create!(uuid: SecureRandom.uuid, name: "#{email.split("@").first}'s workspace", personal: true)
-
-    account.add_member(self, role: :owner)
-
-    account.task_lists.inbox.create!
-
-    create_token!
-  end
-
-  after_create_commit do
-    UserMailer.with(user: self, token: generate_token_for(:email_confirmation)).email_confirmation.deliver_later
-  end
-
-  before_destroy prepend: true do
-    account.destroy!
-  end
-
-  def self.find_by_reset_password_token(token)
-    find_by_token_for(:reset_password, token)
-  end
-
-  def self.send_reset_password_email(email)
-    user = find_by(email: email)
-
-    return unless user
-
-    UserMailer.with(user: user, token: user.generate_token_for(:reset_password)).reset_password.deliver_later
-  end
 
   def initials
     username = username.to_s

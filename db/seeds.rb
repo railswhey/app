@@ -3,11 +3,9 @@
 puts "🌱 Seeding development data..."
 
 # ── Demo user ────────────────────────────────────────────────────────────────
-demo = User.find_or_initialize_by(email: "bob@email.com")
-demo.username = "bob"
-demo.password = "123123123"
-demo.password_confirmation = "123123123"
-demo.save!
+demo = User.find_by(email: "bob@email.com")
+
+demo ||= User::Registration.new.create(email: "bob@email.com", username: "bob", password: "123123123", password_confirmation: "123123123")
 
 account = demo.account
 inbox = account.inbox
@@ -15,11 +13,9 @@ inbox = account.inbox
 puts "  ✅ User: bob@email.com / 123123123 (username: bob)"
 
 # ── Second user ──────────────────────────────────────────────────────────────
-alice = User.find_or_initialize_by(email: "alice@email.com")
-alice.username = "alice"
-alice.password = "123123123"
-alice.password_confirmation = "123123123"
-alice.save!
+alice = User.find_by(email: "alice@email.com")
+
+alice ||= User::Registration.new.create(email: "alice@email.com", username: "alice", password: "123123123", password_confirmation: "123123123")
 
 puts "  ✅ User: alice@email.com / 123123123 (username: alice)"
 

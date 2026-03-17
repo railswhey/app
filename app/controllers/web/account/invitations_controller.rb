@@ -21,7 +21,10 @@ class Web::Account::InvitationsController < Web::BaseController
     guard_owner_or_admin! or return
     @account = Current.account
     @invitation = @account.invitations.new(invitation_params.merge(invited_by: Current.user))
-    if @invitation.save
+
+    @invitation.lifecycle.dispatch
+
+    if @invitation.persisted?
       redirect_to account_management_path, notice: "Invitation sent to #{@invitation.email}."
     else
       render :new, status: :unprocessable_entity

@@ -11,9 +11,9 @@ class Web::User::RegistrationsController < Web::BaseController
   end
 
   def create
-    @user = User.new(user_registration_params)
+    @user = User::Registration.new.create(user_registration_params)
 
-    if @user.save
+    if @user.persisted?
       sign_in(@user)
 
       redirect_to(params[:return_to].presence || task_list_items_path(Current.task_list_id), notice: "You have successfully registered!")
@@ -23,9 +23,10 @@ class Web::User::RegistrationsController < Web::BaseController
   end
 
   def destroy
-    Current.user.destroy!
+    User::Registration.new(Current.user).destroy
 
     sign_out
+
     redirect_to root_path, notice: "Your account has been deleted."
   end
 

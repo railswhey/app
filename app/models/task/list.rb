@@ -24,6 +24,6 @@ class Task::List < ApplicationRecord
   end
 
   def stats
-    Task::List::Stats.new(self).call
+    Summary.of(self)
   end
 end

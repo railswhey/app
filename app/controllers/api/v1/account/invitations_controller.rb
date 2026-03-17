@@ -17,7 +17,10 @@ class API::V1::Account::InvitationsController < API::V1::BaseController
     guard_owner_or_admin! or return
     @account = Current.account
     @invitation = @account.invitations.new(invitation_params.merge(invited_by: Current.user))
-    if @invitation.save
+
+    @invitation.lifecycle.dispatch
+
+    if @invitation.persisted?
       render :show, status: :created
     else
       render_json_with_model_failure(@invitation)

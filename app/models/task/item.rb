@@ -29,8 +29,8 @@ class Task::Item < ApplicationRecord
 
   attribute :completed, :boolean
 
-  normalizes(:name, with: -> { _1.strip })
-  normalizes(:description, with: -> { _1.strip })
+  normalizes(:name, with: -> { it.strip })
+  normalizes(:description, with: -> { it.strip })
 
   before_validation do
     self.completed_at = completed ? Time.current : nil

@@ -5,7 +5,7 @@ require "test_helper"
 class WebStaleUserSessionTest < ActionDispatch::IntegrationTest
   test "user with deleted account is redirected with not-found message" do
     # Create a temporary user, sign in, then delete everything
-    user = User.create!(username: "ephemeral", email: "ephemeral@example.com", password: "123123123")
+    user = User::Registration.new.create(username: "ephemeral", email: "ephemeral@example.com", password: "123123123", password_confirmation: "123123123")
     web_adapter.sign_in(user)
 
     # Delete all records in dependency order to avoid FK violations

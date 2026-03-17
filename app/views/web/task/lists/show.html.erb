@@ -66,9 +66,9 @@
     <% if @stats.total > 0 %>
       <div class="summary-progress">
         <div class="progress-bar">
-          <div class="progress-fill" style="width: <%= @stats.pct %>%"></div>
+          <div class="progress-fill" style="width: <%= @stats.completion %>%"></div>
         </div>
-        <span class="progress-pct"><%= @stats.pct %>% complete</span>
+        <span class="progress-pct"><%= @stats.completion %>% complete</span>
       </div>
     <% end %>
 

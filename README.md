@@ -14,15 +14,15 @@
   <img src="/docs/assets/logo.png" alt="Rails Whey App" width="180" height="180">
 </p>
 
-A full-stack task management app built with Ruby on Rails. This branch renames associations inside the `Task` namespace to drop prefixes the namespace already provides. `Task::List` calls its children `items` instead of `task_items`. `Task::Item` calls its parent `list` instead of `task_list`. Account keeps the full names at the boundary. Database columns don't change; `foreign_key: :task_list_id` bridges Ruby names to SQL columns. 42 files change; every insertion has a matching deletion; no behavioral tests change.
+A full-stack task management app built with Ruby on Rails. This branch names the multi-model orchestrations hidden in model callbacks. Six orchestration objects are extracted: `User::Registration`, `User::PasswordReset`, `Account::Workspace`, `Account::Invitation::Lifecycle`, `Task::List::Transfer::Facilitation`, and `User::Notification::Delivery`. `Task::List::Stats` becomes `Task::List::Summary` (a stateless module). Models that fired side effects on save now declare only their own structure. 31 files change; no behavioral tests change; Rubycritic rises from 91.72 to 92.08.
 
 | | |
 |---|---|
-| **Branch** | `6F-contextual-names` |
+| **Branch** | `6G-named-orchestrations` |
 | **Ruby** | 4.0 |
 | **Rails** | 8.1 |
-| **Rubycritic** | 91.72 |
-| **LOC** | 1717 |
+| **Rubycritic** | 92.08 |
+| **LOC** | 1799 |
 
 **Table of contents:**
 
@@ -41,153 +41,222 @@ A full-stack task management app built with Ruby on Rails. This branch renames a
 
 ## 🎯 The concept
 
-> **One rule:** if the namespace already says it, the name drops the prefix.
+> **One rule:** multi-model coordination gets its own name.
 
-Inside `Task::List`, items can only mean task items. Inside `Task::Item`, list can only mean the task list. The `task_` prefix repeats context the namespace already provides.
+When `user.save` triggers account creation, membership assignment, inbox setup, and email dispatch, the call site reveals nothing. The controller writes `if @user.save` and four models change behind the scenes. It's like hitting save on a document and silently emailing your boss — you'd be terrified to click that button.
 
-| Model | Before | After |
-|---|---|---|
-| `Task::List` | `has_many :task_items` | `has_many :items` |
-| `Task::Item` | `belongs_to :task_list` | `belongs_to :list` |
-| `Task::List::Transfer` | `belongs_to :task_list` | `belongs_to :list` |
+This branch gives each orchestration its own class:
 
-Account keeps `task_lists` and `task_items` — outside the `Task` namespace, the prefix IS information. Database columns stay unchanged; `foreign_key: :task_list_id` bridges Ruby names to SQL columns. No migration, no schema change.
+| Orchestration | Responsibility |
+|---|---|
+| `User::Registration` | Creation + workspace + email |
+| `User::PasswordReset` | Password reset workflow |
+| `Account::Workspace` | Personal workspace setup |
+| `Account::Invitation::Lifecycle` | Dispatch + acceptance |
+| `Task::List::Transfer::Facilitation` | Request + accept + reject |
+| `User::Notification::Delivery` | Five notification events |
+
+Single-model effects stay in the model. Multi-model coordination moves out.
+
+```mermaid
+flowchart LR
+  B["Callback touches<br/>how many models?"]
+  B -->|"one"| S["Stays in model<br/><small>normalizations, counters, tokens</small>"]
+  B -->|"more than one"| O["Orchestration object<br/><small>named class, explicit workflow</small>"]
+
+  style S fill:#e8fde8
+  style O fill:#e8f4fd
+```
+
+`Task::List::Stats` is also renamed to `Task::List::Summary` — a stateless module where `Summary.of(list)` reads as plain English.
 
 ---
 
 ## 📊 The numbers
 
-| | Before (6E) | After (6F) |
+| | Before (6F) | After (6G) |
 |---|---|---|
-| Files changed | — | 42 |
-| Insertions / deletions | — | 97 / 97 |
-| Net line change | — | 0 |
+| Files changed | — | 31 |
+| Insertions / deletions | — | 267 / 154 |
+| Net line change | — | +113 |
+| New orchestration objects | — | 6 |
 | Behavioral test changes | — | 0 |
-| Rubycritic | 91.72 | 91.72 |
+| Rubycritic | 91.72 | 92.08 |
 
-42 files touched across models, controllers, views, mailers, seeds, tests, and fixtures. Every change is mechanical — `task_items` → `items`, `task_list` → `list`. 97 insertions, 97 deletions, zero logic changes. Rubycritic stays flat — static analysis cannot see that shorter, context-appropriate names reduce cognitive load on every read.
+Adding +113 lines reduced complexity — named code replacing anonymous callbacks. Rubycritic rises only +0.36 because static analysis can't see that `User::Registration.new.create(params)` is categorically different from `@user.save` with four invisible side effects. From this point forward, the agent's view — not the linter — is the true measure.
 
 ---
 
 ## 🤔 The problem
 
-The names stutter. It's like introducing yourself as "Smith John" to your brother "Smith David" — the family context is already established, repeating the last name is noise.
+Five places where a save hides a workflow.
 
-```mermaid
-flowchart LR
-  subgraph Before["Stuttering names"]
-    B1["task_list.task_items"]
-    B2["Task::Item → belongs_to :task_list"]
-    B3["Task::List::Transfer → belongs_to :task_list"]
-  end
+**`user.save`** — six side effects behind one persistence call: account, workspace name, membership, inbox, token, confirmation email.
 
-  subgraph After["Contextual names"]
-    A1["task_list.items"]
-    A2["Task::Item → belongs_to :list"]
-    A3["Task::List::Transfer → belongs_to :list"]
-  end
+**`user.destroy!`** — one line hiding a cascade through accounts, memberships, task lists, and transfers.
 
-  B1 -->|"drop prefix"| A1
-  B2 -->|"drop prefix"| A2
-  B3 -->|"drop prefix"| A3
+**`invitation.save`** — two invisible callbacks: email dispatch and invitee notification.
 
-  style Before fill:#fde8e8
-  style After fill:#e8fde8
-```
+**`transfer.save`** — notification and email, coupled through a `to_user` attr_accessor the caller must set but documented nowhere.
 
-`task_list.task_items` — "task" appears twice in a single method chain. Inside `Task::Item`, calling the parent `task_list` when the class already says `Task::`. Inside `Task::List::Transfer`, three levels of namespace, and the association echoes the second level. None of this is broken. The problem is noise: information-free repetition the reader processes and discards on every line.
+**`transfer.accept!`** — the method name says "accept"; the body moves a list to a new account, updates the transfer status, cancels all competing pending transfers, and delivers a notification.
 
-Rails generates association names from table names — the table is `task_items`, so `has_many` defaults to `:task_items`. When 5C introduced the `Task::` namespace, the names stayed. The pattern self-reinforced: once `Task::List` calls its children `task_items`, every caller copies that name. 42 files later, the redundancy is load-bearing.
+Why does this happen? Callbacks are the path of least resistance. Four lines for a callback, twenty for an orchestration class. Each addition is small and harmless. But the model accumulates orchestration responsibility it was never meant to have. The cost shows up later — when a test needs to create a transfer without sending email, or when a new caller needs to save without triggering side effects.
 
 ---
 
 ## 🔬 The evidence
 
-**Model declarations change, database stays**
+**Registration becomes a named workflow**
+
+Before — two callbacks in User, four models touched on save:
 
 ```ruby
-# Task::List — before
-has_many :task_items, foreign_key: :task_list_id, dependent: :destroy, class_name: "Task::Item"
+after_create do
+  account = Account.create!(uuid: SecureRandom.uuid, name: "#{email.split('@').first}'s workspace", personal: true)
+  account.add_member(self, role: :owner)
+  account.task_lists.inbox.create!
+  create_token!
+end
 
-# Task::List — after
-has_many :items, foreign_key: :task_list_id, dependent: :destroy, class_name: "Task::Item"
-```
-
-```ruby
-# Task::Item — before
-belongs_to :task_list, class_name: "Task::List"
-
-# Task::Item — after
-belongs_to :list, foreign_key: :task_list_id, class_name: "Task::List"
-```
-
-The `foreign_key: :task_list_id` acts as a translation dictionary — it tells Rails "when I say `list` in Ruby, I mean the column `task_list_id` in the database."
-
-**Callers adopt shorter names**
-
-```ruby
-# Before
-@task_item = @task_list.task_items.find(params[:item_id])
-
-# After
-@task_item = @task_list.items.find(params[:item_id])
-```
-
-**Account keeps the prefix — the boundary rule**
-
-```ruby
-class Account < ApplicationRecord
-  has_many :task_lists,  dependent: :destroy, class_name: "Task::List"
-  has_many :task_items,  through: :task_lists, source: :items
+after_create_commit do
+  UserMailer.with(user: self, token: generate_token_for(:email_confirmation))
+            .email_confirmation.deliver_later
 end
 ```
 
-`source: :items` is the only change — it tells Rails that Account's `:task_items` follows `Task::List#items` (the renamed association). Inside the namespace, the prefix is noise. Outside, it is signal.
+After — the controller names the operation:
+
+```ruby
+# Controller
+@user = User::Registration.new.create(user_registration_params)
+if @user.persisted? ...
+```
+
+```ruby
+# User::Registration
+class User::Registration
+  attr_reader :user
+
+  def initialize(user = User.new)
+    @user = user
+  end
+
+  def create(params)
+    user.assign_attributes(params)
+    return user unless user.valid?
+
+    user.transaction do
+      user
+        .tap(&:save!)
+        .tap(&:create_token!)
+        .then { Account::Workspace.for!(it) }
+    end
+
+    UserMailer.with(user:, token: user.generate_token_for(:email_confirmation))
+              .email_confirmation.deliver_later
+
+    user
+  rescue ActiveRecord::RecordInvalid
+    user
+  end
+
+  def destroy
+    return user if user.new_record?
+    user.transaction do
+      user.account.destroy!
+      user.destroy!
+    end
+    user
+  end
+end
+```
+
+`Account::Workspace.for!` absorbs the personal workspace bootstrap — UUID generation, name derivation, owner membership, inbox creation. The registration orchestration sequences the steps; the workspace module owns the workspace details.
+
+**Notifications centralized behind named methods**
+
+Before — five call sites, each choosing a constant and a recipient. After — one class, five named methods:
+
+```ruby
+class User::Notification::Delivery
+  attr_reader :notifiable
+
+  def initialize(notifiable)
+    @notifiable = notifiable
+  end
+
+  def transfer_requested(to:) = notify(to, TRANSFER_REQUESTED)
+  def transfer_accepted       = notify(notifiable.transferred_by, TRANSFER_ACCEPTED)
+  def transfer_rejected       = notify(notifiable.transferred_by, TRANSFER_REJECTED)
+
+  def invitation_received(to:) = notify(to, INVITATION_RECEIVED)
+  def invitation_accepted      = notify(notifiable.invited_by, INVITATION_ACCEPTED)
+
+  private
+
+  def notify(user, action)
+    User::Notification.create!(user:, notifiable: notifiable, action:)
+  end
+end
+```
+
+The method name IS the event name. Derivable recipients take no argument; contextual recipients require `to:`.
 
 ```mermaid
-flowchart LR
-  subgraph TaskNS["Task:: namespace (short names)"]
-    TL["Task::List<br/>has_many :items"]
-    TI["Task::Item<br/>belongs_to :list"]
-    TLT["Task::List::Transfer<br/>belongs_to :list"]
+flowchart TD
+  subgraph Before["6F: orchestrations hidden in callbacks"]
+    U["User<br/>after_create: account + membership + inbox + token<br/>after_create_commit: email"]
+    I["Invitation<br/>after_create_commit: email + notification"]
+    T["Transfer<br/>after_create_commit: notification + email<br/>accept!: 4-model transaction"]
   end
 
-  subgraph Outside["Outside (full names)"]
-    ACC["Account<br/>has_many :task_lists<br/>has_many :task_items, through: :task_lists, source: :items"]
+  subgraph After["6G: orchestrations named"]
+    UR["User::Registration<br/>create + destroy"]
+    AW["Account::Workspace<br/>bootstrap"]
+    IL["Account::Invitation::Lifecycle<br/>dispatch + acceptance"]
+    TF["Task::List::Transfer::Facilitation<br/>request + accept + reject"]
+    ND["User::Notification::Delivery<br/>5 event methods"]
   end
 
-  TL --> TI
-  TL --> TLT
-  ACC -->|"task_lists"| TL
-  ACC -->|"task_items (source: :items)"| TI
+  U -.->|"extracted"| UR
+  U -.->|"extracted"| AW
+  I -.->|"extracted"| IL
+  T -.->|"extracted"| TF
+  I -.->|"notifications"| ND
+  T -.->|"notifications"| ND
 
-  style TaskNS fill:#e8fde8
-  style Outside fill:#e8f4fd
+  style Before fill:#fde8e8
+  style After fill:#e8fde8
 ```
 
 ---
 
 ## ➡️ What comes next
 
-Association names match their context. The vocabulary is clean. The authority is declared.
+Family 6 is complete. Seven branches, one idea: architecture is naming what the code already says.
 
-What remains: callbacks that coordinate multiple models. When `user.save` triggers account creation, membership assignment, inbox setup, and email dispatch, the call site reveals nothing about that workflow. Side effects hide inside `after_create` and `after_commit` hooks scattered across models. The orchestration has no name.
+POROs for behavior (6A–6B). Constants for vocabulary (6C). Query objects for responsibility (6D). Declared authority (6E). Contextual names (6F). Orchestration objects for coordination (6G). Four tools, no gems — just plain Ruby giving names to what the code already knew.
 
-Branch `6G-named-orchestrations` extracts multi-model coordination from callbacks into named classes. Six orchestration objects emerge — `User::Registration`, `User::PasswordReset`, `Account::Workspace`, `Account::Invitation::Lifecycle`, `Task::List::Transfer::Facilitation`, and `User::Notification::Delivery`. Models that fire side effects on save now declare only their own structure. The orchestration logic gets its own home and its own name. ✌️
+The orchestration objects made the coupling visible. Three domains share foreign keys and call each other's classes directly. The names surfaced the dependencies — but the coupling is still there.
+
+Branch `7A-domain-boundaries` draws the lines. Three bounded contexts, no cross-domain model references, `Task::*` becomes `Workspace::*`. 176 files change; Rubycritic rises from 92.08 to 93.80. ✌️
 
 ---
 
 ## 🏛️ Thesis checkpoint
 
-Association names that reflect domain context — Principle 4 at the naming layer. The naming *is* the documentation.
+Family 6: architecture is naming what the code already says. POROs for behavior, constants for vocabulary, query objects for responsibility, orchestration objects for coordination — four tools, seven branches, one thesis (Principle 4). Every extraction used plain Ruby classes, standard callbacks, and model conventions — no gems, no patterns imported from outside the framework. Principle 1 held across all seven branches: zero behavioral test changes despite extracting logic into 12 new files. Rubycritic rose +0.87 across the family. The metric measures structural complexity; the architecture delivers semantic clarity. When those diverge, trust the one that tracks how humans and agents navigate the code.
 
 ---
 
 ## 🤖 The agent's view
 
-`list.items` is shorter than `task_list.task_items`. Across 42 files, hundreds of call sites, and every future session, the cumulative token saving adds up. After 6F, the most natural name IS the correct name — an agent generating code for a Task controller will naturally write `@task_list.items`, exactly what it would write if naming from scratch.
+The `to_user` attr_accessor on Transfer is the sharpest case. An agent would write `Transfer.new(attributes).save` — correct by ActiveRecord convention, but silently skips the notification because `to_user` isn't set. After 6G, `facilitation.request(to: to_user)` requires naming the recipient. The correct API is visible. The wrong API doesn't exist.
 
-The one correctness trap is the Account boundary. An agent that learns "we shortened the names" and applies the pattern to Account would break the code — `account.items` doesn't exist. Account's `source: :items` annotation makes the boundary visible: `task_items` goes through `task_lists` via `source: :items`, which implies `Task::List` calls them `items`.
+`User::Notification::Delivery` shows the same principle: `delivery.transfer_accepted` — the method name IS the event. No constant selection, no recipient lookup. One method, one event.
+
+The tradeoff: tracing registration now requires three files instead of one. Named steps across files are easier to reason about than anonymous callbacks in one — but the walk is longer. That friction is the price of named coordination.
 
 ---
 
@@ -196,8 +265,8 @@ The one correctness trap is the Account boundary. An agent that learns "we short
 Prerequisites: [mise](https://mise.jdx.dev/) (manages Ruby, Node, Mailpit)
 
 ```sh
-git clone git@github.com:railswhey/app.git -b 6F-contextual-names 6F-contextual-names
-cd 6F-contextual-names
+git clone git@github.com:railswhey/app.git -b 6G-named-orchestrations 6G-named-orchestrations
+cd 6G-named-orchestrations
 mise install                 # Ruby 4.0.1 + Node 22 + Mailpit 1.29.2
 bin/setup                    # bundle install, db:prepare, starts dev server
 ```

@@ -20,8 +20,8 @@ class APIV1TaskListTransfersTest < ActionDispatch::IntegrationTest
     sender = users(:one)
     list = create_task_list(member!(sender).account, name: "Transferable")
 
+    # User.create! without Registration gives a bare user with no account
     bare_user = User.create!(username: "bareuser", email: "bare@example.com", password: "password123")
-    bare_user.memberships.destroy_all
 
     post(
       api_v1_adapter.task__list_transfer_form_url(list, format: :json),
