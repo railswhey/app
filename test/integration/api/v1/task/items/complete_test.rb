@@ -39,7 +39,7 @@ class APIV1TaskItemsCompleteTest < ActionDispatch::IntegrationTest
     task = task_items(:two)
 
     put(
-      api_v1_adapter.complete_task__item_url(task.task_list, task, format: :json),
+      api_v1_adapter.complete_task__item_url(task.list, task, format: :json),
       headers: api_v1_adapter.authorization_header(user)
     )
 

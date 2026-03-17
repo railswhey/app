@@ -36,7 +36,7 @@
   </dialog>
 </div>
 
-<% if Current.task_list.task_items.exists? %>
+<% if Current.task_list.items.exists? %>
   <p class="filter-tabs"><%= link_to_task_item_filters %></p>
 
   <% if @task_items.present? %>
@@ -136,7 +136,7 @@
   <%= empty_task_items_message %>
 <% end %>
 
-<% if Current.task_list.task_items.exists? %>
+<% if Current.task_list.items.exists? %>
   <%= link_to(
     "+ New item",
     new_task_list_item_path(Current.task_list_id, filter: params[:filter]),

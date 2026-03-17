@@ -47,13 +47,13 @@ class Task::CommentTest < ActiveSupport::TestCase
 
     # Create a list + item in account one and comment on each
     list_one = account_one.task_lists.create!(name: "List A")
-    item_one = list_one.task_items.create!(name: "Item A")
+    item_one = list_one.items.create!(name: "Item A")
     comment_on_item = item_one.comments.create!(body: "on item", user: users(:one))
     comment_on_list = list_one.comments.create!(body: "on list", user: users(:one))
 
     # Create a list + item in account two and comment on each
     list_two = account_two.task_lists.create!(name: "List B")
-    item_two = list_two.task_items.create!(name: "Item B")
+    item_two = list_two.items.create!(name: "Item B")
     comment_other_item = item_two.comments.create!(body: "other account item", user: users(:two))
     comment_other_list = list_two.comments.create!(body: "other account list", user: users(:two))
 

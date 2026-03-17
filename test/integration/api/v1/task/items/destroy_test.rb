@@ -38,7 +38,7 @@ class APIV1TaskItemsDestroyTest < ActionDispatch::IntegrationTest
     user = users(:one)
     task = task_items(:two)
 
-    delete(api_v1_adapter.task__item_url(task.task_list, task, format: :json), headers: api_v1_adapter.authorization_header(user))
+    delete(api_v1_adapter.task__item_url(task.list, task, format: :json), headers: api_v1_adapter.authorization_header(user))
 
     api_v1_adapter.assert_response_with_failure(:not_found)
   end
@@ -47,7 +47,7 @@ class APIV1TaskItemsDestroyTest < ActionDispatch::IntegrationTest
     user = users(:one)
     task = task_items(:one)
 
-    assert_difference -> { member!(user).inbox.task_items.count }, -1 do
+    assert_difference -> { member!(user).inbox.items.count }, -1 do
       delete(
         api_v1_adapter.task__item_url(member!(user).inbox, task, format: :json),
         headers: api_v1_adapter.authorization_header(user)

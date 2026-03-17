@@ -9,7 +9,7 @@ class Task::ListTransferMailer < ApplicationMailer
 
     mail(
       to: transfer.to_account.owner.email,
-      subject: "Transfer request: #{transfer.task_list.name}"
+      subject: "Transfer request: #{transfer.list.name}"
     )
   end
 end

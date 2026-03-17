@@ -27,7 +27,7 @@ class WebTaskItemsShowTest < ActionDispatch::IntegrationTest
   test "user views task item with description" do
     user = users(:one)
     inbox = member!(user).inbox
-    task = inbox.task_items.create!(name: "Described", description: "Some details here")
+    task = inbox.items.create!(name: "Described", description: "Some details here")
     web_adapter.sign_in(user)
 
     get web_adapter.task__item_url(inbox, task)

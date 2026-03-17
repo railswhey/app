@@ -14,11 +14,11 @@
   <img src="/docs/assets/logo.png" alt="Rails Whey App" width="180" height="180">
 </p>
 
-A full-stack task management app built with Ruby on Rails. This branch applies one principle across the codebase: each model declares its own authority. Membership gains class methods that answer its own questions. Account declares `has_many :task_items, through: :task_lists`. Notification declares action constants with an enum. Helpers reorganize by domain. 28 files change; no behavioral tests change.
+A full-stack task management app built with Ruby on Rails. This branch renames associations inside the `Task` namespace to drop prefixes the namespace already provides. `Task::List` calls its children `items` instead of `task_items`. `Task::Item` calls its parent `list` instead of `task_list`. Account keeps the full names at the boundary. Database columns don't change; `foreign_key: :task_list_id` bridges Ruby names to SQL columns. 42 files change; every insertion has a matching deletion; no behavioral tests change.
 
 | | |
 |---|---|
-| **Branch** | `6E-declared-authority` |
+| **Branch** | `6F-contextual-names` |
 | **Ruby** | 4.0 |
 | **Rails** | 8.1 |
 | **Rubycritic** | 91.72 |
@@ -41,245 +41,153 @@ A full-stack task management app built with Ruby on Rails. This branch applies o
 
 ## 🎯 The concept
 
-> **One rule:** if it's your data, it's your responsibility to answer questions about it.
+> **One rule:** if the namespace already says it, the name drops the prefix.
 
-6A–6D made targeted extractions — a PORO for authorization, a PORO for crypto, constants for status, query objects for search. Each fixed one problem in one place. 6E applies the principle across the entire codebase.
+Inside `Task::List`, items can only mean task items. Inside `Task::Item`, list can only mean the task list. The `task_` prefix repeats context the namespace already provides.
 
-Three categories of authority were misplaced:
+| Model | Before | After |
+|---|---|---|
+| `Task::List` | `has_many :task_items` | `has_many :items` |
+| `Task::Item` | `belongs_to :task_list` | `belongs_to :list` |
+| `Task::List::Transfer` | `belongs_to :task_list` | `belongs_to :list` |
 
-```mermaid
-flowchart LR
-  subgraph Misplaced["Authority in the wrong place"]
-    Q["🔍 Query<br/>Account answered<br/>Membership's questions"]
-    V["📝 Vocabulary<br/>5 action strings<br/>scattered across 4 files"]
-    C["🧮 Computation<br/>ApplicationHelper:<br/>81 lines, 3 domains"]
-  end
-
-  subgraph Declared["Authority declared by its owner"]
-    Q2["Membership<br/>answers its own questions"]
-    V2["Notification<br/>declares its own vocabulary"]
-    C2["Domain helpers<br/>own their domain"]
-  end
-
-  Q --> Q2
-  V --> V2
-  C --> C2
-
-  style Misplaced fill:#fde8e8
-  style Declared fill:#e8fde8
-```
-
-Each piece of logic was correct. Each sat in the wrong place.
+Account keeps `task_lists` and `task_items` — outside the `Task` namespace, the prefix IS information. Database columns stay unchanged; `foreign_key: :task_list_id` bridges Ruby names to SQL columns. No migration, no schema change.
 
 ---
 
 ## 📊 The numbers
 
-| | Before (6D) | After (6E) |
+| | Before (6E) | After (6F) |
 |---|---|---|
-| Modified files | — | 28 |
-| New files | — | 0 |
+| Files changed | — | 42 |
+| Insertions / deletions | — | 97 / 97 |
+| Net line change | — | 0 |
 | Behavioral test changes | — | 0 |
-| Rubycritic | 91.58 | 91.72 |
+| Rubycritic | 91.72 | 91.72 |
 
-**Model shifts:**
-
-| Model | Before | After | Change |
-|---|---|---|---|
-| Account | 35 lines | 28 lines | −7 (membership methods delegate) |
-| Account::Membership | 17 lines | 23 lines | +6 (gains class methods + role constants) |
-| Account::Search | 39 lines | 25 lines | −14 (raw SQL → scope calls) |
-| User::Notification | 27 lines | 41 lines | +14 (gains constants + enum) |
-| Task::Comment | 17 lines | 21 lines | +4 (gains `for_account` scope) |
-
-**Helper shifts:**
-
-| Helper | Before | After |
-|---|---|---|
-| ApplicationHelper | 81 lines | 33 lines |
-| UsersHelper | 4 lines | 56 lines |
-| TaskListsHelper | 4 lines | 15 lines |
-| TaskItemsHelper | 63 lines | 49 lines |
-
-Models that gained authority grew. Files that lost misplaced logic shrank. Twenty-eight files changed; zero behavioral tests changed.
+42 files touched across models, controllers, views, mailers, seeds, tests, and fixtures. Every change is mechanical — `task_items` → `items`, `task_list` → `list`. 97 insertions, 97 deletions, zero logic changes. Rubycritic stays flat — static analysis cannot see that shorter, context-appropriate names reduce cognitive load on every read.
 
 ---
 
 ## 🤔 The problem
 
-Code landed where it was convenient for the caller, not where it belongs by domain. It's like keeping your socks in the kitchen just because it's closer to the laundry room — convenient for you, disastrous for anyone else navigating the house.
+The names stutter. It's like introducing yourself as "Smith John" to your brother "Smith David" — the family context is already established, repeating the last name is noise.
 
-Five places where authority was misplaced:
+```mermaid
+flowchart LR
+  subgraph Before["Stuttering names"]
+    B1["task_list.task_items"]
+    B2["Task::Item → belongs_to :task_list"]
+    B3["Task::List::Transfer → belongs_to :task_list"]
+  end
 
-**Account answered Membership's questions.** `owner_or_admin?`, `member?`, `add_member` were one-liner wrappers. The data — the role column — lives in Membership. But Account answered the questions, because the caller had an account and a user.
+  subgraph After["Contextual names"]
+    A1["task_list.items"]
+    A2["Task::Item → belongs_to :list"]
+    A3["Task::List::Transfer → belongs_to :list"]
+  end
 
-**Task::Item knew about Account's tables.** The `for_account` scope joined `task_lists` and filtered by `account_id`. The relationship path existed but wasn't declared — `has_many :task_items, through: :task_lists`.
+  B1 -->|"drop prefix"| A1
+  B2 -->|"drop prefix"| A2
+  B3 -->|"drop prefix"| A3
 
-**Account::Search built raw SQL with string interpolation.** It loaded all `task_item_ids` and `task_list_ids` into Ruby arrays for an OR clause. The database could handle subqueries. Nobody asked it to.
+  style Before fill:#fde8e8
+  style After fill:#e8fde8
+```
 
-**Notification actions were magic strings.** `"transfer_accepted"` and `"invitation_received"` appeared as raw literals across four files — `Account::Invitation`, `Task::List::Transfer`, `User::Notification`'s filter scope, and `ApplicationHelper`. No constants, no enum. A typo silently stored garbage.
+`task_list.task_items` — "task" appears twice in a single method chain. Inside `Task::Item`, calling the parent `task_list` when the class already says `Task::`. Inside `Task::List::Transfer`, three levels of namespace, and the association echoes the second level. None of this is broken. The problem is noise: information-free repetition the reader processes and discards on every line.
 
-**ApplicationHelper mixed three domains** — navigation chrome, notification helpers reaching into `User::Notification`'s domain, and `user_initials` computing from `User` attributes. 81 lines because Rails generates one helper and everything gravitates there. `task_lists_selector` lived in `TaskItemsHelper` instead of `TaskListsHelper`.
+Rails generates association names from table names — the table is `task_items`, so `has_many` defaults to `:task_items`. When 5C introduced the `Task::` namespace, the names stayed. The pattern self-reinforced: once `Task::List` calls its children `task_items`, every caller copies that name. 42 files later, the redundancy is load-bearing.
 
 ---
 
 ## 🔬 The evidence
 
-**Pattern 1: Membership answers its own questions**
+**Model declarations change, database stays**
 
 ```ruby
-class Account::Membership < ApplicationRecord
-  OWNER = "owner"
-  ADMIN = "admin"
-  COLLABORATOR = "collaborator"
+# Task::List — before
+has_many :task_items, foreign_key: :task_list_id, dependent: :destroy, class_name: "Task::Item"
 
-  enum :role, { owner: OWNER, admin: ADMIN, collaborator: COLLABORATOR }
-  scope :owner_or_admin, -> { where(role: [OWNER, ADMIN]) }
-
-  def self.owner_or_admin?(user) = owner_or_admin.exists?(user: user)
-  def self.granted_to?(user)     = exists?(user: user)
-  def self.grant(user, role:)    = find_or_create_by!(user: user) { it.role = role }
-
-  def removable_by?(user)        = !owner? && self.user != user
-end
+# Task::List — after
+has_many :items, foreign_key: :task_list_id, dependent: :destroy, class_name: "Task::Item"
 ```
 
-Account delegates without changing its public API:
+```ruby
+# Task::Item — before
+belongs_to :task_list, class_name: "Task::List"
+
+# Task::Item — after
+belongs_to :list, foreign_key: :task_list_id, class_name: "Task::List"
+```
+
+The `foreign_key: :task_list_id` acts as a translation dictionary — it tells Rails "when I say `list` in Ruby, I mean the column `task_list_id` in the database."
+
+**Callers adopt shorter names**
+
+```ruby
+# Before
+@task_item = @task_list.task_items.find(params[:item_id])
+
+# After
+@task_item = @task_list.items.find(params[:item_id])
+```
+
+**Account keeps the prefix — the boundary rule**
 
 ```ruby
 class Account < ApplicationRecord
-  has_many :memberships, dependent: :destroy
-  has_many :task_lists, dependent: :destroy, class_name: "Task::List"
-  has_many :task_items, through: :task_lists
-  # ...
-
-  def member?(user)           = memberships.granted_to?(user)
-  def add_member(user, role:) = memberships.grant(user, role:)
-  def owner_or_admin?(user)   = memberships.owner_or_admin?(user)
-
-  def search(query)
-    Account::Search.new(self).with(query.to_s.strip)
-  end
+  has_many :task_lists,  dependent: :destroy, class_name: "Task::List"
+  has_many :task_items,  through: :task_lists, source: :items
 end
 ```
 
-The class methods work on association proxies — `account.memberships.owner_or_admin?(user)` is scoped to that account automatically.
-
-**Pattern 2: Account declares `has_many :task_items, through: :task_lists`**
-
-```ruby
-# Before — Task::Item joins across the boundary
-scope :for_account, ->(account_id) {
-  joins(:task_list).where(task_lists: { account_id: account_id })
-}
-# Callers: Task::Item.for_account(Current.account_id)
-
-# After — Account declares the path
-has_many :task_items, through: :task_lists
-# Callers: Current.account.task_items
-```
-
-**Pattern 3: Comments gain a subquery scope**
-
-```ruby
-# Before — raw SQL, loads IDs into memory
-Task::Comment.where(
-  "(commentable_type = 'Task::Item' AND commentable_id IN (?)) OR ...",
-  task_items.ids.presence || [0],
-  task_lists.ids.presence || [0]
-)
-
-# After — subqueries stay in the database
-class Task::Comment < ApplicationRecord
-  scope :for_account, ->(account) {
-    where(commentable_type: "Task::Item", commentable_id: account.task_items.select(:id))
-    .or(where(commentable_type: "Task::List", commentable_id: account.task_lists.select(:id)))
-  }
-end
-```
-
-**Pattern 4: Notification declares its vocabulary**
-
-```ruby
-class User::Notification < ApplicationRecord
-  UNREAD = "unread"
-  INVITES = "invites"
-  TRANSFERS = "transfers"
-
-  ACTIONS = [
-    INVITATION_RECEIVED = "invitation_received",
-    INVITATION_ACCEPTED = "invitation_accepted",
-    TRANSFER_REQUESTED  = "transfer_requested",
-    TRANSFER_ACCEPTED   = "transfer_accepted",
-    TRANSFER_REJECTED   = "transfer_rejected"
-  ].freeze
-
-  enum :action, ACTIONS.to_h { [it, it] }
-
-  scope :filter_by, ->(type) {
-    case type
-    when UNREAD    then unread
-    when INVITES   then where(action: [INVITATION_RECEIVED, INVITATION_ACCEPTED])
-    when TRANSFERS then where(action: [TRANSFER_REQUESTED, TRANSFER_ACCEPTED, TRANSFER_REJECTED])
-    else all
-    end
-  }
-end
-```
-
-An invalid action now raises `ArgumentError` instead of silently storing garbage. A typo in a constant raises `NameError` instead of silently persisting.
+`source: :items` is the only change — it tells Rails that Account's `:task_items` follows `Task::List#items` (the renamed association). Inside the namespace, the prefix is noise. Outside, it is signal.
 
 ```mermaid
-flowchart TD
-  subgraph Before["6D: authority scattered"]
-    A1["Account<br/>answers Membership's questions"]
-    TI["Task::Item<br/>for_account joins Account's tables"]
-    AS["Account::Search<br/>raw SQL, loads IDs into memory"]
-    UN["User::Notification<br/>no constants, no enum"]
-    AH["ApplicationHelper<br/>81 lines, 3 domains"]
+flowchart LR
+  subgraph TaskNS["Task:: namespace (short names)"]
+    TL["Task::List<br/>has_many :items"]
+    TI["Task::Item<br/>belongs_to :list"]
+    TLT["Task::List::Transfer<br/>belongs_to :list"]
   end
 
-  subgraph After["6E: each model declares authority"]
-    AM["Account::Membership<br/>owner_or_admin? / granted_to? / grant"]
-    A2["Account<br/>has_many :task_items, through: :task_lists"]
-    TC["Task::Comment<br/>for_account scope with subqueries"]
-    UN2["User::Notification<br/>ACTIONS array + enum + filter constants"]
-    UH["UsersHelper<br/>56 lines, notifications only"]
+  subgraph Outside["Outside (full names)"]
+    ACC["Account<br/>has_many :task_lists<br/>has_many :task_items, through: :task_lists, source: :items"]
   end
 
-  A1 -->|"delegates to"| AM
-  TI -->|"replaced by"| A2
-  AS -->|"simplified by"| TC
-  UN -->|"gains"| UN2
-  AH -->|"splits into"| UH
+  TL --> TI
+  TL --> TLT
+  ACC -->|"task_lists"| TL
+  ACC -->|"task_items (source: :items)"| TI
 
-  style Before fill:#fde8e8
-  style After fill:#e8fde8
+  style TaskNS fill:#e8fde8
+  style Outside fill:#e8f4fd
 ```
 
 ---
 
 ## ➡️ What comes next
 
-Authority is declared. But association names inside namespaces still repeat what the namespace already says. `Task::List` calls its children `task_items` — inside the `Task::` namespace, the `task_` prefix is redundant.
+Association names match their context. The vocabulary is clean. The authority is declared.
 
-Branch `6F-contextual-names` drops the prefix inside namespaces. `Task::List` calls children `items`. Account keeps the full names at the boundary — `task_lists` — because from Account's perspective, the prefix IS the context. Forty-two files change. Zero net line change. Zero behavioral test changes. ✌️
+What remains: callbacks that coordinate multiple models. When `user.save` triggers account creation, membership assignment, inbox setup, and email dispatch, the call site reveals nothing about that workflow. Side effects hide inside `after_create` and `after_commit` hooks scattered across models. The orchestration has no name.
+
+Branch `6G-named-orchestrations` extracts multi-model coordination from callbacks into named classes. Six orchestration objects emerge — `User::Registration`, `User::PasswordReset`, `Account::Workspace`, `Account::Invitation::Lifecycle`, `Task::List::Transfer::Facilitation`, and `User::Notification::Delivery`. Models that fire side effects on save now declare only their own structure. The orchestration logic gets its own home and its own name. ✌️
 
 ---
 
 ## 🏛️ Thesis checkpoint
 
-Authorization logic declared explicitly across the codebase — Principle 4 at the policy layer. No authorization gem. The authority is the model's own knowledge of its membership structure, formalized and made consistent. Every permission check traces back to a model predicate.
+Association names that reflect domain context — Principle 4 at the naming layer. The naming *is* the documentation.
 
 ---
 
 ## 🤖 The agent's view
 
-Before 6E, every lookup starts in the wrong file. Account-scoped task items? Discover `Task::Item.for_account` on a 71-line file. Comments? Parse raw SQL in Account::Search. Valid notification actions? Grep four files. Each question sends the agent to someone else's house.
+`list.items` is shorter than `task_list.task_items`. Across 42 files, hundreds of call sites, and every future session, the cumulative token saving adds up. After 6F, the most natural name IS the correct name — an agent generating code for a Task controller will naturally write `@task_list.items`, exactly what it would write if naming from scratch.
 
-After 6E, every lookup starts in the right file. Account (28 lines) shows `has_many :task_items, through: :task_lists`. `Task::Comment.for_account(account)` is a standard composable scope. `User::Notification` (41 lines) lists every valid action in the `ACTIONS` array. For rendering, `UsersHelper` (56 lines) uses pattern matching on `[action, notifiable]` tuples.
-
-Magic strings are the highest-risk pattern for agents. `action: "transfer_accepted"` has no programmatic check — a typo silently persists. `User::Notification::TRANSFER_ACCEPTED` raises `NameError` at load time. The shift from runtime silence to load-time failure is the practical benefit. Raw SQL is similarly opaque — agents can't compose or safely modify it. Subqueries through `.select(:id)` are standard ActiveRecord that any agent understands.
+The one correctness trap is the Account boundary. An agent that learns "we shortened the names" and applies the pattern to Account would break the code — `account.items` doesn't exist. Account's `source: :items` annotation makes the boundary visible: `task_items` goes through `task_lists` via `source: :items`, which implies `Task::List` calls them `items`.
 
 ---
 
@@ -288,8 +196,8 @@ Magic strings are the highest-risk pattern for agents. `action: "transfer_accept
 Prerequisites: [mise](https://mise.jdx.dev/) (manages Ruby, Node, Mailpit)
 
 ```sh
-git clone git@github.com:railswhey/app.git -b 6E-declared-authority 6E-declared-authority
-cd 6E-declared-authority
+git clone git@github.com:railswhey/app.git -b 6F-contextual-names 6F-contextual-names
+cd 6F-contextual-names
 mise install                 # Ruby 4.0.1 + Node 22 + Mailpit 1.29.2
 bin/setup                    # bundle install, db:prepare, starts dev server
 ```

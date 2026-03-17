@@ -23,7 +23,7 @@ class Web::Task::List::TransfersController < Web::BaseController
     end
 
     @transfer = Task::List::Transfer.new(
-      task_list:      @transfer_task_list,
+      list:           @transfer_task_list,
       from_account:   Current.account,
       to_account:     to_user.account,
       transferred_by: Current.user,

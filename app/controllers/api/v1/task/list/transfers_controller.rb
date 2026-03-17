@@ -15,7 +15,7 @@ class API::V1::Task::List::TransfersController < API::V1::BaseController
     end
 
     @transfer = Task::List::Transfer.new(
-      task_list:      @transfer_task_list,
+      list:           @transfer_task_list,
       from_account:   Current.account,
       to_account:     to_user.account,
       transferred_by: Current.user,

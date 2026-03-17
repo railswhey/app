@@ -192,7 +192,7 @@ class WebNotificationsTest < ActionDispatch::IntegrationTest
   def create_transfer(from_user:, to_user:)
     list = create_task_list(member!(from_user).account, name: "Transfer Me")
     Task::List::Transfer.create!(
-      task_list: list,
+      list: list,
       from_account: from_user.account,
       to_account: to_user.account,
       transferred_by: from_user

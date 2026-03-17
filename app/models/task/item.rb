@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Task::Item < ApplicationRecord
-  belongs_to :task_list, class_name: "Task::List"
+  belongs_to :list, foreign_key: :task_list_id, class_name: "Task::List"
   belongs_to :assigned_user, optional: true, class_name: "User"
 
   has_many :comments, as: :commentable, dependent: :destroy, class_name: "Task::Comment"
@@ -65,6 +65,6 @@ class Task::Item < ApplicationRecord
   end
 
   def movable_to?(target_list)
-    target_list.present? && target_list != task_list
+    target_list.present? && target_list != list
   end
 end

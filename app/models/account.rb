@@ -4,7 +4,7 @@ class Account < ApplicationRecord
   has_many :memberships,        dependent: :destroy
   has_many :users,              through: :memberships
   has_many :task_lists,         dependent: :destroy, class_name: "Task::List"
-  has_many :task_items,         through: :task_lists
+  has_many :task_items,         through: :task_lists, source: :items
   has_many :invitations,        dependent: :destroy
   has_many :outgoing_transfers, foreign_key: :from_account_id, dependent: :destroy, class_name: "Task::List::Transfer"
   has_many :incoming_transfers, foreign_key: :to_account_id,   dependent: :destroy, class_name: "Task::List::Transfer"

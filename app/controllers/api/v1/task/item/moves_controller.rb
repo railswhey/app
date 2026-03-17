@@ -13,7 +13,7 @@ class API::V1::Task::Item::MovesController < API::V1::Task::Item::BaseController
       return
     end
 
-    @task_item.update!(task_list: target_list)
+    @task_item.update!(list: target_list)
 
     render "api/v1/task/items/show", status: :ok
   end

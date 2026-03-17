@@ -13,7 +13,7 @@ class Task::List::TransferTest < ActiveSupport::TestCase
 
   def build_transfer(attrs = {})
     Task::List::Transfer.new({
-      task_list:      @task_list,
+      list:           @task_list,
       from_account:   @from_account,
       to_account:     @to_account,
       transferred_by: @owner_one
@@ -39,9 +39,9 @@ class Task::List::TransferTest < ActiveSupport::TestCase
 
   test "task_list_must_belong_to_from_account" do
     other_list = task_lists(:two_inbox)   # belongs to account two, not account one
-    transfer = build_transfer(task_list: other_list)
+    transfer = build_transfer(list: other_list)
     assert transfer.invalid?
-    assert transfer.errors[:task_list].present?
+    assert transfer.errors[:list].present?
   end
 
   test "starts as pending" do

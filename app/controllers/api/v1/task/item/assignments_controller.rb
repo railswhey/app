@@ -8,7 +8,7 @@ class API::V1::Task::Item::AssignmentsController < API::V1::BaseController
     items = Current.account.task_items.assigned_to(Current.user.id)
 
     @task_items = items.assignment_filter_by(@filter)
-      .order(created_at: :desc).limit(100).includes(:task_list)
+      .order(created_at: :desc).limit(100).includes(:list)
 
     @item_counts = {
       all:        items.count,

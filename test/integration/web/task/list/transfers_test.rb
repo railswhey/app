@@ -144,7 +144,7 @@ class WebTaskListTransfersTest < ActionDispatch::IntegrationTest
 
     transfer = Task::List::Transfer.last
     assert transfer.pending?
-    assert_equal list, transfer.task_list
+    assert_equal list, transfer.list
     assert_equal sender.account, transfer.from_account
     assert_equal receiver.account, transfer.to_account
 
@@ -199,7 +199,7 @@ class WebTaskListTransfersTest < ActionDispatch::IntegrationTest
   test "receiver accepts a transfer" do
     receiver = users(:two)
     transfer = create_transfer(to_user: receiver)
-    list = transfer.task_list
+    list = transfer.list
 
     web_adapter.sign_in(receiver)
 
@@ -260,7 +260,7 @@ class WebTaskListTransfersTest < ActionDispatch::IntegrationTest
     follow_redirect!
     assert_select ".notice-text", /moved to "Target"/
 
-    assert_equal target, task.reload.task_list
+    assert_equal target, task.reload.list
   end
 
   test "move fails with invalid target list" do
@@ -332,7 +332,7 @@ class WebTaskListTransfersTest < ActionDispatch::IntegrationTest
     list = create_task_list(member!(from_user).account, name: "Transfer Me")
 
     Task::List::Transfer.create!(
-      task_list: list,
+      list: list,
       from_account: from_user.account,
       to_account: to_user.account,
       transferred_by: from_user

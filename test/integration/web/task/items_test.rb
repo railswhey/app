@@ -35,7 +35,7 @@ class WebTaskItemsTest < ActionDispatch::IntegrationTest
     assert_select("select.action-combo", count: 2)
 
     # Delete tasks directly
-    inbox.task_items.each do |item|
+    inbox.items.each do |item|
       delete(web_adapter.task__item_url(inbox, item))
       assert_redirected_to web_adapter.task__items_url(inbox)
       follow_redirect!

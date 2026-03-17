@@ -13,7 +13,7 @@ class WebTaskItemsCrudTest < ActionDispatch::IntegrationTest
     inbox = member!(user).inbox
     web_adapter.sign_in(user)
 
-    assert_difference "inbox.task_items.count", 1 do
+    assert_difference "inbox.items.count", 1 do
       post web_adapter.task__items_url(inbox), params: { task_item: { name: "New task" } }
     end
     assert_redirected_to web_adapter.task__items_url(inbox)
@@ -66,7 +66,7 @@ class WebTaskItemsCrudTest < ActionDispatch::IntegrationTest
     task = create_task(user, name: "Delete me")
     web_adapter.sign_in(user)
 
-    assert_difference "inbox.task_items.count", -1 do
+    assert_difference "inbox.items.count", -1 do
       delete web_adapter.task__item_url(inbox, task)
     end
     assert_redirected_to web_adapter.task__items_url(inbox)

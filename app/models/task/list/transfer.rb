@@ -3,7 +3,7 @@
 class Task::List::Transfer < ApplicationRecord
   attr_accessor :to_user
 
-  belongs_to :task_list,      class_name: "Task::List"
+  belongs_to :list, foreign_key: :task_list_id, class_name: "Task::List"
   belongs_to :to_account,     class_name: "Account"
   belongs_to :from_account,   class_name: "Account"
   belongs_to :transferred_by, class_name: "User"
@@ -26,7 +26,7 @@ class Task::List::Transfer < ApplicationRecord
   validates :from_account_id, :to_account_id, :task_list_id, presence: true
   validates :task_list_id, uniqueness: { conditions: -> { pending }, message: "already has a pending transfer" }
   validate  :accounts_must_differ
-  validate  :task_list_must_belong_to_from_account
+  validate  :list_must_belong_to_from_account
 
   after_create_commit :notify_recipient
   after_create_commit :send_transfer_email
@@ -36,7 +36,7 @@ class Task::List::Transfer < ApplicationRecord
     return false unless to_account.owner_or_admin?(user)
 
     transaction do
-      task_list.update!(account_id: to_account_id)
+      list.update!(account_id: to_account_id)
 
       update_columns(status: self.class.statuses[:accepted])
 
@@ -68,11 +68,11 @@ class Task::List::Transfer < ApplicationRecord
     errors.add(:to_account, "must differ from source account") if from_account_id == to_account_id
   end
 
-  def task_list_must_belong_to_from_account
-    return unless task_list && from_account
+  def list_must_belong_to_from_account
+    return unless list && from_account
 
-    unless task_list.account_id == from_account_id
-      errors.add(:task_list, "does not belong to source account")
+    unless list.account_id == from_account_id
+      errors.add(:list, "does not belong to source account")
     end
   end
 

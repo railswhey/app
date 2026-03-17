@@ -34,10 +34,10 @@ daily = account.task_lists.find_or_create_by!(name: "Daily Essentials")
   "Clean the espresso machine",
   "Check mailbox"
 ].each do |name|
-  daily.task_items.find_or_create_by!(name:)
+  daily.items.find_or_create_by!(name:)
 end
 
-puts "  📋 Daily Essentials: #{daily.task_items.count} items"
+puts "  📋 Daily Essentials: #{daily.items.count} items"
 
 # ── Task List 2: Relocation Logistics (title + description) ─────────────────
 relocation = account.task_lists.find_or_create_by!(name: "Relocation Logistics")
@@ -64,12 +64,12 @@ relocation = account.task_lists.find_or_create_by!(name: "Relocation Logistics")
     description: "Check which providers offer the best coverage for a family of five in Texas."
   }
 ].each do |attrs|
-  relocation.task_items.find_or_create_by!(name: attrs[:name]) do |item|
+  relocation.items.find_or_create_by!(name: attrs[:name]) do |item|
     item.description = attrs[:description]
   end
 end
 
-puts "  📋 Relocation Logistics: #{relocation.task_items.count} items"
+puts "  📋 Relocation Logistics: #{relocation.items.count} items"
 
 # ── Task List 3: Software Launch (long titles + detailed descriptions) ───────
 launch = account.task_lists.find_or_create_by!(name: "Software Launch")
@@ -92,12 +92,12 @@ launch = account.task_lists.find_or_create_by!(name: "Software Launch")
     description: "The initial page load is currently exceeding 3 seconds. We need to minify all CSS/JS files, implement lazy loading for images, and configure the edge servers to cache static assets closer to the end-users to reduce latency globally."
   }
 ].each do |attrs|
-  launch.task_items.find_or_create_by!(name: attrs[:name]) do |item|
+  launch.items.find_or_create_by!(name: attrs[:name]) do |item|
     item.description = attrs[:description]
   end
 end
 
-puts "  📋 Software Launch: #{launch.task_items.count} items"
+puts "  📋 Software Launch: #{launch.items.count} items"
 
 # ── Two empty task lists (for swapping/rebuilding) ───────────────────────────
 empty_a = account.task_lists.find_or_create_by!(name: "Sandbox A")
@@ -112,30 +112,30 @@ puts "  📋 Sandbox B: empty"
   "Follow up on API feedback",
   "Book dentist appointment"
 ].each do |name|
-  inbox.task_items.find_or_create_by!(name:)
+  inbox.items.find_or_create_by!(name:)
 end
 
-puts "  📥 Inbox: #{inbox.task_items.count} items"
+puts "  📥 Inbox: #{inbox.items.count} items"
 
 # ── Alice's task list ─────────────────────────────────────────────────────────
 alice_account = alice.account
 alice_inbox = alice_account.inbox
 
 [ "Read chapter 5", "Reply to recruiter", "Grocery run" ].each do |name|
-  alice_inbox.task_items.find_or_create_by!(name:)
+  alice_inbox.items.find_or_create_by!(name:)
 end
 
 alice_projects = alice_account.task_lists.find_or_create_by!(name: "Side Projects")
 [ "Build portfolio site", "Write blog post about Rails 8", "Open-source CLI tool" ].each do |name|
-  alice_projects.task_items.find_or_create_by!(name:)
+  alice_projects.items.find_or_create_by!(name:)
 end
 
-puts "  📋 Alice's lists: Inbox (#{alice_inbox.task_items.count}), Side Projects (#{alice_projects.task_items.count})"
+puts "  📋 Alice's lists: Inbox (#{alice_inbox.items.count}), Side Projects (#{alice_projects.items.count})"
 
 # ── Cross-user: transfer request (demo → alice) ─────────────────────────────
-unless Task::List::Transfer.exists?(task_list: empty_a)
+unless Task::List::Transfer.exists?(list: empty_a)
   Task::List::Transfer.create!(
-    task_list: empty_a,
+    list: empty_a,
     from_account: account,
     to_account: alice_account,
     transferred_by: demo,

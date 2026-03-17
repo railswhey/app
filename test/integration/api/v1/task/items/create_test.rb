@@ -70,7 +70,7 @@ class APIV1TaskItemsCreateTest < ActionDispatch::IntegrationTest
     user = users(:one)
     params = { task_item: { name: "Foo" } }
 
-    assert_difference -> { member!(user).inbox.task_items.count } do
+    assert_difference -> { member!(user).inbox.items.count } do
       post(
         api_v1_adapter.task__items_url(member!(user).inbox, format: :json),
         headers: api_v1_adapter.authorization_header(user),
@@ -82,6 +82,6 @@ class APIV1TaskItemsCreateTest < ActionDispatch::IntegrationTest
 
     assert_equal "Foo", json_data["name"]
 
-    assert member!(user).inbox.task_items.exists?(json_data["id"])
+    assert member!(user).inbox.items.exists?(json_data["id"])
   end
 end

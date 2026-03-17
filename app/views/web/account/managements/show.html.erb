@@ -82,7 +82,7 @@
     <% @incoming_transfers.each do |t| %>
       <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: var(--bg); border-radius: 6px; margin-bottom: 0.5rem;">
         <div>
-          <div><strong><%= t.task_list.name %></strong></div>
+          <div><strong><%= t.list.name %></strong></div>
           <div class="text-muted">from <%= t.from_account.name %> &middot; by <%= t.transferred_by.email %></div>
         </div>
         <div class="action-group">

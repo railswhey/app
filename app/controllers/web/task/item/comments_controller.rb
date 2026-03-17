@@ -5,7 +5,7 @@ class Web::Task::Item::CommentsController < Web::BaseController
 
   def create
     @task_list = Current.account.task_lists.find(params[:list_id])
-    @task_item = @task_list.task_items.find(params[:item_id])
+    @task_item = @task_list.items.find(params[:item_id])
     @comment = @task_item.comments.new(comment_params)
     @comment.user = Current.user
 
@@ -18,7 +18,7 @@ class Web::Task::Item::CommentsController < Web::BaseController
 
   def edit
     @task_list = Current.account.task_lists.find(params[:list_id])
-    @task_item = @task_list.task_items.find(params[:item_id])
+    @task_item = @task_list.items.find(params[:item_id])
     @comment = @task_item.comments.find(params[:id])
     require_comment_author! or return
 
@@ -27,7 +27,7 @@ class Web::Task::Item::CommentsController < Web::BaseController
 
   def update
     @task_list = Current.account.task_lists.find(params[:list_id])
-    @task_item = @task_list.task_items.find(params[:item_id])
+    @task_item = @task_list.items.find(params[:item_id])
     @comment = @task_item.comments.find(params[:id])
     require_comment_author! or return
 
@@ -40,7 +40,7 @@ class Web::Task::Item::CommentsController < Web::BaseController
 
   def destroy
     @task_list = Current.account.task_lists.find(params[:list_id])
-    @task_item = @task_list.task_items.find(params[:item_id])
+    @task_item = @task_list.items.find(params[:item_id])
     @comment = @task_item.comments.find(params[:id])
     require_comment_author! or return
 

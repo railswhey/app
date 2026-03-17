@@ -21,18 +21,18 @@
         <tr style="<%= "opacity:0.7" if item.completed? %>">
           <td>
             <% toggle_url = item.completed? ?
-                task_list_item_incomplete_path(item.task_list, item, return_to: "task_item_assignments") :
-                task_list_item_complete_path(item.task_list, item, return_to: "task_item_assignments") %>
+                task_list_item_incomplete_path(item.list, item, return_to: "task_item_assignments") :
+                task_list_item_complete_path(item.list, item, return_to: "task_item_assignments") %>
             <input type="checkbox" <%= "checked" if item.completed? %> class="task-checkbox"
               title="<%= item.completed? ? "Mark as incomplete" : "Mark as complete" %>"
               onclick="fetch('<%= toggle_url %>', {method:'PATCH', headers:{'X-CSRF-Token':'<%= j form_authenticity_token %>','Accept':'text/html'}}).then(()=>location.reload())" />
           </td>
           <td style="width:100%">
             <%= link_to item.name,
-                task_list_item_path(item.task_list, item),
+                task_list_item_path(item.list, item),
                 style: item.completed? ? "text-decoration:line-through;color:var(--text-light)" : "font-weight:500" %><% if item.description.present? %>
               <small class="text-muted"> — <%= truncate(item.description, length: 60) %></small><% end %>
-            <div><small class="text-muted">in <%= link_to item.task_list.name, task_list_path(item.task_list) %></small></div>
+            <div><small class="text-muted">in <%= link_to item.list.name, task_list_path(item.list) %></small></div>
           </td>
         </tr>
       <% end %>

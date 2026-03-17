@@ -57,7 +57,7 @@ class APIV1TaskItemsUpdateTest < ActionDispatch::IntegrationTest
     params = { task_item: { name: "Foo" } }
 
     put(
-      api_v1_adapter.task__item_url(task.task_list, task, format: :json),
+      api_v1_adapter.task__item_url(task.list, task, format: :json),
       headers: api_v1_adapter.authorization_header(user),
       params:
     )
@@ -92,7 +92,7 @@ class APIV1TaskItemsUpdateTest < ActionDispatch::IntegrationTest
 
     json_data = api_v1_adapter.assert_response_with_success(:ok)
 
-    updated_task = member!(user).inbox.task_items.find(json_data["id"])
+    updated_task = member!(user).inbox.items.find(json_data["id"])
 
     assert_equal params[:task_item][:name], updated_task.name
   end
@@ -110,7 +110,7 @@ class APIV1TaskItemsUpdateTest < ActionDispatch::IntegrationTest
 
     json_data = api_v1_adapter.assert_response_with_success(:ok)
 
-    updated_task = member!(user).inbox.task_items.find(json_data["id"])
+    updated_task = member!(user).inbox.items.find(json_data["id"])
 
     assert updated_task.completed_at.present?
   end
@@ -129,7 +129,7 @@ class APIV1TaskItemsUpdateTest < ActionDispatch::IntegrationTest
 
     json_data = api_v1_adapter.assert_response_with_success(:ok)
 
-    updated_task = member!(user).inbox.task_items.find(json_data["id"])
+    updated_task = member!(user).inbox.items.find(json_data["id"])
 
     assert updated_task.completed_at.blank?
   end

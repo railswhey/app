@@ -16,7 +16,7 @@ class WebTaskItemsMoveTest < ActionDispatch::IntegrationTest
     assert_redirected_to web_adapter.task__items_url(source)
     follow_redirect!
     assert_select ".notice-text", /moved to "Target"/
-    assert_equal target, task.reload.task_list
+    assert_equal target, task.reload.list
   end
 
   test "move to same list shows alert" do

@@ -58,7 +58,7 @@ class Account::Member
   end
 
   def task_items
-    task_list&.task_items || Task::Item.none
+    task_list&.items || Task::Item.none
   end
 
   def owner_or_admin?

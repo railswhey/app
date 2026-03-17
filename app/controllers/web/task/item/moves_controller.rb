@@ -13,7 +13,7 @@ class Web::Task::Item::MovesController < Web::Task::Item::BaseController
       return
     end
 
-    @task_item.update!(task_list: target_list)
+    @task_item.update!(list: target_list)
 
     redirect_to task_list_items_path(@task_list), notice: "\"#{@task_item.name}\" moved to \"#{target_list.name}\"."
   end
