@@ -1,34 +1,48 @@
 # frozen_string_literal: true
 
 class User::RequestListTransferProcess < ApplicationJob
-  def perform(list:, from_workspace:, initiated_by:, to_email:)
-    to_user = User.find_by(email: to_email)
+  Manager = Struct.new(:to_user, :account, :transfer) do
+    def call(list:, from_workspace:, initiated_by:, to_email:)
+      self.to_user = User.find_by(email: to_email)
 
-    return [ :err, "No user found with that email." ] unless to_user
+      return [ :err, "No user found with that email." ] unless to_user
 
-    person  = Account::Person.find_by(uuid: to_user.uuid)
-    account = person&.ownership&.account
+      self.account = resolve_account
 
-    return [ :err, "Target user has no account." ] unless account
+      return [ :err, "Target user has no account." ] unless account
 
-    workspace = ::Workspace.find_by(uuid: account.uuid)
+      ActiveRecord::Base.transaction do
+        self.transfer = create_transfer(list:, from_workspace:, initiated_by:)
 
-    transfer = Workspace::List::Transfer.new(
-      list:,
-      initiated_by:,
-      to_workspace: workspace,
-      from_workspace:,
-    )
+        notify_recipient
+      end
 
-    transfer.facilitation.request
+      send_transfer_email if transfer&.persisted?
 
-    return [ :err, transfer ] unless transfer.persisted?
+      transfer ? [ :ok, transfer ] : [ :err, "Failed to create transfer." ]
+    end
 
-    User::Notification::Delivery.new(transfer).transfer_requested(to: to_user)
+    private
 
-    Workspace::ListTransferMailer.with(recipient_email: account.owner.email, to_account_name: account.name)
-                                 .transfer_requested(transfer).deliver_later
+    def resolve_account
+      Account.joins(memberships: :person).find_by(account_people: { uuid: to_user.uuid })
+    end
 
-    [ :ok, transfer ]
+    def create_transfer(list:, from_workspace:, initiated_by:)
+      to_workspace = ::Workspace.find_by(uuid: account.uuid)
+
+      Workspace::List::Transfer.create!(list:, initiated_by:, from_workspace:, to_workspace:)
+    end
+
+    def notify_recipient
+      User::Notification::Delivery.new(transfer).transfer_requested(to: to_user)
+    end
+
+    def send_transfer_email
+      Workspace::ListTransferMailer.with(recipient_email: account.owner.email, to_account_name: account.name)
+                                   .transfer_requested(transfer).deliver_later
+    end
   end
+
+  def perform(...) = Manager.new.call(...)
 end

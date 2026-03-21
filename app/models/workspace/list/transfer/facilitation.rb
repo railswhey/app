@@ -7,12 +7,6 @@ class Workspace::List::Transfer::Facilitation
     @transfer = transfer
   end
 
-  def request
-    return transfer unless transfer.save
-
-    transfer
-  end
-
   def accept
     return false unless actionable?
 
