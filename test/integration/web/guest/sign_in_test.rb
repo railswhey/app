@@ -32,7 +32,7 @@ class WebGuestSignInTest < ActionDispatch::IntegrationTest
     web_adapter.sign_in(user)
 
     get web_adapter.new_user__session_url
-    assert_redirected_to web_adapter.task__items_url(user.inbox)
+    assert_redirected_to web_adapter.task__items_url(member!(user).inbox)
   end
 
   test "guest signs in with valid data" do
@@ -40,7 +40,7 @@ class WebGuestSignInTest < ActionDispatch::IntegrationTest
 
     post(web_adapter.user__sessions_url, params:)
 
-    assert_redirected_to web_adapter.task__items_url(task_lists(:one_inbox))
+    assert_redirected_to web_adapter.task__items_url(workspace_lists(:one_inbox))
 
     follow_redirect!
 

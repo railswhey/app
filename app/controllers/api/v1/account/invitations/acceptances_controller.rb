@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
 class API::V1::Account::Invitations::AcceptancesController < API::V1::BaseController
+  before_action :current_member!
+  before_action :set_invitation, only: %i[show update]
+
   rescue_from ActiveRecord::RecordNotFound do
     render_json_with_failure(status: :not_found, message: "Not found.")
   end
 
   def show
-    current_member!
-    @invitation = Account::Invitation.find_by!(token: params[:token])
-
     if @invitation.accepted?
       render_json_with_failure(status: :unprocessable_entity, message: "This invitation has already been accepted.")
       return
@@ -23,23 +23,24 @@ class API::V1::Account::Invitations::AcceptancesController < API::V1::BaseContro
   end
 
   def update
-    current_member!
-    @invitation = Account::Invitation.find_by!(token: params[:token])
-
     if @invitation.accepted?
       render_json_with_failure(status: :unprocessable_entity, message: "Already accepted.")
       return
     end
 
-    unless Current.user
-      render("errors/unauthorized", status: :unauthorized)
-      return
-    end
+    return render("errors/unauthorized", status: :unauthorized) unless Current.user
 
-    if @invitation.accept!(Current.user)
+    case Account::AcceptInvitationProcess.perform_now(invitation: @invitation, user: Current.user)
+    in [ :ok, _ ]
       render :show, status: :ok
-    else
+    in [ :err, _ ]
       render_json_with_failure(status: :unprocessable_entity, message: "Could not accept invitation.")
     end
+  end
+
+  private
+
+  def set_invitation
+    @invitation = Account::Invitation.find_by!(token: params[:token])
   end
 end

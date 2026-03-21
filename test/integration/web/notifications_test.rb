@@ -105,13 +105,13 @@ class WebNotificationsTest < ActionDispatch::IntegrationTest
 
     assert_difference "receiver.notifications.count", 1 do
       post web_adapter.task__list_transfer_form_url(list), params: {
-        task_list_transfer: { to_email: receiver.email }
+        workspace_list_transfer: { to_email: receiver.email }
       }
     end
 
     notification = receiver.notifications.last
     assert_equal "transfer_requested", notification.action
-    assert_equal "Task::List::Transfer", notification.notifiable_type
+    assert_equal "Workspace::List::Transfer", notification.notifiable_type
   end
 
   test "accepting a transfer notifies the sender" do
@@ -163,7 +163,8 @@ class WebNotificationsTest < ActionDispatch::IntegrationTest
     invitee = users(:two)
     member!(inviter)
     member!(invitee)
-    invitation = inviter.account.invitations.create!(email: invitee.email, invited_by: inviter)
+    inviter_person = Account::Person.find_by!(uuid: inviter.uuid)
+    invitation = member!(inviter).account.invitations.create!(email: invitee.email, invited_by: inviter_person)
 
     web_adapter.sign_in(invitee)
 
@@ -190,18 +191,22 @@ class WebNotificationsTest < ActionDispatch::IntegrationTest
   private
 
   def create_transfer(from_user:, to_user:)
-    list = create_task_list(member!(from_user).account, name: "Transfer Me")
-    Task::List::Transfer.create!(
+    from_account = member!(from_user).account
+    to_account = member!(to_user).account
+    list = create_task_list(from_account, name: "Transfer Me")
+    Workspace::List::Transfer.create!(
       list: list,
-      from_account: from_user.account,
-      to_account: to_user.account,
-      transferred_by: from_user
+      from_workspace: ::Workspace.find_by!(uuid: from_account.uuid),
+      to_workspace: ::Workspace.find_by!(uuid: to_account.uuid),
+      initiated_by: Workspace::Member.find_by!(uuid: from_user.uuid)
     )
   end
 
   def create_notification(user, action:, read: false)
     # Use an invitation as a generic notifiable
-    invitation = user.account.invitations.create!(email: "notif-#{SecureRandom.hex(4)}@example.com", invited_by: user)
+    user_person = Account::Person.find_by!(uuid: user.uuid)
+    account = member!(user).account
+    invitation = account.invitations.create!(email: "notif-#{SecureRandom.hex(4)}@example.com", invited_by: user_person)
     User::Notification.create!(
       user: user,
       notifiable: invitation,

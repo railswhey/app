@@ -26,7 +26,7 @@ class WebUserAccountTest < ActionDispatch::IntegrationTest
     assert_redirected_to web_adapter.account__url
     follow_redirect!
     assert_select ".notice-text", /Account updated/
-    assert_equal "New Name", user.account.reload.name
+    assert_equal "New Name", member!(user).account.reload.name
   end
 
   test "user fails to update account with blank name" do
@@ -42,12 +42,13 @@ class WebUserAccountTest < ActionDispatch::IntegrationTest
     user = users(:one)
     member!(user)
     other_account = accounts(:two)
-    other_account.memberships.create!(user: user, role: :collaborator)
+    user_person = Account::Person.find_by!(uuid: user.uuid)
+    other_account.memberships.create!(person: user_person, role: :collaborator)
 
     web_adapter.sign_in(user)
 
     post web_adapter.switch__account_url(other_account)
-    assert_redirected_to web_adapter.task__items_url(task_lists(:two_inbox))
+    assert_redirected_to web_adapter.task__items_url(workspace_lists(:two_inbox))
     follow_redirect!
     assert_select ".notice-text", /Switched to/
   end

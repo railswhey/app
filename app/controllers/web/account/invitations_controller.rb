@@ -2,40 +2,41 @@
 
 class Web::Account::InvitationsController < Web::BaseController
   before_action :authenticate_user!, only: %i[index new create destroy]
+  before_action :guard_owner_or_admin!
+  before_action :set_account
 
   def index
-    guard_owner_or_admin! or return
-    @account = Current.account
     @invitations = @account.invitations.order(created_at: :desc)
   end
 
   def new
-    guard_owner_or_admin! or return
-    @account = Current.account
     @invitation = Account::Invitation.new
 
     render :new
   end
 
   def create
-    guard_owner_or_admin! or return
-    @account = Current.account
-    @invitation = @account.invitations.new(invitation_params.merge(invited_by: Current.user))
+    case Account::DispatchInvitationProcess.perform_now(
+      email: invitation_params[:email],
+      account: @account,
+      invited_by: Current.context.person
+    )
+    in [ :ok, invitation ]
+      @invitation = invitation
 
-    @invitation.lifecycle.dispatch
-
-    if @invitation.persisted?
       redirect_to account_management_path, notice: "Invitation sent to #{@invitation.email}."
-    else
+    in [ :err, invitation ]
+      @invitation = invitation
+
       render :new, status: :unprocessable_entity
     end
   end
 
   def destroy
-    guard_owner_or_admin! or return
-    @account = Current.account
     @invitation = @account.invitations.find(params[:id])
+
     @invitation.destroy!
+
     redirect_to account_management_path, notice: "Invitation revoked.", status: :see_other
   end
 
@@ -45,7 +46,12 @@ class Web::Account::InvitationsController < Web::BaseController
     return true if owner_or_admin?
 
     redirect_to account_management_path, alert: "Only owners and admins can manage this."
+
     false
+  end
+
+  def set_account
+    @account = Current.account
   end
 
   def invitation_params

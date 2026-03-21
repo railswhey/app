@@ -5,7 +5,7 @@ require "test_helper"
 class Account::InvitationTest < ActiveSupport::TestCase
   setup do
     @account = accounts(:one)
-    @inviter = users(:one)
+    @inviter = Account::Person.find_by!(uuid: users(:one).uuid)
     @invitee_email = "invitee@example.com"
   end
 
@@ -41,7 +41,7 @@ class Account::InvitationTest < ActiveSupport::TestCase
   test "same email can be invited to different accounts" do
     account2 = accounts(:two)
     Account::Invitation.create!(account: @account, invited_by: @inviter, email: @invitee_email)
-    inv2 = Account::Invitation.new(account: account2, invited_by: users(:two), email: @invitee_email)
+    inv2 = Account::Invitation.new(account: account2, invited_by: Account::Person.find_by!(uuid: users(:two).uuid), email: @invitee_email)
     assert inv2.valid?
   end
 
@@ -62,31 +62,19 @@ class Account::InvitationTest < ActiveSupport::TestCase
     assert_not_includes Account::Invitation.accepted, inv
   end
 
-  test "accept! creates membership and marks invitation accepted" do
+  test "accept! marks invitation as accepted" do
     inv = Account::Invitation.create!(account: @account, invited_by: @inviter, email: @invitee_email)
-    new_user = User.create!(username: "invitee", email: @invitee_email, password: "password123", password_confirmation: "password123")
 
-    assert inv.accept!(new_user)
+    inv.accept!
     assert inv.reload.accepted?
     assert inv.accepted_at.present?
-    assert @account.memberships.exists?(user: new_user)
-  end
-
-  test "accept! creates collaborator membership" do
-    inv = Account::Invitation.create!(account: @account, invited_by: @inviter, email: @invitee_email)
-    new_user = User.create!(username: "invitee", email: @invitee_email, password: "password123", password_confirmation: "password123")
-
-    inv.accept!(new_user)
-    membership = @account.memberships.find_by(user: new_user)
-    assert membership.collaborator?
   end
 
   test "accept! returns false if already accepted" do
     inv = Account::Invitation.create!(account: @account, invited_by: @inviter, email: @invitee_email)
     inv.update_column(:accepted_at, Time.current)
-    new_user = User.create!(username: "invitee", email: @invitee_email, password: "password123", password_confirmation: "password123")
 
-    assert_not inv.accept!(new_user)
+    assert_not inv.accept!
   end
 
   test "accepted scope returns accepted invitations" do

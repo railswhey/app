@@ -25,7 +25,7 @@ class APIV1MyTasksIndexTest < ActionDispatch::IntegrationTest
     user = users(:one)
 
     task = create_task(user)
-    task.update_column(:assigned_user_id, user.id)
+    task.update_column(:assigned_member_id, user.id)
 
     get(api_v1_adapter.my__tasks_url, headers: api_v1_adapter.authorization_header(user))
 
@@ -43,10 +43,10 @@ class APIV1MyTasksIndexTest < ActionDispatch::IntegrationTest
     user = users(:one)
 
     incomplete = create_task(user)
-    incomplete.update_column(:assigned_user_id, user.id)
+    incomplete.update_column(:assigned_member_id, user.id)
 
     completed = create_task(user, name: "Done", completed: true)
-    completed.update_column(:assigned_user_id, user.id)
+    completed.update_column(:assigned_member_id, user.id)
 
     get(api_v1_adapter.my__tasks_url(filter: "incomplete"), headers: api_v1_adapter.authorization_header(user))
 
@@ -60,10 +60,10 @@ class APIV1MyTasksIndexTest < ActionDispatch::IntegrationTest
     user = users(:one)
 
     incomplete = create_task(user)
-    incomplete.update_column(:assigned_user_id, user.id)
+    incomplete.update_column(:assigned_member_id, user.id)
 
     completed = create_task(user, name: "Done", completed: true)
-    completed.update_column(:assigned_user_id, user.id)
+    completed.update_column(:assigned_member_id, user.id)
 
     get(api_v1_adapter.my__tasks_url(filter: "completed"), headers: api_v1_adapter.authorization_header(user))
 

@@ -11,7 +11,7 @@ test.describe('Task Lists', () => {
       await page.goto(newTaskListPath());
       await page.getByLabel('Name').fill('My Project');
       await page.getByLabel('Description').fill('Project description');
-      await page.getByRole('button', { name: /create task list/i }).click();
+      await page.getByRole('button', { name: /create list/i }).click();
 
       await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
       await expect(page.getByText('My Project').first()).toBeVisible();
@@ -23,7 +23,7 @@ test.describe('Task Lists', () => {
 
       await page.goto(newTaskListPath());
       await page.getByLabel('Name').fill('Simple List');
-      await page.getByRole('button', { name: /create task list/i }).click();
+      await page.getByRole('button', { name: /create list/i }).click();
 
       await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
       await expect(page.getByText('Simple List').first()).toBeVisible();
@@ -34,7 +34,7 @@ test.describe('Task Lists', () => {
       await signUp(page, user);
 
       await page.goto(newTaskListPath());
-      await page.getByRole('button', { name: /create task list/i }).click();
+      await page.getByRole('button', { name: /create list/i }).click();
 
       await expect(page).toHaveURL(/task\/lists\/new/);
     });
@@ -45,7 +45,7 @@ test.describe('Task Lists', () => {
 
       await page.goto(newTaskListPath());
       await page.getByLabel('Name').fill('Sidebar List');
-      await page.getByRole('button', { name: /create task list/i }).click();
+      await page.getByRole('button', { name: /create list/i }).click();
 
       await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
       // Check sidebar has the list (may use different emoji or no emoji)
@@ -70,7 +70,7 @@ test.describe('Task Lists', () => {
       await page.goto(newTaskListPath());
       await page.getByLabel('Name').fill('Detail Test List');
       await page.getByLabel('Description').fill('Detailed description');
-      await page.getByRole('button', { name: /create task list/i }).click();
+      await page.getByRole('button', { name: /create list/i }).click();
 
       await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
       await expect(page.getByText('Detail Test List').first()).toBeVisible();
@@ -83,12 +83,12 @@ test.describe('Task Lists', () => {
 
       await page.goto(newTaskListPath());
       await page.getByLabel('Name').fill('Alpha List');
-      await page.getByRole('button', { name: /create task list/i }).click();
+      await page.getByRole('button', { name: /create list/i }).click();
       await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
 
       await page.goto(newTaskListPath());
       await page.getByLabel('Name').fill('Beta List');
-      await page.getByRole('button', { name: /create task list/i }).click();
+      await page.getByRole('button', { name: /create list/i }).click();
       await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
 
       await page.goto(taskListsPath());
@@ -104,7 +104,7 @@ test.describe('Task Lists', () => {
 
       await page.goto(newTaskListPath());
       await page.getByLabel('Name').fill('Original Name');
-      await page.getByRole('button', { name: /create task list/i }).click();
+      await page.getByRole('button', { name: /create list/i }).click();
       await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
 
       await page.getByRole('link', { name: /edit/i }).click();
@@ -112,7 +112,7 @@ test.describe('Task Lists', () => {
 
       await page.getByLabel('Name').fill('Updated Name');
       await page.getByLabel('Description').fill('Updated description');
-      await page.getByRole('button', { name: /update task list/i }).click();
+      await page.getByRole('button', { name: /update list/i }).click();
 
       await page.waitForURL(/\/task\/lists\/\d+$/, { timeout: 10_000 });
       await expect(page.getByText('Updated Name').first()).toBeVisible();
@@ -142,7 +142,7 @@ test.describe('Task Lists', () => {
 
       await page.goto(newTaskListPath());
       await page.getByLabel('Name').fill('To Delete List');
-      await page.getByRole('button', { name: /create task list/i }).click();
+      await page.getByRole('button', { name: /create list/i }).click();
       await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
 
       // Handle confirm dialog from turbo_confirm
@@ -184,7 +184,7 @@ test.describe('Task Lists', () => {
 
       await page.goto(newTaskListPath());
       await page.getByLabel('Name').fill('Summary Test');
-      await page.getByRole('button', { name: /create task list/i }).click();
+      await page.getByRole('button', { name: /create list/i }).click();
       await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
 
       const listUrl = page.url();
@@ -193,7 +193,7 @@ test.describe('Task Lists', () => {
       // Add a task item
       await page.goto(newTaskItemPath(listId!));
       await page.getByLabel('Name').fill('Count Task');
-      await page.getByRole('button', { name: /create task item/i }).click();
+      await page.getByRole('button', { name: /create task/i }).click();
       await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 
       await page.goto(listUrl);
@@ -207,7 +207,7 @@ test.describe('Task Lists', () => {
 
       await page.goto(newTaskListPath());
       await page.getByLabel('Name').fill('Progress Bar List');
-      await page.getByRole('button', { name: /create task list/i }).click();
+      await page.getByRole('button', { name: /create list/i }).click();
       await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
 
       const listUrl = page.url();
@@ -216,7 +216,7 @@ test.describe('Task Lists', () => {
       // Create an item and mark it complete
       await page.goto(newTaskItemPath(listId!));
       await page.getByLabel('Name').fill('Completed Task');
-      await page.getByRole('button', { name: /create task item/i }).click();
+      await page.getByRole('button', { name: /create task/i }).click();
       await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 
       // Navigate to show and complete it
@@ -228,7 +228,7 @@ test.describe('Task Lists', () => {
       // Create another (incomplete) item
       await page.goto(newTaskItemPath(listId!));
       await page.getByLabel('Name').fill('Pending Task');
-      await page.getByRole('button', { name: /create task item/i }).click();
+      await page.getByRole('button', { name: /create task/i }).click();
       await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 
       await page.goto(listUrl);
@@ -242,7 +242,7 @@ test.describe('Task Lists', () => {
 
       await page.goto(newTaskListPath());
       await page.getByLabel('Name').fill('Activity Timestamp List');
-      await page.getByRole('button', { name: /create task list/i }).click();
+      await page.getByRole('button', { name: /create list/i }).click();
       await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
 
       const listUrl = page.url();
@@ -250,7 +250,7 @@ test.describe('Task Lists', () => {
 
       await page.goto(newTaskItemPath(listId!));
       await page.getByLabel('Name').fill('Timestamped Task');
-      await page.getByRole('button', { name: /create task item/i }).click();
+      await page.getByRole('button', { name: /create task/i }).click();
       await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 
       await page.goto(listUrl);

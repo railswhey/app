@@ -8,7 +8,9 @@ class API::V1::User::Settings::ProfilesController < API::V1::BaseController
       render(status: :ok, json: { status: :success, type: :object, data: {} })
     else
       message = Current.user.errors.full_messages.join(", ")
-      render_json_with_failure(status: :unprocessable_entity, message:, details: Current.user.errors.to_hash)
+      details = Current.user.errors.to_hash
+
+      render_json_with_failure(status: :unprocessable_entity, message:, details:)
     end
   end
 

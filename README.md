@@ -14,15 +14,15 @@
   <img src="/docs/assets/logo.png" alt="Rails Whey App" width="180" height="180">
 </p>
 
-A full-stack task management app built with Ruby on Rails. This branch names the multi-model orchestrations hidden in model callbacks. Six orchestration objects are extracted: `User::Registration`, `User::PasswordReset`, `Account::Workspace`, `Account::Invitation::Lifecycle`, `Task::List::Transfer::Facilitation`, and `User::Notification::Delivery`. `Task::List::Stats` becomes `Task::List::Summary` (a stateless module). Models that fired side effects on save now declare only their own structure. 31 files change; no behavioral tests change; Rubycritic rises from 91.72 to 92.08.
+A full-stack task management app built with Ruby on Rails. This branch draws domain boundaries between User, Account, and Workspace. Each bounded context owns its data, its services, and its local representation of identity. Cross-domain orchestrations move to Process jobs at the application layer. `Task::*` becomes `Workspace::*`. 176 files change; no behavioral tests change; Rubycritic rises from 92.08 to 93.80.
 
 | | |
 |---|---|
-| **Branch** | `6G-named-orchestrations` |
+| **Branch** | `7A-domain-boundaries` |
 | **Ruby** | 4.0 |
 | **Rails** | 8.1 |
-| **Rubycritic** | 92.08 |
-| **LOC** | 1799 |
+| **Rubycritic** | 93.80 |
+| **LOC** | 1785 |
 
 **Table of contents:**
 
@@ -41,222 +41,256 @@ A full-stack task management app built with Ruby on Rails. This branch names the
 
 ## 🎯 The concept
 
-> **One rule:** multi-model coordination gets its own name.
+> **One rule:** no model references another domain's classes.
 
-When `user.save` triggers account creation, membership assignment, inbox setup, and email dispatch, the call site reveals nothing. The controller writes `if @user.save` and four models change behind the scenes. It's like hitting save on a document and silently emailing your boss — you'd be terrified to click that button.
+6G named the orchestrations — but every orchestration still reached across domain boundaries. Three domains traversed in one call chain, connected by foreign keys that made the coupling invisible.
 
-This branch gives each orchestration its own class:
+7A draws the lines. Three bounded contexts:
 
-| Orchestration | Responsibility |
-|---|---|
-| `User::Registration` | Creation + workspace + email |
-| `User::PasswordReset` | Password reset workflow |
-| `Account::Workspace` | Personal workspace setup |
-| `Account::Invitation::Lifecycle` | Dispatch + acceptance |
-| `Task::List::Transfer::Facilitation` | Request + accept + reject |
-| `User::Notification::Delivery` | Five notification events |
-
-Single-model effects stay in the model. Multi-model coordination moves out.
+| Domain | What it owns | Local identity |
+|---|---|---|
+| **User** | Authentication, tokens, notifications | — (upstream supplier) |
+| **Account** | Memberships, invitations | `Account::Person` |
+| **Workspace** | Lists, tasks, comments, transfers | `Workspace::Member` |
 
 ```mermaid
 flowchart LR
-  B["Callback touches<br/>how many models?"]
-  B -->|"one"| S["Stays in model<br/><small>normalizations, counters, tokens</small>"]
-  B -->|"more than one"| O["Orchestration object<br/><small>named class, explicit workflow</small>"]
+  B["Does it reference<br/>another domain's class?"]
+  B -->|"yes"| R["Remove it.<br/>Use UUID + process job."]
+  B -->|"no"| K["Keep it.<br/>Model stays in its domain."]
 
-  style S fill:#e8fde8
-  style O fill:#e8f4fd
+  style R fill:#fde8e8
+  style K fill:#e8fde8
 ```
 
-`Task::List::Stats` is also renamed to `Task::List::Summary` — a stateless module where `Summary.of(list)` reads as plain English.
+`Account::Person` and `Workspace::Member` are local copies of user identity — `uuid`, `email`, `username` copied from User at creation time. Neither holds a foreign key to `users`. The UUID is the correlation key: a shared value, not a structural dependency.
+
+```mermaid
+flowchart TD
+    subgraph User["User Domain"]
+        UR(["User"])
+    end
+
+    subgraph Account["Account Domain"]
+        AR(["Account"])
+        AP(["Account::Person"])
+    end
+
+    subgraph Workspace["Workspace Domain"]
+        WR(["Workspace"])
+        WM(["Workspace::Member"])
+    end
+
+    UR -. "UUID" .- AP
+    UR -. "UUID" .- WM
+    AP -. "UUID" .- WM
+
+    style User fill:#f5f5f5,stroke:#999
+    style Account fill:#f5f5f5,stroke:#999
+    style Workspace fill:#f5f5f5,stroke:#999
+```
+
+Two bridges connect the domains. `Current::Resolver` translates credentials into a per-request context holding user, person, account, and workspace. Process jobs (`User::SignUpProcess`, `Account::AcceptInvitationProcess`, etc.) orchestrate lifecycle events — each calling domain services that touch only their own bounded context.
+
+```mermaid
+flowchart TD
+    subgraph "Application layer"
+        C["Current::Resolver<br><small>request bridge</small>"]
+        P["*Process<br><small>lifecycle bridge</small>"]
+    end
+
+    C -- "1. authenticate" --> U((User))
+    C -- "2. authorize" --> A((Account))
+    C -- "3. resolve workspace" --> W((Workspace))
+
+    P -- "delegates" --> U
+    P -- "delegates" --> A
+    P -- "delegates" --> W
+
+    U -.- |UUID| A
+    A -.- |UUID| W
+
+    style C fill:#369,stroke:#333,color:#fff
+    style P fill:#e96,stroke:#333,color:#fff
+```
+
+`Task::*` becomes `Workspace::*`. `Task::Item` becomes `Workspace::Task`. `Task::List` becomes `Workspace::List`. The old namespace implied a "task" domain that never existed as a bounded context.
 
 ---
 
 ## 📊 The numbers
 
-| | Before (6F) | After (6G) |
+| | Before (6G) | After (7A) |
 |---|---|---|
-| Files changed | — | 31 |
-| Insertions / deletions | — | 267 / 154 |
-| Net line change | — | +113 |
-| New orchestration objects | — | 6 |
+| Files changed | — | 176 |
+| Insertions / deletions | — | 1858 / 1356 |
+| Net line change | — | +502 |
 | Behavioral test changes | — | 0 |
-| Rubycritic | 91.72 | 92.08 |
+| Rubycritic | 92.08 | 93.80 |
+| LOC | 1799 | 1785 |
 
-Adding +113 lines reduced complexity — named code replacing anonymous callbacks. Rubycritic rises only +0.36 because static analysis can't see that `User::Registration.new.create(params)` is categorically different from `@user.save` with four invisible side effects. From this point forward, the agent's view — not the linter — is the true measure.
+Rubycritic jumped +1.72 — the largest single-version gain since 4B. LOC dropped despite 16 new model files. A class that does one thing within one domain ends up shorter than a class that spans three.
 
 ---
 
 ## 🤔 The problem
 
-Five places where a save hides a workflow.
+Three domains tangled through foreign key associations.
 
-**`user.save`** — six side effects behind one persistence call: account, workspace name, membership, inbox, token, confirmation email.
+**User reached everywhere.** 10 cross-domain associations — memberships, accounts, task lists, comments, transfers. Rename `Task::Comment` and User breaks.
 
-**`user.destroy!`** — one line hiding a cascade through accounts, memberships, task lists, and transfers.
+**Account owned Task data.** `has_many :task_lists`, `has_many :task_items`, `has_many :outgoing_transfers`. Task domain data accessed through Account's interface.
 
-**`invitation.save`** — two invisible callbacks: email dispatch and invitee notification.
+**`Account::Member` spanned all three.** 75 lines that authenticated a User, resolved their Account, and loaded Task data. Every controller depended on it.
 
-**`transfer.save`** — notification and email, coupled through a `to_user` attr_accessor the caller must set but documented nowhere.
-
-**`transfer.accept!`** — the method name says "accept"; the body moves a list to a new account, updates the transfer status, cancels all competing pending transfers, and delivers a notification.
-
-Why does this happen? Callbacks are the path of least resistance. Four lines for a callback, twenty for an orchestration class. Each addition is small and harmless. But the model accumulates orchestration responsibility it was never meant to have. The cost shows up later — when a test needs to create a transfer without sending email, or when a new caller needs to save without triggering side effects.
+`belongs_to :user` is one line. It gives you `comment.user`, `transfer.transferred_by` — all working, all readable, all creating structural dependencies invisible until you try to change one side. The first `belongs_to` is natural. The third crosses a domain boundary. By the time Transfer references both User and Account, three domains are wired together. Naming the crossing (6G) didn't eliminate the crossing.
 
 ---
 
 ## 🔬 The evidence
 
-**Registration becomes a named workflow**
+**Pattern 1: Models that know only their domain**
 
-Before — two callbacks in User, four models touched on save:
+User before — 45 lines, 10 cross-domain associations. User after — 29 lines, zero:
 
 ```ruby
-after_create do
-  account = Account.create!(uuid: SecureRandom.uuid, name: "#{email.split('@').first}'s workspace", personal: true)
-  account.add_member(self, role: :owner)
-  account.task_lists.inbox.create!
-  create_token!
-end
+class User < ApplicationRecord
+  has_secure_password
 
-after_create_commit do
-  UserMailer.with(user: self, token: generate_token_for(:email_confirmation))
-            .email_confirmation.deliver_later
+  has_one :token, dependent: :destroy
+  has_many :notifications, dependent: :destroy
+
+  validates :uuid, presence: true, format: { with: UUID::REGEXP }, uniqueness: true
+  # ... email, username, password validations, normalizations
+
+  def initials = Persona.initials(email: email, username: username)
 end
 ```
 
-After — the controller names the operation:
+Account follows the same pattern — from 7 cross-domain associations down to 3, all within its own domain.
+
+**Pattern 2: Local representations linked by UUID**
 
 ```ruby
-# Controller
-@user = User::Registration.new.create(user_registration_params)
-if @user.persisted? ...
+class Workspace::Member < ApplicationRecord
+  belongs_to :workspace, optional: true
+  has_many :comments, dependent: :destroy
+  has_many :assigned_tasks, foreign_key: :assigned_member_id, class_name: "Task"
+  has_many :initiated_transfers, foreign_key: :initiated_by_id, class_name: "List::Transfer"
+
+  validates :uuid, presence: true, format: { with: UUID::REGEXP }, uniqueness: true
+  validates :email, presence: true, format: { with: Persona::EMAIL }
+
+  def initials = Persona.initials(email: email, username: username)
+end
 ```
 
+No foreign key to `users`. The UUID is the only link. The tradeoff: data can go stale if the user updates their profile. But each domain's schema is self-contained — no cross-domain join needed for display or membership checks.
+
+**Pattern 3: Process jobs as application-layer bridges**
+
+Before (6G), `User::Registration` called across three domains in one chain:
+
 ```ruby
-# User::Registration
-class User::Registration
-  attr_reader :user
+user.transaction do
+  user
+    .tap(&:save!)
+    .tap(&:create_token!)
+    .then { Account::Workspace.for!(it) }
+end
+```
 
-  def initialize(user = User.new)
-    @user = user
-  end
+After (7A), `User::SignUpProcess` coordinates three independent domain services:
 
-  def create(params)
-    user.assign_attributes(params)
-    return user unless user.valid?
+```ruby
+class User::SignUpProcess < ApplicationJob
+  def perform(params)
+    user = nil
 
-    user.transaction do
-      user
-        .tap(&:save!)
-        .tap(&:create_token!)
-        .then { Account::Workspace.for!(it) }
+    ActiveRecord::Base.transaction do
+      user = User::Registration.call(params)
+
+      if user.persisted?
+        uuid, email, username = user.values_at(:uuid, :email, :username)
+
+        Account::Setup.call(uuid:, email:, username:)
+
+        Workspace::Setup.call(uuid:, email:, username:)
+      end
     end
 
-    UserMailer.with(user:, token: user.generate_token_for(:email_confirmation))
-              .email_confirmation.deliver_later
-
-    user
-  rescue ActiveRecord::RecordInvalid
-    user
-  end
-
-  def destroy
-    return user if user.new_record?
-    user.transaction do
-      user.account.destroy!
-      user.destroy!
+    if user.persisted?
+      UserMailer.with(user:, token: user.generate_token_for(:email_confirmation))
+                .email_confirmation.deliver_later
     end
-    user
+
+    user.persisted? ? [:ok, user] : [:err, user]
   end
 end
 ```
 
-`Account::Workspace.for!` absorbs the personal workspace bootstrap — UUID generation, name derivation, owner membership, inbox creation. The registration orchestration sequences the steps; the workspace module owns the workspace details.
-
-**Notifications centralized behind named methods**
-
-Before — five call sites, each choosing a constant and a recipient. After — one class, five named methods:
-
-```ruby
-class User::Notification::Delivery
-  attr_reader :notifiable
-
-  def initialize(notifiable)
-    @notifiable = notifiable
-  end
-
-  def transfer_requested(to:) = notify(to, TRANSFER_REQUESTED)
-  def transfer_accepted       = notify(notifiable.transferred_by, TRANSFER_ACCEPTED)
-  def transfer_rejected       = notify(notifiable.transferred_by, TRANSFER_REJECTED)
-
-  def invitation_received(to:) = notify(to, INVITATION_RECEIVED)
-  def invitation_accepted      = notify(notifiable.invited_by, INVITATION_ACCEPTED)
-
-  private
-
-  def notify(user, action)
-    User::Notification.create!(user:, notifiable: notifiable, action:)
-  end
-end
-```
-
-The method name IS the event name. Derivable recipients take no argument; contextual recipients require `to:`.
+Each domain service touches only its own tables. `Account::Setup` is 17 lines. `Workspace::Setup` is 13. `Account::Teardown` is 11. The UUID is the shared key — no domain service calls another domain's classes.
 
 ```mermaid
 flowchart TD
-  subgraph Before["6F: orchestrations hidden in callbacks"]
-    U["User<br/>after_create: account + membership + inbox + token<br/>after_create_commit: email"]
-    I["Invitation<br/>after_create_commit: email + notification"]
-    T["Transfer<br/>after_create_commit: notification + email<br/>accept!: 4-model transaction"]
+  subgraph Before["6G: domains tangled"]
+    U1["User<br/>10 cross-domain associations"]
+    A1["Account<br/>owns task data"]
+    T1["Task::*<br/>references User + Account"]
+    AM["Account::Member<br/>spans all three domains"]
   end
 
-  subgraph After["6G: orchestrations named"]
-    UR["User::Registration<br/>create + destroy"]
-    AW["Account::Workspace<br/>bootstrap"]
-    IL["Account::Invitation::Lifecycle<br/>dispatch + acceptance"]
-    TF["Task::List::Transfer::Facilitation<br/>request + accept + reject"]
-    ND["User::Notification::Delivery<br/>5 event methods"]
+  subgraph After["7A: domains separated"]
+    subgraph UserD["User domain"]
+      U2["User (29 lines)<br/>token + notifications only"]
+    end
+    subgraph AccountD["Account domain"]
+      A2["Account<br/>memberships + invitations"]
+      AP["Account::Person<br/>local identity"]
+    end
+    subgraph WorkspaceD["Workspace domain"]
+      W["Workspace<br/>lists + tasks + comments"]
+      WM["Workspace::Member<br/>local identity"]
+    end
+    PJ["Process Jobs<br/>application-layer bridges"]
   end
 
-  U -.->|"extracted"| UR
-  U -.->|"extracted"| AW
-  I -.->|"extracted"| IL
-  T -.->|"extracted"| TF
-  I -.->|"notifications"| ND
-  T -.->|"notifications"| ND
+  PJ -->|"UUID"| UserD
+  PJ -->|"UUID"| AccountD
+  PJ -->|"UUID"| WorkspaceD
 
   style Before fill:#fde8e8
-  style After fill:#e8fde8
+  style UserD fill:#e8f4fd
+  style AccountD fill:#e8fde8
+  style WorkspaceD fill:#fff3e0
+  style PJ fill:#f5f5f5
 ```
 
 ---
 
 ## ➡️ What comes next
 
-Family 6 is complete. Seven branches, one idea: architecture is naming what the code already says.
+The boundaries are drawn. No model references another domain's classes. But the Process jobs are procedural scripts — the steps have no identity, the intermediate state has no home.
 
-POROs for behavior (6A–6B). Constants for vocabulary (6C). Query objects for responsibility (6D). Declared authority (6E). Contextual names (6F). Orchestration objects for coordination (6G). Four tools, no gems — just plain Ruby giving names to what the code already knew.
-
-The orchestration objects made the coupling visible. Three domains share foreign keys and call each other's classes directly. The names surfaced the dependencies — but the coupling is still there.
-
-Branch `7A-domain-boundaries` draws the lines. Three bounded contexts, no cross-domain model references, `Task::*` becomes `Workspace::*`. 176 files change; Rubycritic rises from 92.08 to 93.80. ✌️
+Branch `7B-process-managers` extracts the two most complex Process jobs into nested Manager Structs — callable objects with named steps, intermediate state, and distinct lifecycle phases. ✌️
 
 ---
 
 ## 🏛️ Thesis checkpoint
 
-Family 6: architecture is naming what the code already says. POROs for behavior, constants for vocabulary, query objects for responsibility, orchestration objects for coordination — four tools, seven branches, one thesis (Principle 4). Every extraction used plain Ruby classes, standard callbacks, and model conventions — no gems, no patterns imported from outside the framework. Principle 1 held across all seven branches: zero behavioral test changes despite extracting logic into 12 new files. Rubycritic rose +0.87 across the family. The metric measures structural complexity; the architecture delivers semantic clarity. When those diverge, trust the one that tracks how humans and agents navigate the code.
+Bounded contexts with local identity — Principle 4 applied at the domain level. Each domain owns its models, its namespace, its identity scheme. The behavioral tests don't care where the model files live, only that the HTTP contracts hold.
 
 ---
 
 ## 🤖 The agent's view
 
-The `to_user` attr_accessor on Transfer is the sharpest case. An agent would write `Transfer.new(attributes).save` — correct by ActiveRecord convention, but silently skips the notification because `to_user` isn't set. After 6G, `facilitation.request(to: to_user)` requires naming the recipient. The correct API is visible. The wrong API doesn't exist.
+Before 7A, modifying task logic required ~200 lines of cross-domain context. After 7A, the same agent reads `Workspace::Task`, `Workspace::Member`, and `Current::Scope` — three workspace-domain files totaling ~60 lines. The workspace is self-contained.
 
-`User::Notification::Delivery` shows the same principle: `delivery.transfer_accepted` — the method name IS the event. No constant selection, no recipient lookup. One method, one event.
+The split introduces naming drift. Controllers live in `Web::Task::*` while models are `Workspace::*`. An agent searching for the model behind `Task::ItemsController` won't find `Task::Item` — it's `Workspace::Task` now. JBuilder templates contain mappings like `json.task_list_id item.workspace_list_id`. The API says `task_list_id`; the column is `workspace_list_id`. An agent reading the API contract and searching for `task_list_id` on the model hits a dead end. These shims preserve backward compatibility but are invisible traps between layers.
 
-The tradeoff: tracing registration now requires three files instead of one. Named steps across files are easier to reason about than anonymous callbacks in one — but the walk is longer. That friction is the price of named coordination.
+Three autonomous domains mean additive growth stays local. A new workspace feature adds models to `app/models/workspace/` without touching Account or User. Process jobs live in `app/jobs/` organized by actor — `app/jobs/user/` for user-initiated processes, `app/jobs/account/` for account-centric ones.
+
+But bounded production code without the testing contract is a map without a compass. After 7A, testing moves from "unit test the model" to "test against the route abstraction layer and process job interfaces." The production code tells the agent *what* the domain does. The tests tell it *how* the domain is allowed to be used.
 
 ---
 
@@ -265,8 +299,8 @@ The tradeoff: tracing registration now requires three files instead of one. Name
 Prerequisites: [mise](https://mise.jdx.dev/) (manages Ruby, Node, Mailpit)
 
 ```sh
-git clone git@github.com:railswhey/app.git -b 6G-named-orchestrations 6G-named-orchestrations
-cd 6G-named-orchestrations
+git clone git@github.com:railswhey/app.git -b 7A-domain-boundaries 7A-domain-boundaries
+cd 7A-domain-boundaries
 mise install                 # Ruby 4.0.1 + Node 22 + Mailpit 1.29.2
 bin/setup                    # bundle install, db:prepare, starts dev server
 ```

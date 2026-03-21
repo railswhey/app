@@ -1,11 +1,11 @@
 <div class="comment" id="<%= dom_id(comment) %>">
   <div class="comment-header">
-    <span class="assignee-badge" style="width:1.4rem;height:1.4rem;font-size:0.6rem" title="<%= comment.user.username %>">
-      <%= user_initials(comment.user) %>
+    <span class="assignee-badge" style="width:1.4rem;height:1.4rem;font-size:0.6rem" title="<%= comment.member.username %>">
+      <%= user_initials(comment.member) %>
     </span>
-    <strong class="comment-author"><%= comment.user.username %></strong>
+    <strong class="comment-author"><%= comment.member.username %></strong>
     <span class="comment-time"><%= comment.created_at.strftime("%b %-d, %Y · %H:%M") %></span>
-    <% if Current.user && comment.user_id == Current.user.id %>
+    <% if Current.workspace.member && comment.member_id == Current.workspace.member.id %>
       <span class="comment-actions">
         <% edit_path = task_item.present? ?
             edit_task_list_item_comment_path(task_list, task_item, comment) :

@@ -6,17 +6,17 @@ class APIV1TaskListsUpdateTest < ActionDispatch::IntegrationTest
   test "#update responds with 401 when API token is invalid" do
     headers = [ {}, api_v1_adapter.authorization_header(SecureRandom.hex(20)) ].sample
 
-    put(api_v1_adapter.task__list_url(task_lists(:one_inbox), format: :json), headers:)
+    put(api_v1_adapter.task__list_url(workspace_lists(:one_inbox), format: :json), headers:)
 
     api_v1_adapter.assert_response_with_failure(:unauthorized)
   end
 
   test "#update responds with 404 when task list is not found" do
     user = users(:one)
-    params = { task_list: { name: "Foo" } }
+    params = { workspace_list: { name: "Foo" } }
     headers = api_v1_adapter.authorization_header(user)
 
-    put(api_v1_adapter.task__list_url(Task::List.maximum(:id) + 1, format: :json), params:, headers:)
+    put(api_v1_adapter.task__list_url(Workspace::List.maximum(:id) + 1, format: :json), params:, headers:)
 
     assert_response :not_found
   end
@@ -24,9 +24,9 @@ class APIV1TaskListsUpdateTest < ActionDispatch::IntegrationTest
   test "#update responds with 400 when params are missing" do
     user = users(:one)
 
-    task_list = member!(user).account.task_lists.create!(name: "Bar")
+    task_list = member!(user).workspace.lists.create!(name: "Bar")
 
-    params = [ {}, { task_list: {} }, { task_list: nil } ].sample
+    params = [ {}, { workspace_list: {} }, { workspace_list: nil } ].sample
 
     put(api_v1_adapter.task__list_url(task_list, format: :json), params:, headers: api_v1_adapter.authorization_header(user))
 
@@ -36,9 +36,9 @@ class APIV1TaskListsUpdateTest < ActionDispatch::IntegrationTest
   test "#update responds with 403 when trying to update the inbox task list" do
     user = users(:one)
 
-    params = { task_list: { name: "Biz" } }
+    params = { workspace_list: { name: "Biz" } }
 
-    put(api_v1_adapter.task__list_url(task_lists(:one_inbox), format: :json), params:, headers: api_v1_adapter.authorization_header(user))
+    put(api_v1_adapter.task__list_url(workspace_lists(:one_inbox), format: :json), params:, headers: api_v1_adapter.authorization_header(user))
 
     api_v1_adapter.assert_response_with_failure(:forbidden)
   end
@@ -46,9 +46,9 @@ class APIV1TaskListsUpdateTest < ActionDispatch::IntegrationTest
   test "#update responds with 422 when params are invalid" do
     user = users(:one)
 
-    task_list = member!(user).account.task_lists.create!(name: "Bar")
+    task_list = member!(user).workspace.lists.create!(name: "Bar")
 
-    params = { task_list: { name: [ nil, "" ].sample } }
+    params = { workspace_list: { name: [ nil, "" ].sample } }
 
     put(api_v1_adapter.task__list_url(task_list, format: :json), params:, headers: api_v1_adapter.authorization_header(user))
 
@@ -58,9 +58,9 @@ class APIV1TaskListsUpdateTest < ActionDispatch::IntegrationTest
   test "#update responds with 200" do
     user = users(:one)
 
-    task_list = member!(user).account.task_lists.create!(name: "Bar")
+    task_list = member!(user).workspace.lists.create!(name: "Bar")
 
-    params = { task_list: { name: "Foo" } }
+    params = { workspace_list: { name: "Foo" } }
 
     put(api_v1_adapter.task__list_url(task_list, format: :json), params:, headers: api_v1_adapter.authorization_header(user))
 

@@ -9,7 +9,7 @@ class APIV1TaskListTransfersTest < ActionDispatch::IntegrationTest
 
     post(
       api_v1_adapter.task__list_transfer_form_url(list, format: :json),
-      params: { task_list_transfer: { to_email: "nonexistent@example.com" } },
+      params: { workspace_list_transfer: { to_email: "nonexistent@example.com" } },
       headers: api_v1_adapter.authorization_header(sender)
     )
 
@@ -21,11 +21,11 @@ class APIV1TaskListTransfersTest < ActionDispatch::IntegrationTest
     list = create_task_list(member!(sender).account, name: "Transferable")
 
     # User.create! without Registration gives a bare user with no account
-    bare_user = User.create!(username: "bareuser", email: "bare@example.com", password: "password123")
+    bare_user = User.create!(uuid: SecureRandom.uuid, username: "bareuser", email: "bare@example.com", password: "password123")
 
     post(
       api_v1_adapter.task__list_transfer_form_url(list, format: :json),
-      params: { task_list_transfer: { to_email: bare_user.email } },
+      params: { workspace_list_transfer: { to_email: bare_user.email } },
       headers: api_v1_adapter.authorization_header(sender)
     )
 
@@ -68,11 +68,12 @@ class APIV1TaskListTransfersTest < ActionDispatch::IntegrationTest
     account = member!(collaborator).account
     list = create_task_list(account, name: "Transferable")
     # Downgrade user two's own membership to collaborator so the guard fires
-    account.memberships.find_by(user: collaborator).update!(role: :collaborator)
+    collaborator_person = Account::Person.find_by!(uuid: collaborator.uuid)
+    account.memberships.find_by(person: collaborator_person).update!(role: :collaborator)
 
     post(
       api_v1_adapter.task__list_transfer_form_url(list, format: :json),
-      params: { task_list_transfer: { to_email: "someone@example.com" } },
+      params: { workspace_list_transfer: { to_email: "someone@example.com" } },
       headers: api_v1_adapter.authorization_header(collaborator)
     )
 
@@ -82,12 +83,14 @@ class APIV1TaskListTransfersTest < ActionDispatch::IntegrationTest
   private
 
   def create_transfer(from_user: users(:one), to_user: users(:two))
-    list = create_task_list(member!(from_user).account, name: "Transfer Me")
-    Task::List::Transfer.create!(
+    from_account = member!(from_user).account
+    to_account = member!(to_user).account
+    list = create_task_list(from_account, name: "Transfer Me")
+    Workspace::List::Transfer.create!(
       list: list,
-      from_account: from_user.account,
-      to_account: to_user.account,
-      transferred_by: from_user
+      from_workspace: ::Workspace.find_by!(uuid: from_account.uuid),
+      to_workspace: ::Workspace.find_by!(uuid: to_account.uuid),
+      initiated_by: Workspace::Member.find_by!(uuid: from_user.uuid)
     )
   end
 end

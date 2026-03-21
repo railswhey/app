@@ -68,7 +68,7 @@ class WebInvitationsTest < ActionDispatch::IntegrationTest
 
   test "accepted invitation redirects to sign in" do
     invitation = create_invitation
-    invitation.accept!(users(:two))
+    invitation.accept!
 
     get web_adapter.show__invitation_url(invitation.token)
     assert_redirected_to web_adapter.new_user__session_url
@@ -82,7 +82,7 @@ class WebInvitationsTest < ActionDispatch::IntegrationTest
     web_adapter.sign_in(user)
 
     get web_adapter.show__invitation_url(invitation.token)
-    assert_redirected_to web_adapter.task__items_url(user.inbox)
+    assert_redirected_to web_adapter.task__items_url(member!(user).inbox)
   end
 
   # ── Accept ───────────────────────────────────────────────────────────────
@@ -97,7 +97,7 @@ class WebInvitationsTest < ActionDispatch::IntegrationTest
     web_adapter.sign_in(receiver)
 
     patch web_adapter.accept__invitation_url(invitation.token)
-    assert_redirected_to web_adapter.task__items_url(receiver.inbox)
+    assert_redirected_to web_adapter.task__items_url(member!(receiver).inbox)
     follow_redirect!
     assert_select ".notice-text", /joined/
 
@@ -115,7 +115,7 @@ class WebInvitationsTest < ActionDispatch::IntegrationTest
 
   test "accepting an already-accepted invitation redirects to sign in" do
     invitation = create_invitation
-    invitation.accept!(users(:two))
+    invitation.accept!
 
     web_adapter.sign_in(users(:two))
 
@@ -134,7 +134,8 @@ class WebInvitationsTest < ActionDispatch::IntegrationTest
   test "collaborator cannot manage invitations" do
     owner = users(:one)
     collaborator = users(:two)
-    member!(owner).account.memberships.create!(user: collaborator, role: :collaborator)
+    collaborator_person = Account::Person.find_by!(uuid: collaborator.uuid)
+    member!(owner).account.memberships.create!(person: collaborator_person, role: :collaborator)
 
     web_adapter.sign_in(collaborator)
 
@@ -161,9 +162,10 @@ class WebInvitationsTest < ActionDispatch::IntegrationTest
   private
 
   def create_invitation(from_user: users(:one))
+    from_person = Account::Person.find_by!(uuid: from_user.uuid)
     member!(from_user).account.invitations.create!(
       email: "invitee@example.com",
-      invited_by: from_user
+      invited_by: from_person
     )
   end
 end

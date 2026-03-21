@@ -14,7 +14,7 @@ class APIV1TaskListsIndexTest < ActionDispatch::IntegrationTest
   test "#index responds with 200" do
     user = users(:one)
 
-    new_task_list = member!(user).account.task_lists.create!(name: "Foo")
+    new_task_list = member!(user).workspace.lists.create!(name: "Foo")
 
     get(api_v1_adapter.task__lists_url, headers: api_v1_adapter.authorization_header(user))
 
@@ -22,7 +22,7 @@ class APIV1TaskListsIndexTest < ActionDispatch::IntegrationTest
 
     assert_equal 2, collection.size
 
-    assert collection.all? { member!(user).task_lists.exists?(_1[:id]) }
+    assert collection.all? { member!(user).workspace.lists.exists?(_1[:id]) }
 
     assert_equal new_task_list.id, collection.find { it[:name] == "Foo" }[:id]
   end

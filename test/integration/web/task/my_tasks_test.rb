@@ -21,7 +21,7 @@ class WebMyTasksTest < ActionDispatch::IntegrationTest
     user = users(:one)
     member!(user)
     task = create_task(user, name: "Assigned to me")
-    task.update!(assigned_user: user)
+    task.update!(assigned_member: Workspace::Member.find_by!(uuid: user.uuid))
     web_adapter.sign_in(user)
 
     get web_adapter.my__tasks_url
@@ -33,7 +33,7 @@ class WebMyTasksTest < ActionDispatch::IntegrationTest
     user = users(:one)
     member!(user)
     task = create_task(user, name: "Done task", completed: true)
-    task.update!(assigned_user: user)
+    task.update!(assigned_member: Workspace::Member.find_by!(uuid: user.uuid))
     web_adapter.sign_in(user)
 
     get web_adapter.my__tasks_url, params: { filter: "completed" }
@@ -44,7 +44,7 @@ class WebMyTasksTest < ActionDispatch::IntegrationTest
     user = users(:one)
     member!(user)
     task = create_task(user, name: "Pending task")
-    task.update!(assigned_user: user)
+    task.update!(assigned_member: Workspace::Member.find_by!(uuid: user.uuid))
     web_adapter.sign_in(user)
 
     get web_adapter.my__tasks_url, params: { filter: "incomplete" }

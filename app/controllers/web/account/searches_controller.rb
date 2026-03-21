@@ -5,6 +5,7 @@ class Web::Account::SearchesController < Web::BaseController
 
   def show
     @query = params[:q].to_s.strip
-    @results = Current.account.search(@query)
+
+    @results = Current.workspace.search(@query)
   end
 end

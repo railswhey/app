@@ -19,7 +19,8 @@ class WebMembershipsTest < ActionDispatch::IntegrationTest
 
   test "owner cannot remove themselves" do
     user = users(:one)
-    membership = member!(user).account.memberships.find_by(user: user)
+    user_person = Account::Person.find_by!(uuid: user.uuid)
+    membership = member!(user).account.memberships.find_by(person: user_person)
     web_adapter.sign_in(user)
 
     delete web_adapter.account__membership_url(membership)
@@ -32,7 +33,8 @@ class WebMembershipsTest < ActionDispatch::IntegrationTest
 
     other = users(:two)
     member!(other)
-    collab = account.memberships.create!(user: other, role: :collaborator)
+    other_person = Account::Person.find_by!(uuid: other.uuid)
+    collab = account.memberships.create!(person: other_person, role: :collaborator)
 
     web_adapter.sign_in(owner)
 
@@ -46,7 +48,8 @@ class WebMembershipsTest < ActionDispatch::IntegrationTest
     owner = users(:one)
     account = member!(owner).account
     other = users(:two)
-    collab = account.memberships.create!(user: other, role: :collaborator)
+    other_person = Account::Person.find_by!(uuid: other.uuid)
+    collab = account.memberships.create!(person: other_person, role: :collaborator)
 
     web_adapter.sign_in(owner)
 
@@ -61,7 +64,8 @@ class WebMembershipsTest < ActionDispatch::IntegrationTest
     account = member!(owner).account
     collaborator = users(:two)
     member!(collaborator)
-    collab_membership = account.memberships.create!(user: collaborator, role: :collaborator)
+    collaborator_person = Account::Person.find_by!(uuid: collaborator.uuid)
+    collab_membership = account.memberships.create!(person: collaborator_person, role: :collaborator)
 
     web_adapter.sign_in(collaborator)
     # Switch to the shared account so Current.account resolves correctly
@@ -78,7 +82,8 @@ class WebMembershipsTest < ActionDispatch::IntegrationTest
     account = member!(owner).account
     admin = users(:two)
     member!(admin)
-    admin_membership = account.memberships.create!(user: admin, role: :admin)
+    admin_person = Account::Person.find_by!(uuid: admin.uuid)
+    admin_membership = account.memberships.create!(person: admin_person, role: :admin)
 
     web_adapter.sign_in(admin)
     # Switch to the shared account so Current.account resolves correctly

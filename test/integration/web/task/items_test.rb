@@ -4,19 +4,19 @@ require "test_helper"
 
 class WebTaskItemsTest < ActionDispatch::IntegrationTest
   test "guest tries to access all tasks" do
-    get(web_adapter.task__items_url(task_lists(:one_inbox)))
+    get(web_adapter.task__items_url(workspace_lists(:one_inbox)))
 
     web_adapter.assert_unauthorized_access
   end
 
   test "guest tries to access completed tasks" do
-    get(web_adapter.task__items_url(task_lists(:one_inbox), filter: "completed"))
+    get(web_adapter.task__items_url(workspace_lists(:one_inbox), filter: "completed"))
 
     web_adapter.assert_unauthorized_access
   end
 
   test "guest tries to access incomplete tasks" do
-    get(web_adapter.task__items_url(task_lists(:one_inbox), filter: "incomplete"))
+    get(web_adapter.task__items_url(workspace_lists(:one_inbox), filter: "incomplete"))
 
     web_adapter.assert_unauthorized_access
   end
@@ -35,7 +35,7 @@ class WebTaskItemsTest < ActionDispatch::IntegrationTest
     assert_select("select.action-combo", count: 2)
 
     # Delete tasks directly
-    inbox.items.each do |item|
+    inbox.tasks.each do |item|
       delete(web_adapter.task__item_url(inbox, item))
       assert_redirected_to web_adapter.task__items_url(inbox)
       follow_redirect!
@@ -48,7 +48,7 @@ class WebTaskItemsTest < ActionDispatch::IntegrationTest
   test "user access completed tasks" do
     user = users(:one)
     inbox = member!(user).inbox
-    task = task_items(:one)
+    task = workspace_tasks(:one)
 
     complete_task(task)
 
@@ -70,7 +70,7 @@ class WebTaskItemsTest < ActionDispatch::IntegrationTest
   test "user access incomplete tasks" do
     user = users(:one)
     inbox = member!(user).inbox
-    task = task_items(:one)
+    task = workspace_tasks(:one)
 
     web_adapter.sign_in(user)
 

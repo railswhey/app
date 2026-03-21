@@ -2,7 +2,7 @@
 
 class Account::Invitation < ApplicationRecord
   belongs_to :account
-  belongs_to :invited_by, class_name: "User"
+  belongs_to :invited_by, class_name: "Person"
 
   has_secure_token :token
 
@@ -18,10 +18,14 @@ class Account::Invitation < ApplicationRecord
   def pending?  = accepted_at.nil?
 
   def acceptable_by?(user)
-    pending? && !account.member?(user)
+    person = Account::Person.find_by(uuid: user.uuid)
+
+    pending? && (person.nil? || !account.member?(person))
   end
 
-  def accept!(user) = lifecycle.accept(by: user)
+  def accept!
+    return false if accepted?
 
-  def lifecycle     = Lifecycle.new(self)
+    update_column(:accepted_at, Time.current)
+  end
 end

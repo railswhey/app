@@ -24,7 +24,7 @@ class WebTaskListTransfersTest < ActionDispatch::IntegrationTest
 
     assert_response :ok
     assert_select "h2", /Transfer List/
-    assert_select "input[name='task_list_transfer[to_email]']"
+    assert_select "input[name='workspace_list_transfer[to_email]']"
   end
 
   # ── Create (send transfer request) ───────────────────────────────────────
@@ -35,7 +35,8 @@ class WebTaskListTransfersTest < ActionDispatch::IntegrationTest
     list = create_task_list(account, name: "Transferable")
     collaborator = users(:two)
     member!(collaborator)
-    account.memberships.create!(user: collaborator, role: :collaborator)
+    collaborator_person = Account::Person.find_by!(uuid: collaborator.uuid)
+    account.memberships.create!(person: collaborator_person, role: :collaborator)
 
     web_adapter.sign_in(collaborator)
     # Switch to owner's account so Current.account resolves and guard can fire
@@ -51,12 +52,12 @@ class WebTaskListTransfersTest < ActionDispatch::IntegrationTest
     list = create_task_list(member!(sender).account, name: "Transferable")
 
     # User.create! without Registration gives a bare user with no account
-    bare_user = User.create!(username: "bareuser", email: "bare@example.com", password: "password123")
+    bare_user = User.create!(uuid: SecureRandom.uuid, username: "bareuser", email: "bare@example.com", password: "password123")
 
     web_adapter.sign_in(sender)
 
     post web_adapter.task__list_transfer_form_url(list), params: {
-      task_list_transfer: { to_email: bare_user.email }
+      workspace_list_transfer: { to_email: bare_user.email }
     }
 
     assert_redirected_to web_adapter.new_task__list_transfer_url(list)
@@ -106,7 +107,7 @@ class WebTaskListTransfersTest < ActionDispatch::IntegrationTest
     web_adapter.sign_in(user)
 
     post web_adapter.task__list_transfer_form_url(list), params: {
-      task_list_transfer: { to_email: "nonexistent@example.com" }
+      workspace_list_transfer: { to_email: "nonexistent@example.com" }
     }
 
     assert_redirected_to web_adapter.new_task__list_transfer_url(list)
@@ -121,7 +122,7 @@ class WebTaskListTransfersTest < ActionDispatch::IntegrationTest
     web_adapter.sign_in(user)
 
     post web_adapter.task__list_transfer_form_url(list), params: {
-      task_list_transfer: { to_email: user.email }
+      workspace_list_transfer: { to_email: user.email }
     }
 
     # Should fail validation (accounts must differ)
@@ -135,17 +136,17 @@ class WebTaskListTransfersTest < ActionDispatch::IntegrationTest
 
     web_adapter.sign_in(sender)
 
-    assert_difference "Task::List::Transfer.count", 1 do
+    assert_difference "Workspace::List::Transfer.count", 1 do
       post web_adapter.task__list_transfer_form_url(list), params: {
-        task_list_transfer: { to_email: receiver.email }
+        workspace_list_transfer: { to_email: receiver.email }
       }
     end
 
-    transfer = Task::List::Transfer.last
+    transfer = Workspace::List::Transfer.last
     assert transfer.pending?
     assert_equal list, transfer.list
-    assert_equal sender.account, transfer.from_account
-    assert_equal receiver.account, transfer.to_account
+    assert_equal ::Workspace.find_by!(uuid: member!(sender).account.uuid), transfer.from_workspace
+    assert_equal ::Workspace.find_by!(uuid: member!(receiver).account.uuid), transfer.to_workspace
 
     assert_redirected_to web_adapter.task__list_url(list)
     follow_redirect!
@@ -162,7 +163,7 @@ class WebTaskListTransfersTest < ActionDispatch::IntegrationTest
     assert_enqueued_emails 1 do
       assert_difference "User::Notification.count", 1 do
         post web_adapter.task__list_transfer_form_url(list), params: {
-          task_list_transfer: { to_email: receiver.email }
+          workspace_list_transfer: { to_email: receiver.email }
         }
       end
     end
@@ -204,13 +205,13 @@ class WebTaskListTransfersTest < ActionDispatch::IntegrationTest
 
     patch web_adapter.task__list_transfer_url(transfer.token), params: { action_type: "accept" }
 
-    assert_redirected_to web_adapter.task__items_url(receiver.inbox)
+    assert_redirected_to web_adapter.task__items_url(member!(receiver).inbox)
     follow_redirect!
     assert_select ".notice-text", /transferred successfully/
 
     transfer.reload
     assert transfer.accepted?
-    assert_equal receiver.account, list.reload.account
+    assert_equal ::Workspace.find_by!(uuid: member!(receiver).account.uuid), list.reload.workspace
   end
 
   test "receiver rejects a transfer" do
@@ -221,7 +222,7 @@ class WebTaskListTransfersTest < ActionDispatch::IntegrationTest
 
     patch web_adapter.task__list_transfer_url(transfer.token), params: { action_type: "reject" }
 
-    assert_redirected_to web_adapter.task__items_url(receiver.inbox)
+    assert_redirected_to web_adapter.task__items_url(member!(receiver).inbox)
     follow_redirect!
     assert_select ".notice-text", /rejected/
 
@@ -247,7 +248,7 @@ class WebTaskListTransfersTest < ActionDispatch::IntegrationTest
   test "user moves a task to another list" do
     user = users(:one)
     account = member!(user).account
-    source = account.task_lists.inbox.first
+    source = ::Workspace.find_by!(uuid: account.uuid).lists.inbox.first
     target = create_task_list(account, name: "Target")
     task = create_task(user, name: "Movable", task_list: source)
 
@@ -265,7 +266,7 @@ class WebTaskListTransfersTest < ActionDispatch::IntegrationTest
   test "move fails with invalid target list" do
     user = users(:one)
     account = member!(user).account
-    source = account.task_lists.inbox.first
+    source = ::Workspace.find_by!(uuid: account.uuid).lists.inbox.first
     task = create_task(user, name: "Movable", task_list: source)
 
     web_adapter.sign_in(user)
@@ -328,13 +329,15 @@ class WebTaskListTransfersTest < ActionDispatch::IntegrationTest
   private
 
   def create_transfer(from_user: users(:one), to_user: users(:two))
-    list = create_task_list(member!(from_user).account, name: "Transfer Me")
+    from_account = member!(from_user).account
+    to_account = member!(to_user).account
+    list = create_task_list(from_account, name: "Transfer Me")
 
-    Task::List::Transfer.create!(
+    Workspace::List::Transfer.create!(
       list: list,
-      from_account: from_user.account,
-      to_account: to_user.account,
-      transferred_by: from_user
+      from_workspace: ::Workspace.find_by!(uuid: from_account.uuid),
+      to_workspace: ::Workspace.find_by!(uuid: to_account.uuid),
+      initiated_by: Workspace::Member.find_by!(uuid: from_user.uuid)
     )
   end
 end

@@ -15,7 +15,7 @@ assert_json_not_null "$RESPONSE_BODY" '.data[] | select(.inbox == true) | .id' "
 
 # ── CREATE — happy path ───────────────────────────────────────────────────────
 
-api_post "$(task_lists_path)" '{"task_list":{"name":"API Test List","description":"Created by smoke tests"}}'
+api_post "$(task_lists_path)" '{"workspace_list":{"name":"API Test List","description":"Created by smoke tests"}}'
 assert_status "201" "$RESPONSE_STATUS" "POST /task_lists.json (create)"
 assert_success_envelope "$RESPONSE_BODY" "object" "task_lists create"
 assert_json_field "$RESPONSE_BODY" ".data.name" "API Test List" "created list name"
@@ -32,7 +32,7 @@ assert_failure_envelope "$RESPONSE_BODY" "create missing params"
 
 # ── CREATE — 422 blank name ──────────────────────────────────────────────────
 
-api_post "$(task_lists_path)" '{"task_list":{"name":""}}'
+api_post "$(task_lists_path)" '{"workspace_list":{"name":""}}'
 assert_status "422" "$RESPONSE_STATUS" "POST /task_lists.json (blank name → 422)"
 assert_failure_envelope "$RESPONSE_BODY" "create blank name"
 
@@ -51,7 +51,7 @@ assert_status "404" "$RESPONSE_STATUS" "GET /task_lists/:bad_id.json (→ 404)"
 
 # ── UPDATE — happy path ──────────────────────────────────────────────────────
 
-api_put "$(task_list_path "$LIST_ID")" '{"task_list":{"name":"Renamed Test List"}}'
+api_put "$(task_list_path "$LIST_ID")" '{"workspace_list":{"name":"Renamed Test List"}}'
 assert_status "200" "$RESPONSE_STATUS" "PUT /task_lists/:id.json (update)"
 assert_success_envelope "$RESPONSE_BODY" "object" "task_lists update"
 assert_json_field "$RESPONSE_BODY" ".data.name" "Renamed Test List" "updated list name"
@@ -64,18 +64,18 @@ assert_failure_envelope "$RESPONSE_BODY" "update missing params"
 
 # ── UPDATE — 422 blank name ─────────────────────────────────────────────────
 
-api_put "$(task_list_path "$LIST_ID")" '{"task_list":{"name":""}}'
+api_put "$(task_list_path "$LIST_ID")" '{"workspace_list":{"name":""}}'
 assert_status "422" "$RESPONSE_STATUS" "PUT /task_lists/:id.json (blank name → 422)"
 assert_failure_envelope "$RESPONSE_BODY" "update blank name"
 
 # ── UPDATE — 404 not found ──────────────────────────────────────────────────
 
-api_put "$(task_list_path 999999999)" '{"task_list":{"name":"Nope"}}'
+api_put "$(task_list_path 999999999)" '{"workspace_list":{"name":"Nope"}}'
 assert_status "404" "$RESPONSE_STATUS" "PUT /task_lists/:bad_id.json (→ 404)"
 
 # ── UPDATE — 403 inbox protection ───────────────────────────────────────────
 
-api_put "$(task_list_path "$INBOX_ID")" '{"task_list":{"name":"Hacked Inbox"}}'
+api_put "$(task_list_path "$INBOX_ID")" '{"workspace_list":{"name":"Hacked Inbox"}}'
 assert_status "403" "$RESPONSE_STATUS" "PUT /task_lists/:inbox_id.json (→ 403)"
 assert_failure_envelope "$RESPONSE_BODY" "inbox update protection"
 

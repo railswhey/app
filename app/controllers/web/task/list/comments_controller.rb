@@ -6,7 +6,7 @@ class Web::Task::List::CommentsController < Web::BaseController
   def create
     @task_list = Current.task_lists.find(params[:list_id])
     @comment = @task_list.comments.new(comment_params)
-    @comment.user = Current.user
+    @comment.member = Current.workspace.member
 
     if @comment.save
       redirect_to task_list_path(@task_list), notice: "Comment added."
@@ -47,7 +47,7 @@ class Web::Task::List::CommentsController < Web::BaseController
   private
 
   def require_comment_author!
-    return true if @comment.authored_by?(Current.user)
+    return true if @comment.authored_by?(Current.workspace.member)
 
     redirect_to task_list_path(@task_list), alert: "You can only modify your own comments."
     false

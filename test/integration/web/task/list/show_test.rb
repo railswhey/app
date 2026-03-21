@@ -37,7 +37,7 @@ class WebTaskListShowTest < ActionDispatch::IntegrationTest
     member!(user)
     web_adapter.sign_in(user)
 
-    get web_adapter.task__list_url(user.inbox)
+    get web_adapter.task__list_url(member!(user).inbox)
     assert_response :ok
     assert_select "a", { text: /Transfer/, count: 0 }
   end

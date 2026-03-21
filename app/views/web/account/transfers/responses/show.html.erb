@@ -12,15 +12,15 @@
   </div>
   <div class="detail-field">
     <span class="detail-label">From</span>
-    <span class="detail-value"><%= @transfer.from_account.name %></span>
+    <span class="detail-value"><%= @from_account&.name %></span>
   </div>
   <div class="detail-field">
     <span class="detail-label">To</span>
-    <span class="detail-value"><%= @transfer.to_account.name %></span>
+    <span class="detail-value"><%= @to_account&.name %></span>
   </div>
   <div class="detail-field">
     <span class="detail-label">Requested by</span>
-    <span class="detail-value"><%= @transfer.transferred_by.email %></span>
+    <span class="detail-value"><%= @transfer.initiated_by.email %></span>
   </div>
   <div class="detail-field">
     <span class="detail-label">Status</span>
@@ -37,7 +37,7 @@
 </div>
 
 <% if @transfer.pending? %>
-  <% if Current.user && @transfer.to_account.owner_or_admin?(Current.user) %>
+  <% if Current.user && @to_account&.owner_or_admin?(Current.user) %>
     <div class="action-group" style="max-width: 480px; margin-top: 1rem;">
       <%= link_to "✅ Accept Transfer",
             account_transfers_response_path(token: @transfer.token, action_type: "accept"),

@@ -2,12 +2,16 @@
 
 class Web::Task::Item::CommentsController < Web::BaseController
   before_action :authenticate_user!
+  before_action :set_commentable!
+
+  with_options only: %i[edit update destroy] do
+    before_action :set_comment
+    before_action :require_comment_author!
+  end
 
   def create
-    @task_list = Current.account.task_lists.find(params[:list_id])
-    @task_item = @task_list.items.find(params[:item_id])
     @comment = @task_item.comments.new(comment_params)
-    @comment.user = Current.user
+    @comment.member = Current.workspace.member
 
     if @comment.save
       redirect_to task_list_item_path(@task_list, @task_item), notice: "Comment added."
@@ -17,20 +21,10 @@ class Web::Task::Item::CommentsController < Web::BaseController
   end
 
   def edit
-    @task_list = Current.account.task_lists.find(params[:list_id])
-    @task_item = @task_list.items.find(params[:item_id])
-    @comment = @task_item.comments.find(params[:id])
-    require_comment_author! or return
-
     render "task/shared/comments/edit"
   end
 
   def update
-    @task_list = Current.account.task_lists.find(params[:list_id])
-    @task_item = @task_list.items.find(params[:item_id])
-    @comment = @task_item.comments.find(params[:id])
-    require_comment_author! or return
-
     if @comment.update(comment_params)
       redirect_to task_list_item_path(@task_list, @task_item), notice: "Comment updated."
     else
@@ -39,21 +33,27 @@ class Web::Task::Item::CommentsController < Web::BaseController
   end
 
   def destroy
-    @task_list = Current.account.task_lists.find(params[:list_id])
-    @task_item = @task_list.items.find(params[:item_id])
-    @comment = @task_item.comments.find(params[:id])
-    require_comment_author! or return
-
     @comment.destroy!
+
     redirect_to task_list_item_path(@task_list, @task_item), notice: "Comment deleted."
   end
 
   private
 
+  def set_commentable!
+    @task_list = Current.task_lists.find(params[:list_id])
+    @task_item = @task_list.tasks.find(params[:item_id])
+  end
+
+  def set_comment
+    @comment = @task_item.comments.find(params[:id])
+  end
+
   def require_comment_author!
-    return true if @comment.authored_by?(Current.user)
+    return true if @comment.authored_by?(Current.workspace.member)
 
     redirect_to task_list_item_path(@task_list, @task_item), alert: "You can only modify your own comments."
+
     false
   end
 

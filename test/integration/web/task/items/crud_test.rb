@@ -4,7 +4,7 @@ require "test_helper"
 
 class WebTaskItemsCrudTest < ActionDispatch::IntegrationTest
   test "guest cannot create a task item" do
-    post web_adapter.task__items_url(task_lists(:one_inbox))
+    post web_adapter.task__items_url(workspace_lists(:one_inbox))
     web_adapter.assert_unauthorized_access
   end
 
@@ -13,8 +13,8 @@ class WebTaskItemsCrudTest < ActionDispatch::IntegrationTest
     inbox = member!(user).inbox
     web_adapter.sign_in(user)
 
-    assert_difference "inbox.items.count", 1 do
-      post web_adapter.task__items_url(inbox), params: { task_item: { name: "New task" } }
+    assert_difference "inbox.tasks.count", 1 do
+      post web_adapter.task__items_url(inbox), params: { workspace_task: { name: "New task" } }
     end
     assert_redirected_to web_adapter.task__items_url(inbox)
   end
@@ -24,7 +24,7 @@ class WebTaskItemsCrudTest < ActionDispatch::IntegrationTest
     inbox = member!(user).inbox
     web_adapter.sign_in(user)
 
-    post web_adapter.task__items_url(inbox), params: { task_item: { name: "" } }
+    post web_adapter.task__items_url(inbox), params: { workspace_task: { name: "" } }
     assert_response :unprocessable_entity
   end
 
@@ -45,7 +45,7 @@ class WebTaskItemsCrudTest < ActionDispatch::IntegrationTest
     task = create_task(user, name: "Old name")
     web_adapter.sign_in(user)
 
-    put web_adapter.task__item_url(inbox, task), params: { task_item: { name: "New name" } }
+    put web_adapter.task__item_url(inbox, task), params: { workspace_task: { name: "New name" } }
     assert_redirected_to web_adapter.task__items_url(inbox)
     assert_equal "New name", task.reload.name
   end
@@ -56,7 +56,7 @@ class WebTaskItemsCrudTest < ActionDispatch::IntegrationTest
     task = create_task(user, name: "Valid")
     web_adapter.sign_in(user)
 
-    put web_adapter.task__item_url(inbox, task), params: { task_item: { name: "" } }
+    put web_adapter.task__item_url(inbox, task), params: { workspace_task: { name: "" } }
     assert_response :unprocessable_entity
   end
 
@@ -66,7 +66,7 @@ class WebTaskItemsCrudTest < ActionDispatch::IntegrationTest
     task = create_task(user, name: "Delete me")
     web_adapter.sign_in(user)
 
-    assert_difference "inbox.items.count", -1 do
+    assert_difference "inbox.tasks.count", -1 do
       delete web_adapter.task__item_url(inbox, task)
     end
     assert_redirected_to web_adapter.task__items_url(inbox)
@@ -87,8 +87,9 @@ class WebTaskItemsCrudTest < ActionDispatch::IntegrationTest
     task = create_task(user, name: "Assign me")
     web_adapter.sign_in(user)
 
-    put web_adapter.task__item_url(inbox, task), params: { task_item: { assigned_user_id: user.id } }
+    ws_member = Workspace::Member.find_by!(uuid: user.uuid)
+    put web_adapter.task__item_url(inbox, task), params: { workspace_task: { assigned_member_id: ws_member.id } }
     assert_redirected_to web_adapter.task__items_url(inbox)
-    assert_equal user, task.reload.assigned_user
+    assert_equal ws_member, task.reload.assigned_member
   end
 end

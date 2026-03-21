@@ -2,21 +2,21 @@
 
 require "test_helper"
 
-class Task::List::TransferTest < ActiveSupport::TestCase
+class Workspace::List::TransferTest < ActiveSupport::TestCase
   setup do
-    @from_account = accounts(:one)
-    @to_account   = accounts(:two)
-    @owner_one    = users(:one)
-    @owner_two    = users(:two)
-    @task_list    = @from_account.task_lists.create!(name: "Work Tasks")
+    @from_workspace = workspaces(:one)
+    @to_workspace   = workspaces(:two)
+    @member_one     = workspace_members(:one)
+    @member_two     = workspace_members(:two)
+    @workspace_list = @from_workspace.lists.create!(name: "Work Tasks")
   end
 
   def build_transfer(attrs = {})
-    Task::List::Transfer.new({
-      list:           @task_list,
-      from_account:   @from_account,
-      to_account:     @to_account,
-      transferred_by: @owner_one
+    Workspace::List::Transfer.new({
+      list:           @workspace_list,
+      from_workspace: @from_workspace,
+      to_workspace:   @to_workspace,
+      initiated_by:   @member_one
     }.merge(attrs))
   end
 
@@ -32,13 +32,13 @@ class Task::List::TransferTest < ActiveSupport::TestCase
   end
 
   test "accounts_must_differ" do
-    transfer = build_transfer(to_account: @from_account)
+    transfer = build_transfer(to_workspace: @from_workspace)
     assert transfer.invalid?
-    assert transfer.errors[:to_account].present?
+    assert transfer.errors[:to_workspace].present?
   end
 
   test "task_list_must_belong_to_from_account" do
-    other_list = task_lists(:two_inbox)   # belongs to account two, not account one
+    other_list = workspace_lists(:two_inbox)   # belongs to workspace two, not workspace one
     transfer = build_transfer(list: other_list)
     assert transfer.invalid?
     assert transfer.errors[:list].present?
@@ -54,47 +54,32 @@ class Task::List::TransferTest < ActiveSupport::TestCase
     transfer = build_transfer
     transfer.save!
 
-    assert transfer.accept!(@owner_two)
+    assert transfer.accept!
     assert transfer.reload.accepted?
-    assert_equal @to_account.id, @task_list.reload.account_id
+    assert_equal @to_workspace.id, @workspace_list.reload.workspace_id
   end
 
   test "accept! returns false if not pending" do
     transfer = build_transfer
     transfer.save!
-    transfer.update_columns(status: Task::List::Transfer.statuses[:accepted])
+    transfer.update_columns(status: Workspace::List::Transfer.statuses[:accepted])
 
-    assert_not transfer.accept!(@owner_two)
-  end
-
-  test "accept! returns false if user is not owner/admin of target account" do
-    transfer = build_transfer
-    transfer.save!
-
-    # owner_one is not an owner/admin of to_account
-    assert_not transfer.accept!(@owner_one)
+    assert_not transfer.accept!
   end
 
   test "reject! marks transfer rejected" do
     transfer = build_transfer
     transfer.save!
 
-    assert transfer.reject!(@owner_two)
+    assert transfer.reject!
     assert transfer.reload.rejected?
   end
 
   test "reject! returns false if not pending" do
     transfer = build_transfer
     transfer.save!
-    transfer.update_columns(status: Task::List::Transfer.statuses[:rejected])
+    transfer.update_columns(status: Workspace::List::Transfer.statuses[:rejected])
 
-    assert_not transfer.reject!(@owner_two)
-  end
-
-  test "reject! returns false if user is not owner/admin of target account" do
-    transfer = build_transfer
-    transfer.save!
-
-    assert_not transfer.reject!(@owner_one)
+    assert_not transfer.reject!
   end
 end

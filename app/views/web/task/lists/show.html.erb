@@ -12,7 +12,7 @@
       <% end %>
       <%= link_to(
         "🗑 Delete",
-        @task_list,
+        task_list_path(@task_list),
         data: { turbo_method: :delete, turbo_confirm: "Are you sure you want to delete this task list?" },
         class: "button btn-danger"
       ) %>
@@ -100,7 +100,7 @@
 
     <div class="comment-form-wrap">
       <%= render "task/shared/comments/form",
-          comment: Task::Comment.new,
+          comment: Workspace::Comment.new,
           url: task_list_comments_path(@task_list),
           submit_label: "Add Comment" %>
     </div>

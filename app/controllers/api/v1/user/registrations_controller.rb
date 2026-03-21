@@ -4,19 +4,21 @@ class API::V1::User::RegistrationsController < API::V1::BaseController
   before_action :authenticate_user!, only: %i[destroy]
 
   def create
-    @user = User::Registration.new.create(user_registration_params)
+    case User::SignUpProcess.perform_now(user_registration_params)
+    in [ :ok, user ]
+      @user = user
 
-    if @user.persisted?
       render "api/v1/user/settings/tokens/show", status: :created
-    else
-      render("errors/from_model", status: :unprocessable_entity, locals: { model: @user })
+    in [ :err, user ]
+      render("errors/from_model", status: :unprocessable_entity, locals: { model: user })
     end
   end
 
   def destroy
-    User::Registration.new(Current.user).destroy
-
-    head :no_content
+    case Account::CloseProcess.perform_now(Current.user)
+    in [ :ok, _ ]
+      head :no_content
+    end
   end
 
   private

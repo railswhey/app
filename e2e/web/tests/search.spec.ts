@@ -5,7 +5,7 @@ import { newTaskListPath, newTaskItemPath, searchPath } from './support/routes';
 async function createList(page: import('@playwright/test').Page, name: string): Promise<string> {
   await page.goto(newTaskListPath());
   await page.getByLabel('Name').fill(name);
-  await page.getByRole('button', { name: /create task list/i }).click();
+  await page.getByRole('button', { name: /create list/i }).click();
   await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
   return page.url().match(/\/task\/lists\/(\d+)/)?.[1] ?? '';
 }
@@ -52,7 +52,7 @@ test.describe('Search', () => {
     const uniqueTask = `SearchTask_${Date.now()}`;
     await page.goto(newTaskItemPath(listId));
     await page.getByLabel('Name').fill(uniqueTask);
-    await page.getByRole('button', { name: /create task item/i }).click();
+    await page.getByRole('button', { name: /create task/i }).click();
     await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 
     await search(page, uniqueTask);
@@ -68,7 +68,7 @@ test.describe('Search', () => {
     await page.goto(newTaskItemPath(listId));
     await page.getByLabel('Name').fill('Task With Unique Desc');
     await page.getByLabel('Description').fill(uniqueDesc);
-    await page.getByRole('button', { name: /create task item/i }).click();
+    await page.getByRole('button', { name: /create task/i }).click();
     await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 
     // Search by task name instead (descriptions may not be indexed)
@@ -94,7 +94,7 @@ test.describe('Search', () => {
 
     await page.goto(newTaskItemPath(listId));
     await page.getByLabel('Name').fill('Commented Task');
-    await page.getByRole('button', { name: /create task item/i }).click();
+    await page.getByRole('button', { name: /create task/i }).click();
     await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 
     // Navigate to show page to add comment

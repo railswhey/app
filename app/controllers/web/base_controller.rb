@@ -29,16 +29,15 @@ class Web::BaseController < ApplicationController
   end
 
   def current_member!
-    task_list_id = params[:list_id]
-    task_list_id = current_task_list_id if task_list_id.blank?
+    task_list_id = params[:list_id].presence || current_task_list_id
 
-    Current.member!(user_id: current_user_id, account_id: session[:account_id], task_list_id:)
+    Current.authorize!(user_id: current_user_id, account_id: current_account_id, task_list_id:)
 
-    if Current.user? && !Current.member?
-      Current.member!(user_id: current_user_id, account_id: nil, task_list_id: nil)
+    Current.authorize!(user_id: current_user_id) if Current.user? && !Current.authorized?
+
+    if Current.authorized?
+      self.current_account_id = Current.account_id
+      self.current_task_list_id = Current.task_list_id
     end
-
-    session[:account_id] = Current.account_id if Current.member?
-    self.current_task_list_id = Current.task_list_id if Current.member?
   end
 end

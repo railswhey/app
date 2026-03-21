@@ -4,7 +4,7 @@ require "test_helper"
 
 class WebTaskListCommentsTest < ActionDispatch::IntegrationTest
   test "guest cannot create a comment on a list" do
-    list = task_lists(:one_inbox)
+    list = workspace_lists(:one_inbox)
 
     post web_adapter.task_list__comments_url(list), params: { comment: { body: "Hi" } }
     web_adapter.assert_unauthorized_access
@@ -23,7 +23,7 @@ class WebTaskListCommentsTest < ActionDispatch::IntegrationTest
 
     comment = inbox.comments.last
     assert_equal "Great list!", comment.body
-    assert_equal user, comment.user
+    assert_equal user.uuid, comment.member.uuid
   end
 
   test "user cannot create a blank comment on a list" do
@@ -67,7 +67,7 @@ class WebTaskListCommentsTest < ActionDispatch::IntegrationTest
     owner_inbox = member!(owner).inbox
 
     # other must be a member to have posted a comment (simulate via direct create)
-    comment = owner_inbox.comments.create!(body: "Other's comment", user: other)
+    comment = owner_inbox.comments.create!(body: "Other's comment", member: Workspace::Member.find_by!(uuid: other.uuid))
 
     web_adapter.sign_in(owner)
 

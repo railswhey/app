@@ -35,11 +35,11 @@ class WebTaskListsTest < ActionDispatch::IntegrationTest
 
     assert_response :ok
 
-    task_list = user.account.task_lists.find_by(name: "Foo")
+    task_list = member!(user).workspace.lists.find_by(name: "Foo")
 
     delete(web_adapter.task__list_url(task_list))
 
-    assert_redirected_to web_adapter.task__items_url(user.inbox)
+    assert_redirected_to web_adapter.task__items_url(member!(user).inbox)
 
     follow_redirect!
 
@@ -66,7 +66,7 @@ class WebTaskListsTest < ActionDispatch::IntegrationTest
 
   test "user tries to destroy a task list from another user" do
     user = users(:one)
-    task_list = task_lists(:two_inbox)
+    task_list = workspace_lists(:two_inbox)
 
     web_adapter.sign_in(user)
 

@@ -16,8 +16,8 @@
     <% @memberships.each do |membership| %>
       <tr>
         <td>
-          <strong><%= membership.user.username %></strong>
-          <div><small><%= membership.user.email %></small></div>
+          <strong><%= membership.person.username %></strong>
+          <div><small><%= membership.person.email %></small></div>
         </td>
         <td>
           <span class="chip <%= membership.owner? ? 'chip-success' : 'chip-neutral' %>">
@@ -25,9 +25,9 @@
           </span>
         </td>
         <td>
-          <% unless membership.owner? || membership.user == Current.user %>
+          <% unless membership.owner? || membership.person == Current.context.person %>
             <%= link_to "Remove", account_membership_path(membership),
-                  data: { turbo_method: :delete, turbo_confirm: "Remove #{membership.user.username}?" },
+                  data: { turbo_method: :delete, turbo_confirm: "Remove #{membership.person.username}?" },
                   class: "button btn-danger" %>
           <% end %>
         </td>

@@ -5,16 +5,16 @@ module TaskItemsHelper
     style = "color: var(--text) !important;"
 
     all = { title: "All", path: task_list_items_path(Current.task_list_id), style: }
-    completed = { title: "Completed", path: task_list_items_path(Current.task_list_id, filter: Task::COMPLETED), style: }
-    incomplete = { title: "Incomplete", path: task_list_items_path(Current.task_list_id, filter: Task::INCOMPLETE), style: }
+    completed = { title: "Completed", path: task_list_items_path(Current.task_list_id, filter: Workspace::Task::COMPLETED), style: }
+    incomplete = { title: "Incomplete", path: task_list_items_path(Current.task_list_id, filter: Workspace::Task::INCOMPLETE), style: }
 
     filter_as = ->(options) {
       options.merge!(title: "#{options[:title]} (#{@task_items.size})", style: "color: #ffb300 !important; font-weight: 600;")
     }
 
     case params[:filter]
-    when Task::INCOMPLETE then filter_as[incomplete]
-    when Task::COMPLETED  then filter_as[completed]
+    when Workspace::Task::INCOMPLETE then filter_as[incomplete]
+    when Workspace::Task::COMPLETED  then filter_as[completed]
     else filter_as[all]
     end
 
@@ -29,8 +29,8 @@ module TaskItemsHelper
 
   TASK_ITEMS_EMPTY = {
     "all" => { icon: "📭", title: "Your %{list} is clear!", message: "No tasks here yet. Add your first task to start tracking what needs be done." },
-    Task::COMPLETED => { icon: "🏁", title: "No completed tasks", message: "You don't have any completed tasks yet. Keep up the good work!" },
-    Task::INCOMPLETE => { icon: "🎉", title: "All done!", message: "You don't have any incomplete tasks. Great job!" }
+    Workspace::Task::COMPLETED => { icon: "🏁", title: "No completed tasks", message: "You don't have any completed tasks yet. Keep up the good work!" },
+    Workspace::Task::INCOMPLETE => { icon: "🎉", title: "All done!", message: "You don't have any incomplete tasks. Great job!" }
   }.freeze
 
   def empty_task_items_message(filter = nil)

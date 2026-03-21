@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class ApplicationController < ActionController::Base
-  include ActionController::HttpAuthentication::Token::ControllerMethods
-
   # Only allow modern browsers supporting webp images, web push, badges, import maps, CSS nesting, and CSS :has.
   allow_browser versions: :modern, unless: -> { Rails.env.local? }
 
@@ -17,17 +15,17 @@ class ApplicationController < ActionController::Base
     session[:user_id] = id
   end
 
-  def current_user_id
-    session[:user_id]
+  def current_account_id=(id)
+    session[:account_id] = id
   end
 
   def current_task_list_id=(id)
     session[:task_list_id] = id
   end
 
-  def current_task_list_id
-    session[:task_list_id]
-  end
+  def current_user_id      = session[:user_id]
+  def current_account_id   = session[:account_id]
+  def current_task_list_id = session[:task_list_id]
 
   def sign_in(user)
     sign_out
@@ -45,5 +43,9 @@ class ApplicationController < ActionController::Base
 
   def owner_or_admin?
     Current.owner_or_admin?
+  end
+
+  def current_member!
+    raise NotImplementedError, "Must be implemented in subclass"
   end
 end

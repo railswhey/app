@@ -14,29 +14,29 @@ SAVED_TOKEN="$TOKEN"
 
 TOKEN="$TOKEN_A"
 
-api_post "$(task_lists_path)" '{"task_list":{"name":"Transfer Me List"}}'
+api_post "$(task_lists_path)" '{"workspace_list":{"name":"Transfer Me List"}}'
 assert_status "201" "$RESPONSE_STATUS" "POST /task_lists.json (for transfer)"
 TRANSFER_LIST_ID=$(echo "$RESPONSE_BODY" | jq -r '.data.id')
 
 # ── CREATE TRANSFER — 422 unknown email ──────────────────────────────────────
 
-api_post "$(transfer_create_path "$TRANSFER_LIST_ID")" '{"task_list_transfer":{"to_email":"nobody@nowhere.example.com"}}'
+api_post "$(transfer_create_path "$TRANSFER_LIST_ID")" '{"workspace_list_transfer":{"to_email":"nobody@nowhere.example.com"}}'
 assert_status "422" "$RESPONSE_STATUS" "POST transfer (unknown email → 422)"
 assert_failure_envelope "$RESPONSE_BODY" "transfer unknown email"
 
 # ── CREATE TRANSFER — 422 self-transfer ──────────────────────────────────────
 
-api_post "$(transfer_create_path "$TRANSFER_LIST_ID")" "{\"task_list_transfer\":{\"to_email\":\"${USER_A_EMAIL}\"}}"
+api_post "$(transfer_create_path "$TRANSFER_LIST_ID")" "{\"workspace_list_transfer\":{\"to_email\":\"${USER_A_EMAIL}\"}}"
 assert_status "422" "$RESPONSE_STATUS" "POST transfer (self-transfer → 422)"
 
 # ── CREATE TRANSFER — 404 bad list id ────────────────────────────────────────
 
-api_post "$(transfer_create_path 999999999)" "{\"task_list_transfer\":{\"to_email\":\"${USER_B_EMAIL}\"}}"
+api_post "$(transfer_create_path 999999999)" "{\"workspace_list_transfer\":{\"to_email\":\"${USER_B_EMAIL}\"}}"
 assert_status "404" "$RESPONSE_STATUS" "POST transfer (bad list → 404)"
 
 # ── CREATE TRANSFER — 201 success (for reject flow) ─────────────────────────
 
-api_post "$(transfer_create_path "$TRANSFER_LIST_ID")" "{\"task_list_transfer\":{\"to_email\":\"${USER_B_EMAIL}\"}}"
+api_post "$(transfer_create_path "$TRANSFER_LIST_ID")" "{\"workspace_list_transfer\":{\"to_email\":\"${USER_B_EMAIL}\"}}"
 assert_status "201" "$RESPONSE_STATUS" "POST /task_lists/:id/transfer.json (create)"
 assert_success_envelope "$RESPONSE_BODY" "object" "transfer create"
 assert_json_field "$RESPONSE_BODY" ".data.status" "pending" "transfer is pending"
@@ -69,7 +69,7 @@ assert_json_field "$RESPONSE_BODY" ".data.status" "rejected" "transfer is reject
 
 TOKEN="$TOKEN_A"
 
-api_post "$(transfer_create_path "$TRANSFER_LIST_ID")" "{\"task_list_transfer\":{\"to_email\":\"${USER_B_EMAIL}\"}}"
+api_post "$(transfer_create_path "$TRANSFER_LIST_ID")" "{\"workspace_list_transfer\":{\"to_email\":\"${USER_B_EMAIL}\"}}"
 assert_status "201" "$RESPONSE_STATUS" "POST /task_lists/:id/transfer.json (create for accept)"
 
 TRANSFER_TOKEN_2=$(echo "$RESPONSE_BODY" | jq -r '.data.token')

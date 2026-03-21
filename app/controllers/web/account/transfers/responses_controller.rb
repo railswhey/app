@@ -1,39 +1,47 @@
 # frozen_string_literal: true
 
 class Web::Account::Transfers::ResponsesController < Web::BaseController
-  def show
-    current_member!
-    @transfer = Task::List::Transfer.find_by!(token: params[:token])
+  before_action :current_member!
+  before_action :load_transfer!
 
-    render :show
-  rescue ActiveRecord::RecordNotFound
+  rescue_from ActiveRecord::RecordNotFound do
     redirect_to home_path, alert: "Transfer not found."
   end
 
-  def update
-    current_member!
-    @transfer = Task::List::Transfer.find_by!(token: params[:token])
+  def show
+    render :show
+  end
 
+  def update
     unless Current.user
       redirect_to new_user_session_path(return_to: account_transfers_response_path(token: @transfer.token)),
                   notice: "Please sign in to respond to this transfer."
       return
     end
 
-    action = params[:action_type]
-    success = case action
-    when "accept" then @transfer.accept!(Current.user)
-    when "reject" then @transfer.reject!(Current.user)
-    else false
+    unless @to_account&.owner_or_admin?(Current.user)
+      redirect_to account_transfers_response_path(token: @transfer.token), alert: "Could not process transfer."
+      return
     end
 
-    if success
-      msg = action == "accept" ? "List transferred successfully!" : "Transfer rejected."
+    case User::RespondToTransferProcess.perform_now(
+      transfer: @transfer,
+      action: params[:action_type]
+    )
+    in [ :ok, _ ]
+      msg = params[:action_type] == "accept" ? "List transferred successfully!" : "Transfer rejected."
       redirect_to home_path, notice: msg
-    else
-      redirect_to account_transfers_response_path(token: @transfer.token), alert: "Could not process transfer."
+    in [ :err, _ ]
+      redirect_to account_transfers_response_path(token: @transfer.token),
+                  alert: "Could not process transfer."
     end
-  rescue ActiveRecord::RecordNotFound
-    redirect_to home_path, alert: "Transfer not found."
+  end
+
+  private
+
+  def load_transfer!
+    @transfer     = Workspace::List::Transfer.find_by!(token: params[:token])
+    @from_account = Account.find_by(uuid: @transfer.from_workspace.uuid)
+    @to_account   = Account.find_by(uuid: @transfer.to_workspace.uuid)
   end
 end

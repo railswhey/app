@@ -6,7 +6,7 @@ class APIV1TaskListsDestroyTest < ActionDispatch::IntegrationTest
   test "#destroy responds with 401 when API token is invalid" do
     headers = [ {}, api_v1_adapter.authorization_header(SecureRandom.hex(20)) ].sample
 
-    delete(api_v1_adapter.task__list_url(task_lists(:one_inbox), format: :json), headers:)
+    delete(api_v1_adapter.task__list_url(workspace_lists(:one_inbox), format: :json), headers:)
 
     api_v1_adapter.assert_response_with_failure(:unauthorized)
   end
@@ -14,7 +14,7 @@ class APIV1TaskListsDestroyTest < ActionDispatch::IntegrationTest
   test "#destroy responds with 404 when task list is not found" do
     user = users(:one)
 
-    delete(api_v1_adapter.task__list_url(Task::List.maximum(:id) + 1, format: :json), headers: api_v1_adapter.authorization_header(user))
+    delete(api_v1_adapter.task__list_url(Workspace::List.maximum(:id) + 1, format: :json), headers: api_v1_adapter.authorization_header(user))
 
     assert_response :not_found
   end
@@ -22,7 +22,7 @@ class APIV1TaskListsDestroyTest < ActionDispatch::IntegrationTest
   test "#destroy responds with 403 when trying to destroy the inbox task list" do
     user = users(:one)
 
-    delete(api_v1_adapter.task__list_url(task_lists(:one_inbox), format: :json), headers: api_v1_adapter.authorization_header(user))
+    delete(api_v1_adapter.task__list_url(workspace_lists(:one_inbox), format: :json), headers: api_v1_adapter.authorization_header(user))
 
     api_v1_adapter.assert_response_with_failure(:forbidden)
   end
@@ -30,9 +30,9 @@ class APIV1TaskListsDestroyTest < ActionDispatch::IntegrationTest
   test "#destroy responds with 204" do
     user = users(:one)
 
-    task_list = member!(user).account.task_lists.create!(name: "Bar")
+    task_list = member!(user).workspace.lists.create!(name: "Bar")
 
-    assert_difference -> { member!(user).account.task_lists.count }, -1 do
+    assert_difference -> { member!(user).workspace.lists.count }, -1 do
       delete(api_v1_adapter.task__list_url(task_list, format: :json), headers: api_v1_adapter.authorization_header(user))
     end
 

@@ -17,7 +17,8 @@ class APIV1InvitationsTest < ActionDispatch::IntegrationTest
   test "create responds with 403 when user is not owner or admin" do
     collaborator = users(:two)
     # Downgrade user two's own membership to collaborator so the guard fires
-    collaborator.accounts.first.memberships.find_by(user: collaborator).update!(role: :collaborator)
+    collaborator_person = Account::Person.find_by!(uuid: collaborator.uuid)
+    collaborator_person.accounts.first.memberships.find_by(person: collaborator_person).update!(role: :collaborator)
 
     post(
       api_v1_adapter.account__invitations_url(format: :json),
@@ -33,13 +34,14 @@ class APIV1InvitationsTest < ActionDispatch::IntegrationTest
     receiver = users(:two)
     member!(inviter)
     member!(receiver)
-    invitation = inviter.account.invitations.create!(email: "fail@example.com", invited_by: inviter)
+    inviter_person = Account::Person.find_by!(uuid: inviter.uuid)
+    invitation = member!(inviter).account.invitations.create!(email: "fail@example.com", invited_by: inviter_person)
 
     # Lines 88-90 are only reachable when accept! returns false after the
     # accepted? guard passes (a race-condition scenario). No mock gem is
     # available in minitest 6, so we temporarily override the method.
     original = Account::Invitation.instance_method(:accept!)
-    Account::Invitation.define_method(:accept!) { |_user| false }
+    Account::Invitation.define_method(:accept!) { false }
 
     patch(
       api_v1_adapter.accept__invitation_url(invitation.token, format: :json),

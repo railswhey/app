@@ -5,7 +5,7 @@ import { newTaskListPath, newTaskItemPath, taskListPath } from './support/routes
 async function createList(page: import('@playwright/test').Page, name: string): Promise<string> {
   await page.goto(newTaskListPath());
   await page.getByLabel('Name').fill(name);
-  await page.getByRole('button', { name: /create task list/i }).click();
+  await page.getByRole('button', { name: /create list/i }).click();
   await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
   return page.url().match(/\/task\/lists\/(\d+)/)?.[1] ?? '';
 }
@@ -17,7 +17,7 @@ async function createTaskItem(
 ): Promise<string> {
   await page.goto(newTaskItemPath(listId));
   await page.getByLabel('Name').fill(name);
-  await page.getByRole('button', { name: /create task item/i }).click();
+  await page.getByRole('button', { name: /create task/i }).click();
   // Create redirects to task items index
   await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
   // Navigate to the created item's show page
@@ -288,7 +288,7 @@ test.describe('Comments', () => {
       // Add comment to task item
       await page.goto(newTaskItemPath(listId));
       await page.getByLabel('Name').fill('Item for Comments');
-      await page.getByRole('button', { name: /create task item/i }).click();
+      await page.getByRole('button', { name: /create task/i }).click();
       await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
       await page.getByRole('link', { name: 'Item for Comments' }).click();
       await page.waitForURL(/\/items\/\d+/, { timeout: 10_000 });

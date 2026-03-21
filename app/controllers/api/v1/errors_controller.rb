@@ -11,9 +11,9 @@ class API::V1::ErrorsController < API::V1::BaseController
     error = ERRORS.fetch(params[:status].to_i, ERRORS[404])
 
     if error[:status] == :internal_server_error
-      render(status: :internal_server_error, json: {
-        status: :error, type: :object, data: { message: error[:message] }
-      })
+      json = { status: :error, type: :object, data: { message: error[:message] } }
+
+      render(status: :internal_server_error, json:)
     else
       render_json_with_failure(status: error[:status], message: error[:message])
     end

@@ -11,6 +11,7 @@ class Web::ErrorsController < Web::BaseController
 
   def show
     error = ERRORS.fetch(params[:status].to_i, ERRORS[404])
+
     render error[:template], status: error[:status]
   end
 

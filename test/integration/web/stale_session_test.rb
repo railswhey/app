@@ -10,7 +10,8 @@ class WebStaleSessionTest < ActionDispatch::IntegrationTest
 
     collaborator = users(:two)
     member!(collaborator)
-    collab_membership = owner_account.memberships.create!(user: collaborator, role: :collaborator)
+    collaborator_person = Account::Person.find_by!(uuid: collaborator.uuid)
+    collab_membership = owner_account.memberships.create!(person: collaborator_person, role: :collaborator)
 
     # Collaborator signs in and switches to owner's account
     web_adapter.sign_in(collaborator)
@@ -34,7 +35,8 @@ class WebStaleSessionTest < ActionDispatch::IntegrationTest
 
     collaborator = users(:two)
     collaborator_inbox = member!(collaborator).inbox
-    collab_membership = owner_account.memberships.create!(user: collaborator, role: :collaborator)
+    collaborator_person = Account::Person.find_by!(uuid: collaborator.uuid)
+    collab_membership = owner_account.memberships.create!(person: collaborator_person, role: :collaborator)
 
     # Collaborator signs in and switches to owner's account
     web_adapter.sign_in(collaborator)
@@ -58,7 +60,8 @@ class WebStaleSessionTest < ActionDispatch::IntegrationTest
 
     collaborator = users(:two)
     member!(collaborator)
-    collab_membership = owner_account.memberships.create!(user: collaborator, role: :collaborator)
+    collaborator_person = Account::Person.find_by!(uuid: collaborator.uuid)
+    collab_membership = owner_account.memberships.create!(person: collaborator_person, role: :collaborator)
 
     # Collaborator signs in and switches to owner's account
     web_adapter.sign_in(collaborator)
@@ -78,7 +81,8 @@ class WebStaleSessionTest < ActionDispatch::IntegrationTest
 
     collaborator = users(:two)
     member!(collaborator)
-    collab_membership = owner_account.memberships.create!(user: collaborator, role: :collaborator)
+    collaborator_person = Account::Person.find_by!(uuid: collaborator.uuid)
+    collab_membership = owner_account.memberships.create!(person: collaborator_person, role: :collaborator)
 
     web_adapter.sign_in(collaborator)
     post web_adapter.switch__account_url(owner_account)

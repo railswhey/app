@@ -5,13 +5,13 @@
 section "Task Items"
 
 # Create a task list to work with
-api_post "$(task_lists_path)" '{"task_list":{"name":"Items Test List"}}'
+api_post "$(task_lists_path)" '{"workspace_list":{"name":"Items Test List"}}'
 assert_status "201" "$RESPONSE_STATUS" "POST /task_lists.json (for items)"
 ITEMS_LIST_ID=$(echo "$RESPONSE_BODY" | jq -r '.data.id')
 
 # ── CREATE — happy path ──────────────────────────────────────────────────────
 
-api_post "$(task_items_path "$ITEMS_LIST_ID")" '{"task_item":{"name":"Test Task","description":"A smoke test task"}}'
+api_post "$(task_items_path "$ITEMS_LIST_ID")" '{"workspace_task":{"name":"Test Task","description":"A smoke test task"}}'
 assert_status "201" "$RESPONSE_STATUS" "POST /task_items.json (create)"
 assert_success_envelope "$RESPONSE_BODY" "object" "task_items create"
 assert_json_field "$RESPONSE_BODY" ".data.name" "Test Task" "created item name"
@@ -29,13 +29,13 @@ assert_failure_envelope "$RESPONSE_BODY" "create missing params"
 
 # ── CREATE — 422 blank name ─────────────────────────────────────────────────
 
-api_post "$(task_items_path "$ITEMS_LIST_ID")" '{"task_item":{"name":""}}'
+api_post "$(task_items_path "$ITEMS_LIST_ID")" '{"workspace_task":{"name":""}}'
 assert_status "422" "$RESPONSE_STATUS" "POST /task_items.json (blank name → 422)"
 assert_failure_envelope "$RESPONSE_BODY" "create blank name"
 
 # ── CREATE — 404 bad list id ────────────────────────────────────────────────
 
-api_post "$(task_items_path 999999999)" '{"task_item":{"name":"Nope"}}'
+api_post "$(task_items_path 999999999)" '{"workspace_task":{"name":"Nope"}}'
 assert_status "404" "$RESPONSE_STATUS" "POST /task_items.json (bad list → 404)"
 
 # ── INDEX — unfiltered ───────────────────────────────────────────────────────
@@ -70,7 +70,7 @@ assert_status "404" "$RESPONSE_STATUS" "GET /task_items/:bad_id.json (→ 404)"
 
 # ── UPDATE — happy path ─────────────────────────────────────────────────────
 
-api_put "$(task_item_path "$ITEMS_LIST_ID" "$ITEM_ID")" '{"task_item":{"name":"Updated Task"}}'
+api_put "$(task_item_path "$ITEMS_LIST_ID" "$ITEM_ID")" '{"workspace_task":{"name":"Updated Task"}}'
 assert_status "200" "$RESPONSE_STATUS" "PUT /task_items/:id.json (update)"
 assert_success_envelope "$RESPONSE_BODY" "object" "task_items update"
 assert_json_field "$RESPONSE_BODY" ".data.name" "Updated Task" "updated item name"
@@ -82,12 +82,12 @@ assert_status "400" "$RESPONSE_STATUS" "PUT /task_items/:id.json (missing params
 
 # ── UPDATE — 422 blank name ─────────────────────────────────────────────────
 
-api_put "$(task_item_path "$ITEMS_LIST_ID" "$ITEM_ID")" '{"task_item":{"name":""}}'
+api_put "$(task_item_path "$ITEMS_LIST_ID" "$ITEM_ID")" '{"workspace_task":{"name":""}}'
 assert_status "422" "$RESPONSE_STATUS" "PUT /task_items/:id.json (blank name → 422)"
 
 # ── UPDATE — 404 bad item id ────────────────────────────────────────────────
 
-api_put "$(task_item_path "$ITEMS_LIST_ID" 999999999)" '{"task_item":{"name":"Nope"}}'
+api_put "$(task_item_path "$ITEMS_LIST_ID" 999999999)" '{"workspace_task":{"name":"Nope"}}'
 assert_status "404" "$RESPONSE_STATUS" "PUT /task_items/:bad_id.json (→ 404)"
 
 # ── COMPLETE ─────────────────────────────────────────────────────────────────

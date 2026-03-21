@@ -11,7 +11,7 @@ import {
 async function createList(page: Page, name: string): Promise<string> {
   await page.goto(newTaskListPath());
   await page.getByLabel('Name').fill(name);
-  await page.getByRole('button', { name: /create task list/i }).click();
+  await page.getByRole('button', { name: /create list/i }).click();
   await page.waitForURL(/\/task\/lists\/\d+$/, { timeout: 10_000 });
   return page.url().match(/\/task\/lists\/(\d+)/)?.[1] ?? '';
 }
@@ -19,7 +19,7 @@ async function createList(page: Page, name: string): Promise<string> {
 async function createItem(page: Page, listId: string, name: string) {
   await page.goto(newTaskItemPath(listId));
   await page.getByLabel('Name').fill(name);
-  await page.getByRole('button', { name: /create task item/i }).click();
+  await page.getByRole('button', { name: /create task/i }).click();
   await page.waitForURL(/\/task\/lists\/\d+\/items($|\?)/, { timeout: 10_000 });
 }
 
@@ -359,7 +359,7 @@ test.describe('Collaboration — Cross-User Visibility', () => {
     await page.getByRole('link', { name: '✏️ Edit' }).click();
     await page.waitForURL(/\/edit/, { timeout: 10_000 });
     await page.locator('#assignee-select').selectOption({ label: owner.username });
-    await page.getByRole('button', { name: /update task item/i }).click();
+    await page.getByRole('button', { name: /update task/i }).click();
 
     const inviteePage = await inviteAndAccept(page, browser, invitee);
     await switchAccount(inviteePage, owner.username);
@@ -643,7 +643,7 @@ test.describe('Collaboration — Additional Visibility', () => {
     await page.getByRole('link', { name: '✏️ Edit' }).click();
     await page.waitForURL(/\/edit/, { timeout: 10_000 });
     await page.locator('#assignee-select').selectOption({ label: owner.username });
-    await page.getByRole('button', { name: /update task item/i }).click();
+    await page.getByRole('button', { name: /update task/i }).click();
     await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 
     const inviteePage = await inviteAndAccept(page, browser, invitee);
@@ -736,7 +736,7 @@ test.describe('Collaboration — Additional CRUD', () => {
     await inviteePage.getByRole('link', { name: '✏️ Edit' }).click();
     await inviteePage.waitForURL(/\/edit/, { timeout: 10_000 });
     await inviteePage.getByLabel('Name').fill('EditedByCollab');
-    await inviteePage.getByRole('button', { name: /update task item/i }).click();
+    await inviteePage.getByRole('button', { name: /update task/i }).click();
     await inviteePage.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 
     // Owner sees the edit
@@ -781,7 +781,7 @@ test.describe('Collaboration — Additional CRUD', () => {
     await inviteePage.getByRole('link', { name: '✏️ Edit' }).click();
     await inviteePage.waitForURL(/\/edit/, { timeout: 10_000 });
     await inviteePage.getByLabel('Name').fill('RenamedByCollab');
-    await inviteePage.getByRole('button', { name: /update task list/i }).click();
+    await inviteePage.getByRole('button', { name: /update list/i }).click();
     await inviteePage.waitForURL(/\/task\/lists\/\d+$/, { timeout: 10_000 });
 
     // Owner sees the rename

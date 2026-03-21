@@ -50,6 +50,6 @@ class API::V1::Task::ListsController < API::V1::BaseController
   end
 
   def task_list_params
-    params.require(:task_list).permit(:name, :description)
+    params.require(:workspace_list).permit(:name, :description)
   end
 end

@@ -4,13 +4,13 @@ require "test_helper"
 
 class WebTaskItemsCreationTest < ActionDispatch::IntegrationTest
   test "guest tries to access new task form" do
-    get(web_adapter.new_task__item_url(task_lists(:one_inbox)))
+    get(web_adapter.new_task__item_url(workspace_lists(:one_inbox)))
 
     web_adapter.assert_unauthorized_access
   end
 
   test "guest tries to create a task" do
-    post(web_adapter.task__items_url(task_lists(:one_inbox)), params: { task: { name: "Foo" } })
+    post(web_adapter.task__items_url(workspace_lists(:one_inbox)), params: { task: { name: "Foo" } })
 
     web_adapter.assert_unauthorized_access
   end
@@ -26,8 +26,8 @@ class WebTaskItemsCreationTest < ActionDispatch::IntegrationTest
 
     assert_select("h2", "New task item")
 
-    assert_difference(-> { member!(user).inbox.items.count }) do
-      post(web_adapter.task__items_url(member!(user).inbox), params: { task_item: { name: "Bar" } })
+    assert_difference(-> { member!(user).inbox.tasks.count }) do
+      post(web_adapter.task__items_url(member!(user).inbox), params: { workspace_task: { name: "Bar" } })
     end
 
     assert_redirected_to web_adapter.task__items_url(member!(user).inbox)
@@ -48,8 +48,8 @@ class WebTaskItemsCreationTest < ActionDispatch::IntegrationTest
 
     web_adapter.sign_in(user)
 
-    assert_no_difference(-> { member!(user).inbox.items.count }) do
-      post(web_adapter.task__items_url(member!(user).inbox), params: { task_item: { name: "" } })
+    assert_no_difference(-> { member!(user).inbox.tasks.count }) do
+      post(web_adapter.task__items_url(member!(user).inbox), params: { workspace_task: { name: "" } })
     end
 
     assert_response :unprocessable_entity

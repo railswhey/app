@@ -6,7 +6,7 @@ import { newTaskListPath, notificationsPath, accountPath } from './support/route
 async function createList(page: import('@playwright/test').Page, name: string): Promise<string> {
   await page.goto(newTaskListPath());
   await page.getByLabel('Name').fill(name);
-  await page.getByRole('button', { name: /create task list/i }).click();
+  await page.getByRole('button', { name: /create list/i }).click();
   await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
   return page.url().match(/\/task\/lists\/(\d+)/)?.[1] ?? '';
 }

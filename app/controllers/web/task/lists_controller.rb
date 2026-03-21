@@ -44,7 +44,7 @@ class Web::Task::ListsController < Web::BaseController
   def destroy
     @task_list.destroy!
 
-    inbox = Current.account.inbox
+    inbox = Current.workspace.inbox
     self.current_task_list_id = inbox&.id
 
     redirect_to task_list_items_path(inbox), notice: "Task list was successfully destroyed."
@@ -57,6 +57,6 @@ class Web::Task::ListsController < Web::BaseController
   end
 
   def task_list_params
-    params.require(:task_list).permit(:name, :description)
+    params.require(:workspace_list).permit(:name, :description)
   end
 end

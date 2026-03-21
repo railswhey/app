@@ -6,7 +6,7 @@ import { newTaskListPath, taskItemsPath, newTaskItemPath } from './support/route
 async function createList(page: import('@playwright/test').Page, name: string): Promise<string> {
   await page.goto(newTaskListPath());
   await page.getByLabel('Name').fill(name);
-  await page.getByRole('button', { name: /create task list/i }).click();
+  await page.getByRole('button', { name: /create list/i }).click();
   // Redirects to /task_lists/:id (show page)
   await page.waitForURL(/\/task\/lists\/\d+$/, { timeout: 10_000 });
   const url = page.url();
@@ -19,7 +19,7 @@ async function createList(page: import('@playwright/test').Page, name: string): 
 async function createItem(page: import('@playwright/test').Page, listId: string, name: string, opts?: { completed?: boolean }) {
   await page.goto(newTaskItemPath(listId));
   await page.getByLabel('Name').fill(name);
-  await page.getByRole('button', { name: /create task item/i }).click();
+  await page.getByRole('button', { name: /create task/i }).click();
   await page.waitForURL(/\/task\/lists\/\d+\/items($|\?)/, { timeout: 10_000 });
 
   if (opts?.completed) {
@@ -59,7 +59,7 @@ test.describe('Task Items', () => {
       await page.goto(newTaskItemPath(listId));
       await page.getByLabel('Name').fill('Task With Description');
       await page.getByLabel('Description').fill('This task has details');
-      await page.getByRole('button', { name: /create task item/i }).click();
+      await page.getByRole('button', { name: /create task/i }).click();
       await page.waitForURL(/\/task\/lists\/\d+\/items($|\?)/, { timeout: 10_000 });
 
       // Click into the item to see the description
@@ -80,7 +80,7 @@ test.describe('Task Items', () => {
       await page.getByRole('link', { name: '✏️ Edit' }).click();
       await page.waitForURL(/\/edit/, { timeout: 10_000 });
       await page.getByLabel('Completed').check();
-      await page.getByRole('button', { name: /update task item/i }).click();
+      await page.getByRole('button', { name: /update task/i }).click();
       await page.waitForURL(/\/task\/lists\/\d+\/items($|\?)/, { timeout: 10_000 });
 
       // Filter by completed to see it
@@ -95,7 +95,7 @@ test.describe('Task Items', () => {
 
       await page.goto(newTaskItemPath(listId));
       // Name is required — HTML5 validation prevents submission
-      await page.getByRole('button', { name: /create task item/i }).click();
+      await page.getByRole('button', { name: /create task/i }).click();
       await expect(page.getByLabel('Name')).toBeVisible();
     });
   });
@@ -109,7 +109,7 @@ test.describe('Task Items', () => {
       await page.goto(newTaskItemPath(listId));
       await page.getByLabel('Name').fill('Detail Task');
       await page.getByLabel('Description').fill('Task details here');
-      await page.getByRole('button', { name: /create task item/i }).click();
+      await page.getByRole('button', { name: /create task/i }).click();
       await page.waitForURL(/\/task\/lists\/\d+\/items($|\?)/, { timeout: 10_000 });
 
       await page.getByRole('link', { name: 'Detail Task' }).click();
@@ -147,7 +147,7 @@ test.describe('Task Items', () => {
       await page.waitForURL(/\/edit/, { timeout: 10_000 });
       await page.getByLabel('Name').fill('Updated Task Name');
       await page.getByLabel('Description').fill('Updated description');
-      await page.getByRole('button', { name: /update task item/i }).click();
+      await page.getByRole('button', { name: /update task/i }).click();
       await page.waitForURL(/\/task\/lists\/\d+\/items($|\?)/, { timeout: 10_000 });
 
       await expect(page.getByRole('link', { name: 'Updated Task Name' })).toBeVisible();

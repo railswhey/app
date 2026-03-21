@@ -36,7 +36,7 @@ async function createList(page: Page, name: string, description = ''): Promise<s
   await page.goto(newTaskListPath());
   await page.getByLabel('Name').fill(name);
   if (description) await page.getByLabel('Description').fill(description);
-  await page.getByRole('button', { name: /create task list/i }).click();
+  await page.getByRole('button', { name: /create list/i }).click();
   await page.waitForURL(/\/task\/lists\/\d+$/, { timeout: 10_000 });
   return page.url().match(/\/task\/lists\/(\d+)/)?.[1] ?? '';
 }
@@ -45,7 +45,7 @@ async function createItem(page: Page, listId: string, name: string, description 
   await page.goto(newTaskItemPath(listId));
   await page.getByLabel('Name').fill(name);
   if (description) await page.getByLabel('Description').fill(description);
-  await page.getByRole('button', { name: /create task item/i }).click();
+  await page.getByRole('button', { name: /create task/i }).click();
   await page.waitForURL(/\/task\/lists\/\d+\/items($|\?)/, { timeout: 10_000 });
   const links = page.getByRole('link', { name });
   await links.first().waitFor({ timeout: 5_000 });

@@ -22,12 +22,12 @@
 
   <div>
     <label style="display: block">Assignee (optional)</label>
-    <%= select_tag "task_item[assigned_user_id]",
-        options_from_collection_for_select(Current.account.users, "id", "username", task_item.assigned_user_id),
+    <%= select_tag "workspace_task[assigned_member_id]",
+        options_from_collection_for_select(Current.workspace.record.members, "id", "username", task_item.assigned_member_id),
         include_blank: "— Unassigned —",
         id: "assignee-select" %>
     <small>
-      <a href="#" onclick="document.getElementById('assignee-select').value='<%= Current.user.id %>';return false;">
+      <a href="#" onclick="document.getElementById('assignee-select').value='<%= Current.workspace.member.id %>';return false;">
         Assign to me (<%= Current.user.username %>)
       </a>
     </small>

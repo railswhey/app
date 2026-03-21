@@ -11,23 +11,25 @@ class Web::User::RegistrationsController < Web::BaseController
   end
 
   def create
-    @user = User::Registration.new.create(user_registration_params)
-
-    if @user.persisted?
-      sign_in(@user)
+    case User::SignUpProcess.perform_now(user_registration_params)
+    in [ :ok, user ]
+      sign_in(user)
 
       redirect_to(params[:return_to].presence || task_list_items_path(Current.task_list_id), notice: "You have successfully registered!")
-    else
+    in [ :err, user ]
+      @user = user
+
       render(:new, status: :unprocessable_entity)
     end
   end
 
   def destroy
-    User::Registration.new(Current.user).destroy
+    case Account::CloseProcess.perform_now(Current.user)
+    in [ :ok, _ ]
+      sign_out
 
-    sign_out
-
-    redirect_to root_path, notice: "Your account has been deleted."
+      redirect_to root_path, notice: "Your account has been deleted."
+    end
   end
 
   private

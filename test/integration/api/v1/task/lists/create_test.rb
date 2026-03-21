@@ -12,7 +12,7 @@ class APIV1TaskListsCreateTest < ActionDispatch::IntegrationTest
   end
 
   test "#create responds with 400 when params are missing" do
-    params = [ {}, { task_list: {} }, { task_list: nil } ].sample
+    params = [ {}, { workspace_list: {} }, { workspace_list: nil } ].sample
 
     post(api_v1_adapter.task__lists_url, params:, headers: api_v1_adapter.authorization_header(users(:one)))
 
@@ -22,7 +22,7 @@ class APIV1TaskListsCreateTest < ActionDispatch::IntegrationTest
   test "#create responds with 422 when name is invalid" do
     user = users(:one)
 
-    params = { task_list: { name: [ nil, "" ].sample } }
+    params = { workspace_list: { name: [ nil, "" ].sample } }
 
     post(api_v1_adapter.task__lists_url, params:, headers: api_v1_adapter.authorization_header(user))
 
@@ -32,9 +32,9 @@ class APIV1TaskListsCreateTest < ActionDispatch::IntegrationTest
   test "#create responds with 201 when task list is created" do
     user = users(:one)
 
-    params = { task_list: { name: "Foo" } }
+    params = { workspace_list: { name: "Foo" } }
 
-    assert_difference -> { member!(user).account.task_lists.count } do
+    assert_difference -> { member!(user).workspace.lists.count } do
       post(api_v1_adapter.task__lists_url, params:, headers: api_v1_adapter.authorization_header(user))
     end
 

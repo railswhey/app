@@ -2,36 +2,36 @@
 
 class API::V1::Account::InvitationsController < API::V1::BaseController
   before_action :authenticate_user!
+  before_action :guard_owner_or_admin!
+  before_action :set_account
 
   rescue_from ActiveRecord::RecordNotFound do
     render_json_with_failure(status: :not_found, message: "Invitation not found.")
   end
 
   def index
-    guard_owner_or_admin! or return
-    @account = Current.account
     @invitations = @account.invitations.order(created_at: :desc)
   end
 
   def create
-    guard_owner_or_admin! or return
-    @account = Current.account
-    @invitation = @account.invitations.new(invitation_params.merge(invited_by: Current.user))
+    case Account::DispatchInvitationProcess.perform_now(
+      email: invitation_params[:email],
+      account: @account,
+      invited_by: Current.context.person
+    )
+    in [ :ok, invitation ]
+      @invitation = invitation
 
-    @invitation.lifecycle.dispatch
-
-    if @invitation.persisted?
       render :show, status: :created
-    else
-      render_json_with_model_failure(@invitation)
+    in [ :err, invitation ]
+      render_json_with_model_failure(invitation)
     end
   end
 
   def destroy
-    guard_owner_or_admin! or return
-    @account = Current.account
     @invitation = @account.invitations.find(params[:id])
     @invitation.destroy!
+
     head :no_content
   end
 
@@ -41,7 +41,12 @@ class API::V1::Account::InvitationsController < API::V1::BaseController
     return true if owner_or_admin?
 
     render_json_with_failure(status: :forbidden, message: "Only owners and admins can manage this.")
+
     false
+  end
+
+  def set_account
+    @account = Current.account
   end
 
   def invitation_params

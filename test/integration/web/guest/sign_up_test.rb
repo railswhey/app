@@ -57,13 +57,13 @@ class WebGuestSignUpTest < ActionDispatch::IntegrationTest
       -> { User.count } => 1,
       -> { Account.count } => 1,
       -> { Account::Membership.count } => 1,
-      -> { Task::List.count } => 1,
+      -> { Workspace::List.count } => 1,
       -> { User::Token.count } => 1
     ) do
       post(web_adapter.user__registrations_url, params:)
     end
 
-    assert_redirected_to web_adapter.task__items_url(Task::List.inbox.last)
+    assert_redirected_to web_adapter.task__items_url(Workspace::List.inbox.last)
 
     follow_redirect!
 

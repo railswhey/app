@@ -18,6 +18,7 @@ class Web::User::PasswordsController < Web::BaseController
 
   def edit
     @token = params[:token]
+
     render :edit
   end
 

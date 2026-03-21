@@ -5,7 +5,7 @@ class API::V1::Account::SearchesController < API::V1::BaseController
 
   def show
     @query = params[:q].to_s.strip
-    @results = Current.account.search(@query)
+    @results = Current.workspace.search(@query)
 
     render :show
   end

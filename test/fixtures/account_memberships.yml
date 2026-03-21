@@ -2,10 +2,10 @@
 
 one:
   role: <%= Account::Membership.roles.fetch(:owner) %>
-  user: one
+  person: one
   account: one
 
 two:
   role: <%= Account::Membership.roles.fetch(:owner) %>
-  user: two
+  person: two
   account: two

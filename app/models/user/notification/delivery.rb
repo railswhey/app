@@ -9,16 +9,16 @@ class User::Notification
     end
 
     def transfer_requested(to:) = notify(to, TRANSFER_REQUESTED)
-    def transfer_accepted       = notify(notifiable.transferred_by, TRANSFER_ACCEPTED)
-    def transfer_rejected       = notify(notifiable.transferred_by, TRANSFER_REJECTED)
+    def transfer_accepted(to:)  = notify(to, TRANSFER_ACCEPTED)
+    def transfer_rejected(to:)  = notify(to, TRANSFER_REJECTED)
 
     def invitation_received(to:) = notify(to, INVITATION_RECEIVED)
-    def invitation_accepted      =  notify(notifiable.invited_by, INVITATION_ACCEPTED)
+    def invitation_accepted(to:) = notify(to, INVITATION_ACCEPTED)
 
     private
 
     def notify(user, action)
-      User::Notification.create!(user:, notifiable: notifiable, action:)
+      User::Notification.create!(user:, notifiable:, action:)
     end
   end
 end

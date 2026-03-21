@@ -4,11 +4,11 @@ class Web::Task::Item::AssignmentsController < Web::BaseController
   before_action :authenticate_user!
 
   def index
-    @filter = params[:filter]
-    items = Current.account.task_items.assigned_to(Current.user.id)
+    items = Current.workspace.tasks.assigned_to(Current.workspace.member.id)
 
-    @task_items = items.assignment_filter_by(@filter)
-      .order(created_at: :desc).limit(100).includes(:list)
+    @filter = params[:filter]
+
+    @task_items = items.assignment_filter_by(@filter).order(created_at: :desc).limit(100).includes(:list)
 
     @item_counts = {
       all:        items.count,

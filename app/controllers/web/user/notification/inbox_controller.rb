@@ -5,6 +5,7 @@ class Web::User::Notification::InboxController < Web::BaseController
 
   def index
     @filter = params[:filter] || "all"
+
     @unread_count = Current.user.notifications.unread.count
 
     @notifications = Current.user.notifications
@@ -16,7 +17,9 @@ class Web::User::Notification::InboxController < Web::BaseController
 
   def update
     @notification = Current.user.notifications.find(params[:id])
+
     @notification.mark_read!
+
     redirect_to user_notification_inbox_index_path, notice: "Marked as read."
   end
 end

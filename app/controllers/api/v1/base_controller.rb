@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class API::V1::BaseController < ApplicationController
+  include ActionController::HttpAuthentication::Token::ControllerMethods
+
   prepend_view_path Rails.root.join("app/views/api/v1")
 
   skip_forgery_protection
@@ -25,7 +27,7 @@ class API::V1::BaseController < ApplicationController
 
   def current_member!
     authenticate_with_http_token do |user_token|
-      Current.member!(user_token:, task_list_id: params[:list_id])
+      Current.authorize!(user_token:, task_list_id: params[:list_id])
     end
   end
 

@@ -5,7 +5,7 @@ require "test_helper"
 class APIV1TaskItemsCompleteTest < ActionDispatch::IntegrationTest
   test "#update responds with 401 when API token is invalid" do
     user = users(:one)
-    task = task_items(:one)
+    task = workspace_tasks(:one)
     headers = [ {}, api_v1_adapter.authorization_header(SecureRandom.hex(20)) ].sample
 
     put(api_v1_adapter.complete_task__item_url(member!(user).inbox, task, format: :json), headers:)
@@ -15,9 +15,9 @@ class APIV1TaskItemsCompleteTest < ActionDispatch::IntegrationTest
 
   test "#update responds with 404 when task list is not found" do
     user = users(:one)
-    task = task_items(:one)
+    task = workspace_tasks(:one)
 
-    url = api_v1_adapter.complete_task__item_url(Task::List.maximum(:id) + 1, task.id, format: :json)
+    url = api_v1_adapter.complete_task__item_url(Workspace::List.maximum(:id) + 1, task.id, format: :json)
 
     put(url, headers: api_v1_adapter.authorization_header(user))
 
@@ -27,7 +27,7 @@ class APIV1TaskItemsCompleteTest < ActionDispatch::IntegrationTest
   test "#update responds with 404 when task is not found" do
     user = users(:one)
 
-    url = api_v1_adapter.complete_task__item_url(member!(user).inbox, Task::Item.maximum(:id) + 1, format: :json)
+    url = api_v1_adapter.complete_task__item_url(member!(user).inbox, Workspace::Task.maximum(:id) + 1, format: :json)
 
     put(url, headers: api_v1_adapter.authorization_header(user))
 
@@ -36,7 +36,7 @@ class APIV1TaskItemsCompleteTest < ActionDispatch::IntegrationTest
 
   test "#update responds with 404 when task list belongs to another user" do
     user = users(:one)
-    task = task_items(:two)
+    task = workspace_tasks(:two)
 
     put(
       api_v1_adapter.complete_task__item_url(task.list, task, format: :json),
@@ -49,7 +49,7 @@ class APIV1TaskItemsCompleteTest < ActionDispatch::IntegrationTest
   test "#update responds with 200 when task is marked as completed" do
     user = users(:one)
 
-    task = task_items(:one).then { incomplete_task(_1) }
+    task = workspace_tasks(:one).then { incomplete_task(_1) }
 
     assert_changes -> { task.reload.completed_at } do
       put(

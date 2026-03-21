@@ -1,0 +1,3 @@
+<h1>List transfer request</h1>
+<p><%= @transfer.initiated_by.email %> wants to transfer the list <strong><%= @transfer.list.name %></strong> to your account <strong><%= @to_account_name %></strong>.</p>
+<p><%= link_to "Review Transfer", @review_url %></p>

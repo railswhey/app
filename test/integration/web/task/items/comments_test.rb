@@ -4,8 +4,8 @@ require "test_helper"
 
 class WebTaskItemCommentsTest < ActionDispatch::IntegrationTest
   test "guest cannot create a comment" do
-    inbox = task_lists(:one_inbox)
-    task = task_items(:one)
+    inbox = workspace_lists(:one_inbox)
+    task = workspace_tasks(:one)
 
     post web_adapter.task__item__comments_url(inbox, task), params: { comment: { body: "Hi" } }
     web_adapter.assert_unauthorized_access
@@ -25,7 +25,7 @@ class WebTaskItemCommentsTest < ActionDispatch::IntegrationTest
 
     comment = task.comments.last
     assert_equal "Looking great!", comment.body
-    assert_equal user, comment.user
+    assert_equal user.uuid, comment.member.uuid
   end
 
   test "user cannot create a blank comment" do

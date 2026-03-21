@@ -1,6 +1,6 @@
 <%= render("shared/header") %>
 
-<% all_lists = Current.account.task_lists.order(:name) %>
+<% all_lists = Current.task_lists.order(:name) %>
 <% other_lists = all_lists.where.not(id: Current.task_list_id) %>
 
 <div class="topbar" data-controller="modal">
@@ -36,7 +36,7 @@
   </dialog>
 </div>
 
-<% if Current.task_list.items.exists? %>
+<% if Current.task_list.tasks.exists? %>
   <p class="filter-tabs"><%= link_to_task_item_filters %></p>
 
   <% if @task_items.present? %>
@@ -67,9 +67,9 @@
                 <small class="text-muted"> — <%= truncate(task_item.description, length: 60) %></small><% end %>
             </td>
             <td style="text-align:center">
-              <% if task_item.assigned_user %>
-                <span class="assignee-badge" title="<%= task_item.assigned_user.username %>">
-                  <%= user_initials(task_item.assigned_user) %>
+              <% if task_item.assigned_member %>
+                <span class="assignee-badge" title="<%= task_item.assigned_member.username %>">
+                  <%= user_initials(task_item.assigned_member) %>
                 </span>
               <% else %>
                 <span class="assignee-empty" title="Unassigned">○</span>
@@ -136,7 +136,7 @@
   <%= empty_task_items_message %>
 <% end %>
 
-<% if Current.task_list.items.exists? %>
+<% if Current.task_list.tasks.exists? %>
   <%= link_to(
     "+ New item",
     new_task_list_item_path(Current.task_list_id, filter: params[:filter]),

@@ -48,12 +48,12 @@ echo ""
 echo "Setting up test users..."
 
 TOKEN_A=$(cd "$PROJECT_ROOT" && bin/rails runner "
-  user = User.create!(
+  User::SignUpProcess.perform_now(
     email: '$USER_A_EMAIL',
     username: '$USER_A_USERNAME',
     password: '$TEST_PASSWORD',
     password_confirmation: '$TEST_PASSWORD'
-  )
+  ) => [:ok, user]
   print user.token.value
 " 2>/dev/null)
 
@@ -63,12 +63,12 @@ if [ -z "$TOKEN_A" ]; then
 fi
 
 TOKEN_B=$(cd "$PROJECT_ROOT" && bin/rails runner "
-  user = User.create!(
+  User::SignUpProcess.perform_now(
     email: '$USER_B_EMAIL',
     username: '$USER_B_USERNAME',
     password: '$TEST_PASSWORD',
     password_confirmation: '$TEST_PASSWORD'
-  )
+  ) => [:ok, user]
   print user.token.value
 " 2>/dev/null)
 
@@ -101,8 +101,8 @@ echo ""
 echo "Cleaning up test users..."
 
 cd "$PROJECT_ROOT" && bin/rails runner "
-  User.find_by(email: '$USER_A_EMAIL')&.destroy!
-  User.find_by(email: '$USER_B_EMAIL')&.destroy!
+  User.find_by(email: '$USER_A_EMAIL').try { Account::CloseProcess.perform_now(it) }
+  User.find_by(email: '$USER_B_EMAIL').try { Account::CloseProcess.perform_now(it) }
 " 2>/dev/null
 
 echo "Done."

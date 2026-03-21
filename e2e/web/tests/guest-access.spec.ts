@@ -88,7 +88,7 @@ test.describe('Guest Access', () => {
     // Owner creates list and initiates transfer
     await page.goto(newTaskListPath());
     await page.getByLabel('Name').fill('TransferGuest');
-    await page.getByRole('button', { name: /create task list/i }).click();
+    await page.getByRole('button', { name: /create list/i }).click();
     await page.waitForURL(/\/task\/lists\/\d+$/, { timeout: 10_000 });
     const listId = page.url().match(/\/task\/lists\/(\d+)/)?.[1] ?? '';
 

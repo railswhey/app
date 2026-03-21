@@ -20,6 +20,27 @@ module UserTokensForTesting
   end
 end
 
+class MemberContext < SimpleDelegator
+  def account
+    @account ||= begin
+      membership = person.memberships.find_by(role: Account::Membership::OWNER) || person.memberships.first
+      membership&.account
+    end
+  end
+
+  def person
+    @person ||= Account::Person.find_by!(uuid: uuid)
+  end
+
+  def workspace
+    @workspace ||= ::Workspace.find_by!(uuid: account.uuid)
+  end
+
+  def inbox
+    workspace.inbox
+  end
+end
+
 module ActiveSupport
   class TestCase
     # Run tests in parallel with specified workers
@@ -34,26 +55,34 @@ module ActiveSupport
     end
 
     # Setup all fixtures in test/fixtures/*.yml for all tests in alphabetical order.
-    set_fixture_class task_lists: Task::List,
-                      task_items: Task::Item,
-                      task_comments: Task::Comment,
-                      task_list_transfers: Task::List::Transfer,
+    set_fixture_class workspaces: Workspace,
+                      workspace_members: Workspace::Member,
+                      workspace_lists: Workspace::List,
+                      workspace_tasks: Workspace::Task,
+                      workspace_comments: Workspace::Comment,
+                      workspace_list_transfers: Workspace::List::Transfer,
                       user_tokens: User::Token,
                       user_notifications: User::Notification,
                       account_invitations: Account::Invitation,
-                      account_memberships: Account::Membership
+                      account_memberships: Account::Membership,
+                      account_people: Account::Person
 
     fixtures :all
 
     # Add more helper methods to be used by all tests here...
-    def member!(user) = user
+    # Semantic marker — wraps a User with workspace-level accessors.
+    # See Constitution: "member! is the single point where complexity gets absorbed."
+    def member!(user)
+      MemberContext.new(user)
+    end
 
     def create_task_list(account, name:)
-      account.task_lists.create!(name: name)
+      workspace = ::Workspace.find_by!(uuid: account.uuid)
+      workspace.lists.create!(name: name)
     end
 
     def create_task(user, name: "Foo", completed: false, task_list: member!(user).inbox)
-      task = task_list.items.create!(name:)
+      task = task_list.tasks.create!(name:)
 
       completed ? complete_task(task) : task
     end
@@ -67,7 +96,8 @@ module ActiveSupport
     end
 
     def create_comment(user, commentable, body: "A test comment")
-      commentable.comments.create!(body:, user:)
+      member = Workspace::Member.find_by!(uuid: user.uuid)
+      commentable.comments.create!(body:, member:)
     end
 
     def get_user_token(user)
@@ -87,7 +117,7 @@ class ActionDispatch::IntegrationTest
     def sign_in(user, password: "123123123")
       test.post(user__sessions_url, params: { user: { email: user.email, password: } })
 
-      test.assert_redirected_to task__items_url(user.inbox)
+      test.assert_redirected_to task__items_url(test.member!(user).inbox)
 
       test.follow_redirect!
     end

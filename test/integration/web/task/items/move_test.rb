@@ -6,7 +6,7 @@ class WebTaskItemsMoveTest < ActionDispatch::IntegrationTest
   test "user moves a task to another list" do
     user = users(:one)
     account = member!(user).account
-    source = account.task_lists.inbox.first
+    source = ::Workspace.find_by!(uuid: account.uuid).lists.inbox.first
     target = create_task_list(account, name: "Target")
     task = create_task(user, name: "Movable", task_list: source)
 

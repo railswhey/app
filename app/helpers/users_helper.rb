@@ -28,12 +28,12 @@ module UsersHelper
 
   def notification_message(notification)
     case [ notification.action, notification.notifiable ]
-    in [ User::Notification::TRANSFER_REQUESTED, Task::List::Transfer => transfer ]
-      "#{transfer.transferred_by.username} wants to transfer list \"#{transfer.task_list.name}\" to you"
-    in [ User::Notification::TRANSFER_ACCEPTED, Task::List::Transfer => transfer ]
-      "Your transfer of \"#{transfer.task_list.name}\" was accepted"
-    in [ User::Notification::TRANSFER_REJECTED, Task::List::Transfer => transfer ]
-      "Your transfer of \"#{transfer.task_list.name}\" was rejected"
+    in [ User::Notification::TRANSFER_REQUESTED, Workspace::List::Transfer => transfer ]
+      "#{transfer.initiated_by.username} wants to transfer list \"#{transfer.list.name}\" to you"
+    in [ User::Notification::TRANSFER_ACCEPTED, Workspace::List::Transfer => transfer ]
+      "Your transfer of \"#{transfer.list.name}\" was accepted"
+    in [ User::Notification::TRANSFER_REJECTED, Workspace::List::Transfer => transfer ]
+      "Your transfer of \"#{transfer.list.name}\" was rejected"
     in [ User::Notification::INVITATION_RECEIVED, Account::Invitation => invitation ]
       "You've been invited to join #{invitation.account.name}"
     in [ User::Notification::INVITATION_ACCEPTED, Account::Invitation => invitation ]
@@ -45,7 +45,7 @@ module UsersHelper
 
   def notification_link(notification)
     case [ notification.action, notification.notifiable ]
-    in [ User::Notification::TRANSFER_REQUESTED, Task::List::Transfer => transfer ]
+    in [ User::Notification::TRANSFER_REQUESTED, Workspace::List::Transfer => transfer ]
       account_transfers_response_path(token: transfer.token)
     in [ User::Notification::INVITATION_RECEIVED, Account::Invitation => invitation ]
       account_invitations_acceptance_path(token: invitation.token)

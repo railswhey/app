@@ -2,15 +2,15 @@
 
 class API::V1::Task::Item::MovesController < API::V1::Task::Item::BaseController
   before_action :authenticate_user!
-  before_action :set_task_item
+  before_action :set_task_item_from_param
 
   def create
-    target_list = Current.account.task_lists.find_by(id: params[:target_list_id])
+    target_list = Current.task_lists.find_by(id: params[:target_list_id])
 
     unless @task_item.movable_to?(target_list)
       message = target_list ? "Task is already in that list." : "Target list not found."
-      render_json_with_failure(status: :unprocessable_entity, message: message)
-      return
+
+      return render_json_with_failure(status: :unprocessable_entity, message: message)
     end
 
     @task_item.update!(list: target_list)
@@ -20,8 +20,8 @@ class API::V1::Task::Item::MovesController < API::V1::Task::Item::BaseController
 
   private
 
-  def set_task_item
-    @task_item = Current.task_items.find(params[:task_item_id])
+  def set_task_item_from_param
+    @task_item = Current.tasks.find(params[:task_item_id])
     @task_list = Current.task_list
   end
 end

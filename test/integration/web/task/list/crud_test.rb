@@ -27,7 +27,7 @@ class WebTaskListCrudTest < ActionDispatch::IntegrationTest
     member!(user)
     web_adapter.sign_in(user)
 
-    get web_adapter.edit_task__list_url(user.inbox)
+    get web_adapter.edit_task__list_url(member!(user).inbox)
     assert_redirected_to web_adapter.task__lists_url
   end
 
@@ -36,7 +36,7 @@ class WebTaskListCrudTest < ActionDispatch::IntegrationTest
     member!(user)
     web_adapter.sign_in(user)
 
-    delete web_adapter.task__list_url(user.inbox)
+    delete web_adapter.task__list_url(member!(user).inbox)
     assert_redirected_to web_adapter.task__lists_url
   end
 end

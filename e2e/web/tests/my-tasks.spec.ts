@@ -5,7 +5,7 @@ import { newTaskListPath, newTaskItemPath, taskItemsPath } from './support/route
 async function createList(page: import('@playwright/test').Page, name: string): Promise<string> {
   await page.goto(newTaskListPath());
   await page.getByLabel('Name').fill(name);
-  await page.getByRole('button', { name: /create task list/i }).click();
+  await page.getByRole('button', { name: /create list/i }).click();
   await page.waitForURL(/\/task\/lists\/\d+/, { timeout: 10_000 });
   return page.url().match(/\/task\/lists\/(\d+)/)?.[1] ?? '';
 }
@@ -31,7 +31,7 @@ async function createAssignedItem(
     }
   }
 
-  await page.getByRole('button', { name: /create task item/i }).click();
+  await page.getByRole('button', { name: /create task/i }).click();
   await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 }
 
@@ -107,7 +107,7 @@ test.describe('My Tasks', () => {
     // Create task without setting assignee
     await page.goto(newTaskItemPath(listId));
     await page.getByLabel('Name').fill('NoAssignItem');
-    await page.getByRole('button', { name: /create task item/i }).click();
+    await page.getByRole('button', { name: /create task/i }).click();
     await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 
     await openNav(page);
@@ -135,7 +135,7 @@ test.describe('My Tasks', () => {
     // Create task without assignee
     await page.goto(newTaskItemPath(listId));
     await page.getByLabel('Name').fill('Assign Via Edit Task');
-    await page.getByRole('button', { name: /create task item/i }).click();
+    await page.getByRole('button', { name: /create task/i }).click();
     await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 
     // Navigate to show page then edit
@@ -156,7 +156,7 @@ test.describe('My Tasks', () => {
       }
     }
 
-    await page.getByRole('button', { name: /update task item/i }).click();
+    await page.getByRole('button', { name: /update task/i }).click();
     await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 
     await openNav(page);
@@ -192,7 +192,7 @@ test.describe('My Tasks', () => {
       await editAssigneeSelect.selectOption('');
     }
 
-    await page.getByRole('button', { name: /update task item/i }).click();
+    await page.getByRole('button', { name: /update task/i }).click();
     await page.waitForURL(/\/items($|\?)/, { timeout: 10_000 });
 
     await openNav(page);

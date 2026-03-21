@@ -16,7 +16,7 @@
       <details class="account-switcher">
         <summary>🏢 <%= Current.account&.name || "Account" %> ▾</summary>
         <div class="account-menu">
-          <% Current.user.accounts.each do |acct| %>
+          <% Current.context.person&.accounts&.each do |acct| %>
             <% if acct.id == Current.account_id %>
               <span class="account-menu-current">✅ <%= acct.name %></span>
             <% else %>

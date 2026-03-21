@@ -28,8 +28,8 @@
             <span class="search-result-title<%= " search-result-done" if item.completed? %>"><%= item.name %><% if item.description.present? %> <span class="search-result-desc">— <%= truncate(item.description, length: 60) %></span><% end %></span>
             <span class="search-result-meta">
               in <strong><%= item.list.name %></strong>
-              <% if item.assigned_user %>
-                · 👤 <%= item.assigned_user.username %>
+              <% if item.assigned_member %>
+                · 👤 <%= item.assigned_member.username %>
               <% end %>
             </span>
           </span>
@@ -61,7 +61,7 @@
     <div class="search-section">
       <p class="section-label">💬 Comments (<%= @results.comments.size %>)</p>
       <% @results.comments.each do |comment| %>
-        <% comment_path = comment.commentable_type == "Task::Item" ?
+        <% comment_path = comment.commentable_type == "Workspace::Task" ?
               task_list_item_path(comment.commentable.list, comment.commentable) :
               task_list_path(comment.commentable) %>
         <a href="<%= comment_path %>" class="search-result-card">
@@ -69,7 +69,7 @@
           <span class="search-result-body">
             <span class="search-result-quote">&ldquo;<%= truncate(comment.body, length: 120) %>&rdquo;</span>
             <span class="search-result-meta">
-              by <strong><%= comment.user.username %></strong>
+              by <strong><%= comment.member.username %></strong>
               on <strong><%= comment.commentable.name %></strong>
               · <%= comment.created_at.strftime("%b %-d") %>
             </span>

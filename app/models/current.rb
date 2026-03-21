@@ -1,20 +1,28 @@
 # frozen_string_literal: true
 
 class Current < ActiveSupport::CurrentAttributes
-  attribute :member
+  attribute :context
+  attribute :scope
 
-  delegate :account, :account?, :account_id, :account_id?, :owner_or_admin?,
-           :user, :user?, :user_id, :user_id?, :user_token, :user_token?,
-           :task_list, :task_list?, :task_list_id, :task_list_id?,
-           :task_lists, :task_items, to: :member, allow_nil: true
+  delegate :user, :account, :workspace,
+           :user?, :account?, :workspace?,
+           :account_id, :owner_or_admin?,
+           to: :context, allow_nil: true
 
-  def member!(**options)
+  delegate :task_lists, :tasks,
+           :task_list, :task_list?,
+           :task_list_id, :task_list_id?,
+           to: :scope, allow_nil: true
+
+  def authorize!(user_id: nil, user_token: nil, account_id: nil, task_list_id: nil)
     reset
 
-    self.member = Account::Member.authorize(options)
+    self.context = Resolver.call(user_id:, user_token:, account_id:)
+
+    self.scope   = Scope.new(workspace: context.workspace, task_list_id:)
   end
 
-  def member?
-    member&.authorized? || false
+  def authorized?
+    context.authorized? && task_list.present?
   end
 end

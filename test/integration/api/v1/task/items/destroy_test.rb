@@ -5,7 +5,7 @@ require "test_helper"
 class APIV1TaskItemsDestroyTest < ActionDispatch::IntegrationTest
   test "#destroy responds with 401 when API token is invalid" do
     user = users(:one)
-    task = task_items(:one)
+    task = workspace_tasks(:one)
     headers = [ {}, api_v1_adapter.authorization_header(SecureRandom.hex(20)) ].sample
 
     delete(api_v1_adapter.task__item_url(member!(user).inbox, task, format: :json), headers:)
@@ -15,9 +15,9 @@ class APIV1TaskItemsDestroyTest < ActionDispatch::IntegrationTest
 
   test "#destroy responds with 404 when task list is not found" do
     user = users(:one)
-    task = task_items(:one)
+    task = workspace_tasks(:one)
 
-    url = api_v1_adapter.task__item_url(Task::List.maximum(:id) + 1, task.id, format: :json)
+    url = api_v1_adapter.task__item_url(Workspace::List.maximum(:id) + 1, task.id, format: :json)
 
     delete(url, headers: api_v1_adapter.authorization_header(user))
 
@@ -27,7 +27,7 @@ class APIV1TaskItemsDestroyTest < ActionDispatch::IntegrationTest
   test "#destroy responds with 404 when task is not found" do
     user = users(:one)
 
-    url = api_v1_adapter.task__item_url(member!(user).inbox, Task::Item.maximum(:id) + 1, format: :json)
+    url = api_v1_adapter.task__item_url(member!(user).inbox, Workspace::Task.maximum(:id) + 1, format: :json)
 
     delete(url, headers: api_v1_adapter.authorization_header(user))
 
@@ -36,7 +36,7 @@ class APIV1TaskItemsDestroyTest < ActionDispatch::IntegrationTest
 
   test "#destroy responds with 404 when task list belongs to another user" do
     user = users(:one)
-    task = task_items(:two)
+    task = workspace_tasks(:two)
 
     delete(api_v1_adapter.task__item_url(task.list, task, format: :json), headers: api_v1_adapter.authorization_header(user))
 
@@ -45,9 +45,9 @@ class APIV1TaskItemsDestroyTest < ActionDispatch::IntegrationTest
 
   test "#destroy responds with 200 when task is destroyed" do
     user = users(:one)
-    task = task_items(:one)
+    task = workspace_tasks(:one)
 
-    assert_difference -> { member!(user).inbox.items.count }, -1 do
+    assert_difference -> { member!(user).inbox.tasks.count }, -1 do
       delete(
         api_v1_adapter.task__item_url(member!(user).inbox, task, format: :json),
         headers: api_v1_adapter.authorization_header(user)

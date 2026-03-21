@@ -10,7 +10,7 @@ class WebTaskListsCreationTest < ActionDispatch::IntegrationTest
   end
 
   test "guest tries to create a task list" do
-    post(web_adapter.task__lists_url, params: { task_list: { name: "Foo" } })
+    post(web_adapter.task__lists_url, params: { workspace_list: { name: "Foo" } })
 
     web_adapter.assert_unauthorized_access
   end
@@ -26,8 +26,8 @@ class WebTaskListsCreationTest < ActionDispatch::IntegrationTest
 
     assert_select("h2", "New task list")
 
-    assert_no_difference(-> { member!(user).account.task_lists.count }) do
-      post(web_adapter.task__lists_url, params: { task_list: { name: "" } })
+    assert_no_difference(-> { member!(user).workspace.lists.count }) do
+      post(web_adapter.task__lists_url, params: { workspace_list: { name: "" } })
     end
 
     assert_response :unprocessable_entity
@@ -40,11 +40,11 @@ class WebTaskListsCreationTest < ActionDispatch::IntegrationTest
 
     web_adapter.sign_in(user)
 
-    assert_difference(-> { member!(user).account.task_lists.count }) do
-      post(web_adapter.task__lists_url, params: { task_list: { name: "Foo" } })
+    assert_difference(-> { member!(user).workspace.lists.count }) do
+      post(web_adapter.task__lists_url, params: { workspace_list: { name: "Foo" } })
     end
 
-    assert_redirected_to web_adapter.task__list_url(member!(user).account.task_lists.last)
+    assert_redirected_to web_adapter.task__list_url(member!(user).workspace.lists.last)
 
     follow_redirect!
 

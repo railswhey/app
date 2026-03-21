@@ -2,32 +2,37 @@
 
 class API::V1::Account::MembershipsController < API::V1::BaseController
   before_action :authenticate_user!
+  before_action :set_account
 
   rescue_from ActiveRecord::RecordNotFound do
     render_json_with_failure(status: :not_found, message: "Not found.")
   end
 
   def index
-    @account = Current.account
-    @memberships = @account.memberships.includes(:user).order(:role, :created_at)
+    @memberships = @account.memberships.includes(:person).order(:role, :created_at)
   end
 
   def destroy
-    @account = Current.account
     @membership = @account.memberships.find(params[:id])
 
     unless owner_or_admin?
-      render_json_with_failure(status: :forbidden, message: "Only owners and admins can manage members.")
-      return
+      return render_json_with_failure(status: :forbidden, message: "Only owners and admins can manage members.")
     end
 
-    unless @membership.removable_by?(Current.user)
+    unless @membership.removable_by?(Current.context.person)
       message = @membership.owner? ? "Cannot remove the account owner." : "Cannot remove yourself."
-      render_json_with_failure(status: :unprocessable_entity, message: message)
-      return
+
+      return render_json_with_failure(status: :unprocessable_entity, message: message)
     end
 
     @membership.destroy!
+
     head :no_content
+  end
+
+  private
+
+  def set_account
+    @account = Current.account
   end
 end

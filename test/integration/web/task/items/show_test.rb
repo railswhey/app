@@ -27,7 +27,7 @@ class WebTaskItemsShowTest < ActionDispatch::IntegrationTest
   test "user views task item with description" do
     user = users(:one)
     inbox = member!(user).inbox
-    task = inbox.items.create!(name: "Described", description: "Some details here")
+    task = inbox.tasks.create!(name: "Described", description: "Some details here")
     web_adapter.sign_in(user)
 
     get web_adapter.task__item_url(inbox, task)
@@ -39,7 +39,7 @@ class WebTaskItemsShowTest < ActionDispatch::IntegrationTest
     user = users(:one)
     inbox = member!(user).inbox
     task = create_task(user, name: "Assigned")
-    task.update!(assigned_user: user)
+    task.update!(assigned_member: Workspace::Member.find_by!(uuid: user.uuid))
     web_adapter.sign_in(user)
 
     get web_adapter.task__item_url(inbox, task)

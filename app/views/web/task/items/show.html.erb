@@ -58,7 +58,7 @@
     <% end %>
     <div class="detail-field">
       <span class="detail-label">Assignee</span>
-      <span class="detail-value"><%= @task_item.assigned_user&.username || "—" %></span>
+      <span class="detail-value"><%= @task_item.assigned_member&.username || "—" %></span>
     </div>
     <% if @task_item.completed_at.present? %>
       <div class="detail-field">
@@ -76,7 +76,7 @@
     </div>
   </div>
 
-  <% other_lists = Current.account.task_lists.where.not(id: Current.task_list_id) %>
+  <% other_lists = Current.task_lists.where.not(id: Current.task_list_id) %>
   <% if other_lists.any? %>
     <div class="card">
       <strong>Move to list:</strong>
@@ -108,7 +108,7 @@
 
     <div class="comment-form-wrap">
       <%= render "task/shared/comments/form",
-          comment: Task::Comment.new,
+          comment: Workspace::Comment.new,
           url: task_list_item_comments_path(task_list, @task_item),
           submit_label: "Add Comment" %>
     </div>

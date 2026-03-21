@@ -6,16 +6,20 @@ class TransferMailerTest < ActionMailer::TestCase
   test "transfer_requested sends email to target account owner" do
     sender = users(:one)
     receiver = users(:two)
-    list = sender.account.task_lists.create!(name: "Transfer Me")
+    sender_account = member!(sender).account
+    receiver_account = member!(receiver).account
+    sender_workspace = ::Workspace.find_by!(uuid: sender_account.uuid)
+    receiver_workspace = ::Workspace.find_by!(uuid: receiver_account.uuid)
+    list = sender_workspace.lists.create!(name: "Transfer Me")
 
-    transfer = Task::List::Transfer.create!(
+    transfer = Workspace::List::Transfer.create!(
       list: list,
-      from_account: sender.account,
-      to_account: receiver.account,
-      transferred_by: sender
+      from_workspace: sender_workspace,
+      to_workspace: receiver_workspace,
+      initiated_by: workspace_members(:one)
     )
 
-    email = Task::ListTransferMailer.transfer_requested(transfer)
+    email = Workspace::ListTransferMailer.with(recipient_email: receiver.email, to_account_name: receiver_account.name).transfer_requested(transfer)
 
     assert_equal [ receiver.email ], email.to
     assert_equal "Transfer request: Transfer Me", email.subject

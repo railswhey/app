@@ -5,7 +5,7 @@ class Account::Membership < ApplicationRecord
   ADMIN = "admin"
   COLLABORATOR = "collaborator"
 
-  belongs_to :user
+  belongs_to :person
   belongs_to :account
 
   enum :role, { owner: OWNER, admin: ADMIN, collaborator: COLLABORATOR }
@@ -13,11 +13,11 @@ class Account::Membership < ApplicationRecord
   scope :owner_or_admin, -> { where(role: [ OWNER, ADMIN ]) }
 
   validates :role, presence: true
-  validates :user_id, uniqueness: { scope: :account_id }
+  validates :person_id, uniqueness: { scope: :account_id }
 
-  def self.owner_or_admin?(user) = owner_or_admin.exists?(user: user)
-  def self.granted_to?(user)     = exists?(user: user)
-  def self.grant(user, role:)    = find_or_create_by!(user: user) { it.role = role }
+  def self.owner_or_admin?(person) = owner_or_admin.exists?(person: person)
+  def self.granted_to?(person)     = exists?(person: person)
+  def self.grant(person, role:)    = find_or_create_by!(person: person) { it.role = role }
 
-  def removable_by?(user)        = !owner? && self.user != user
+  def removable_by?(person)        = !owner? && self.person != person
 end

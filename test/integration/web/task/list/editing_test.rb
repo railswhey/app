@@ -18,7 +18,7 @@ class WebTaskListsEditingTest < ActionDispatch::IntegrationTest
 
     task_list = create_task_list(member!(user).account, name: "Foo")
 
-    put(web_adapter.task__list_url(task_list), params: { task_list: { name: "Bar" } })
+    put(web_adapter.task__list_url(task_list), params: { workspace_list: { name: "Bar" } })
 
     web_adapter.assert_unauthorized_access
   end
@@ -44,7 +44,7 @@ class WebTaskListsEditingTest < ActionDispatch::IntegrationTest
 
     web_adapter.sign_in(user)
 
-    put(web_adapter.task__list_url(member!(user).inbox), params: { task_list: { name: "Bar" } })
+    put(web_adapter.task__list_url(member!(user).inbox), params: { workspace_list: { name: "Bar" } })
 
     assert_redirected_to web_adapter.task__lists_url
 
@@ -69,7 +69,7 @@ class WebTaskListsEditingTest < ActionDispatch::IntegrationTest
 
     assert_select("input[type=\"text\"][value=\"Foo\"]")
 
-    put(web_adapter.task__list_url(task_list), params: { task_list: { name: "" } })
+    put(web_adapter.task__list_url(task_list), params: { workspace_list: { name: "" } })
 
     assert_response :unprocessable_entity
 
@@ -90,7 +90,7 @@ class WebTaskListsEditingTest < ActionDispatch::IntegrationTest
 
     assert_select("input[type=\"text\"][value=\"Foo\"]")
 
-    put(web_adapter.task__list_url(task_list), params: { task_list: { name: "Bar" } })
+    put(web_adapter.task__list_url(task_list), params: { workspace_list: { name: "Bar" } })
 
     assert_redirected_to web_adapter.task__list_url(task_list)
 
@@ -111,7 +111,7 @@ class WebTaskListsEditingTest < ActionDispatch::IntegrationTest
 
     web_adapter.sign_in(user1)
 
-    put(web_adapter.task__list_url(task_list2), params: { task_list: { name: "Bar" } })
+    put(web_adapter.task__list_url(task_list2), params: { workspace_list: { name: "Bar" } })
 
     assert_response :not_found
   end
