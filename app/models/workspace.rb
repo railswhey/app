@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Workspace < ApplicationRecord
+class Workspace < Abstract::Workspace
   has_many :members, dependent: :destroy
   has_many :lists, dependent: :destroy
   has_many :tasks, through: :lists

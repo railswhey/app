@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Account::Membership < ApplicationRecord
+class Account::Membership < Abstract::Account
   OWNER = "owner"
   ADMIN = "admin"
   COLLABORATOR = "collaborator"

@@ -4,14 +4,14 @@ class Account::CloseProcess < ApplicationJob
   def perform(user)
     uuid = user.uuid
 
-    ActiveRecord::Base.transaction do
-      Workspace.find_by!(uuid:).destroy!
+    Workspace.find_by!(uuid:).destroy!
 
-      Account::Teardown.call(uuid:)
+    Account::Teardown.call(uuid:)
 
-      user.destroy!
-    end
+    user.destroy!
 
     [ :ok, user ]
+  rescue ActiveRecord::ActiveRecordError => e
+    [ :err, e ]
   end
 end

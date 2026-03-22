@@ -2,10 +2,12 @@
 
 module Account::Teardown
   def self.call(uuid:)
-    person = Account::Person.find_by!(uuid:)
+    Account.transaction do
+      person = Account::Person.find_by!(uuid:)
 
-    person.ownership.account.destroy!
+      person.ownership.account.destroy!
 
-    person.destroy!
+      person.destroy!
+    end
   end
 end

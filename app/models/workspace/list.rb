@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Workspace::List < ApplicationRecord
+class Workspace::List < Abstract::Workspace
   belongs_to :workspace
 
   has_many :tasks, foreign_key: :workspace_list_id, dependent: :destroy, class_name: "Workspace::Task"

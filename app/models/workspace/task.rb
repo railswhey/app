@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Workspace::Task < ApplicationRecord
+class Workspace::Task < Abstract::Workspace
   COMPLETED  = "completed"
   INCOMPLETE = "incomplete"
 

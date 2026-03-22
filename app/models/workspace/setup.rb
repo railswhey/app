@@ -2,12 +2,14 @@
 
 module Workspace::Setup
   def self.call(uuid:, email:, username:)
-    workspace = ::Workspace.create!(uuid:)
+    Workspace.transaction do
+      workspace = Workspace.create!(uuid:)
 
-    ::Workspace::Member.create!(uuid:, username:, email:, workspace:, role: :owner)
+      Workspace::Member.create!(uuid:, username:, email:, workspace:, role: :owner)
 
-    workspace.lists.inbox.create!
+      workspace.lists.inbox.create!
 
-    workspace
+      workspace
+    end
   end
 end

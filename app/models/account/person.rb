@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Account::Person < ApplicationRecord
+class Account::Person < Abstract::Account
   has_many :memberships, dependent: :destroy, foreign_key: :person_id
   has_many :accounts, through: :memberships
 

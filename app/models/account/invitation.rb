@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Account::Invitation < ApplicationRecord
+class Account::Invitation < Abstract::Account
   belongs_to :account
   belongs_to :invited_by, class_name: "Person"
 
@@ -27,5 +27,9 @@ class Account::Invitation < ApplicationRecord
     return false if accepted?
 
     update_column(:accepted_at, Time.current)
+  end
+
+  def revert!
+    update_column(:accepted_at, nil)
   end
 end

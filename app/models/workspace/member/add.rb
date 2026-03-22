@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Workspace::AddMember
+class Workspace::Member::Add
   def initialize(workspace_uuid:)
     @workspace_uuid = workspace_uuid
   end

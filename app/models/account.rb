@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Account < ApplicationRecord
+class Account < Abstract::Account
   has_many :memberships,  dependent: :destroy
   has_many :people,       through: :memberships, source: :person
   has_many :invitations,  dependent: :destroy

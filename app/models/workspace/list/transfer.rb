@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Workspace::List::Transfer < ApplicationRecord
+class Workspace::List::Transfer < Abstract::Workspace
   belongs_to :list, foreign_key: :workspace_list_id, class_name: "Workspace::List"
   belongs_to :initiated_by,   class_name: "Member"
   belongs_to :to_workspace,   class_name: "Workspace"

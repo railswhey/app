@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Workspace::Comment < ApplicationRecord
+class Workspace::Comment < Abstract::Workspace
   belongs_to :commentable, polymorphic: true
   belongs_to :member
 

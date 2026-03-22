@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Workspace::Member < ApplicationRecord
+class Workspace::Member < Abstract::Workspace
   OWNER = "owner"
   ADMIN = "admin"
   COLLABORATOR = "collaborator"

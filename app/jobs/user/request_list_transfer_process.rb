@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class User::RequestListTransferProcess < ApplicationJob
-  Manager = Struct.new(:to_user, :account, :transfer) do
+  Manager = Orchestrator.new(:to_user, :account, :transfer, :notification) do
     def call(list:, from_workspace:, initiated_by:, to_email:)
       self.to_user = User.find_by(email: to_email)
 
@@ -11,15 +11,15 @@ class User::RequestListTransferProcess < ApplicationJob
 
       return [ :err, "Target user has no account." ] unless account
 
-      ActiveRecord::Base.transaction do
-        self.transfer = create_transfer(list:, from_workspace:, initiated_by:)
+      create_transfer(list:, from_workspace:, initiated_by:)
+      notify_recipient
+      send_transfer_email
 
-        notify_recipient
-      end
+      [ :ok, transfer ]
+    rescue ActiveRecord::ActiveRecordError => e
+      revert!
 
-      send_transfer_email if transfer&.persisted?
-
-      transfer ? [ :ok, transfer ] : [ :err, "Failed to create transfer." ]
+      [ :err, e ]
     end
 
     private
@@ -31,16 +31,21 @@ class User::RequestListTransferProcess < ApplicationJob
     def create_transfer(list:, from_workspace:, initiated_by:)
       to_workspace = ::Workspace.find_by(uuid: account.uuid)
 
-      Workspace::List::Transfer.create!(list:, initiated_by:, from_workspace:, to_workspace:)
+      self.transfer = Workspace::List::Transfer.create!(list:, initiated_by:, from_workspace:, to_workspace:)
     end
 
     def notify_recipient
-      User::Notification::Delivery.new(transfer).transfer_requested(to: to_user)
+      self.notification = User::Notification::Delivery.new(transfer).transfer_requested(to: to_user)
     end
 
     def send_transfer_email
       Workspace::ListTransferMailer.with(recipient_email: account.owner.email, to_account_name: account.name)
                                    .transfer_requested(transfer).deliver_later
+    end
+
+    def revert!
+      undo(notification) { notification.destroy! }
+      undo(transfer)     { transfer.destroy! }
     end
   end
 
