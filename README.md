@@ -5,34 +5,34 @@
 </p>
 
 <h1 align="center" style="border-bottom: none;">
-  <img src="/docs/assets/emoji-mechanical-arm.png" alt="" width="36" height="36">
+  <img src="./engines/web/app/assets/images/emoji-mechanical-arm.png" alt="" width="36" height="36">
   Rails Whey App
-  <img src="/docs/assets/emoji-mechanical-arm-flipped.png" alt="" width="36" height="36">
+  <img src="./engines/web/app/assets/images/emoji-mechanical-arm-flipped.png" alt="" width="36" height="36">
 </h1>
 
 <p align="center">
-  <img src="/docs/assets/logo.png" alt="Rails Whey App" width="180" height="180">
+  <img src="./docs/logo.png" alt="Rails Whey App" width="180" height="180">
 </p>
 
-A full-stack task management app built with Ruby on Rails. This branch splits the single database into three — one per bounded context (User, Account, Workspace) — using Rails 8 multi-database support. Process managers drop `ActiveRecord::Base.transaction` and adopt the orchestrator pattern using `Orchestrator.new(...)`, a Struct factory with a `Revertible` mixin that provides explicit compensation on failure. No behavioral tests change.
+This branch extracts Web and API into mountable Rails engines. The host app becomes a headless Shared Kernel: domain models, process managers, mailers, and databases — no controllers, no routes, views limited to mailer templates. `ApplicationController` is deleted; `Current` is demoted from a `CurrentAttributes` subclass to a plain namespace. Each engine defines its own. No behavioral tests change.
 
-| | |
-|---|---|
-| **Branch** | `7C-domain-databases` |
-| **Ruby** | 4.0 |
-| **Rails** | 8.1 |
-| **Rubycritic** | 93.81 |
-| **LOC** | 1818 |
+|                |                    |
+| -------------- | ------------------ |
+| **Branch**     | `7D-shared-kernel` |
+| **Ruby**       | 4.0                |
+| **Rails**      | 8.1                |
+| **Rubycritic** | 94.55              |
+| **LOC**        | 1832               |
 
 **Table of contents:**
 
 - [🎯 The concept](#-the-concept)
-- [📊 The numbers](#-the-numbers)
 - [🤔 The problem](#-the-problem)
 - [🔬 The evidence](#-the-evidence)
-- [➡️ What comes next](#️-what-comes-next)
-- [🏛️ Thesis checkpoint](#️-thesis-checkpoint)
+- [📊 The numbers](#-the-numbers)
 - [🤖 The agent's view](#-the-agents-view)
+- [🏛️ Thesis checkpoint](#️-thesis-checkpoint)
+- [➡️ What comes next](#️-what-comes-next)
 - [🚀 Quick start](#-quick-start)
 - [🧪 Testing](#-testing)
 - [🗺️ The map](#️-the-map)
@@ -41,268 +41,166 @@ A full-stack task management app built with Ruby on Rails. This branch splits th
 
 ## 🎯 The concept
 
-> **One rule:** each bounded context owns its own database, and process managers coordinate across them without cross-database transactions.
-
-7A drew domain boundaries. 7B gave complex orchestrations Manager Structs. But all three domains shared one SQLite database. `ActiveRecord::Base.transaction` wrapped cross-domain operations as a single unit. The boundaries existed in code but not in storage.
-
-7C enforces the boundary at the database level:
-
-| Database | Base record | Tables | Migrations |
-|---|---|---|---|
-| primary (User) | `ApplicationRecord` | `users`, `user_tokens`, `user_notifications` | `db/migrate/` |
-| account | `Abstract::Account` | `accounts`, `account_people`, `account_memberships`, `account_invitations` | `db/account_migrate/` |
-| workspace | `Abstract::Workspace` | `workspaces`, `workspace_members`, `workspace_lists`, `workspace_tasks`, `workspace_comments`, `workspace_list_transfers` | `db/workspace_migrate/` |
+> **One rule:** the host app keeps only what both interfaces share. Everything else moves to an engine.
 
 ```mermaid
 flowchart LR
-  B["Same database?"]
-  B -->|"yes"| L["Local transaction<br/><small>Account.transaction { ... }</small>"]
-  B -->|"no"| S["Compensation<br/><small>Orchestrator + revert!</small>"]
+  B["Do both interfaces need it?"]
+  B -->|"yes"| K["Stays in host<br/><small>Shared Kernel</small>"]
+  B -->|"no"| E["Moves to engine<br/><small>Web or API</small>"]
 
-  style L fill:#e8fde8
-  style S fill:#fff3e0
+  style K fill:#e8fde8
+  style E fill:#e8f4fd
 ```
 
-User stays on `ApplicationRecord` — Rails' primary database uses standard paths. Process managers replace the single cross-domain transaction with per-domain local transactions and explicit compensation.
+Web moves to `engines/web/`. API moves to `engines/api/`. Both are mountable engines with `isolate_namespace`. The host retains only the shared core: models, `Current::*` POROs, process managers, mailers, and databases.
 
----
+| Layer       | Host (Shared Kernel)             | Web Engine         | API Engine         |
+| ----------- | -------------------------------- | ------------------ | ------------------ |
+| Controllers | None                             | 29                 | 21                 |
+| Views       | Mailer templates only            | 48 ERB             | 22 Jbuilder        |
+| Models      | 35 (domain + `Current::*` POROs) | 1 (`Web::Current`) | 1 (`API::Current`) |
+| Jobs        | All 7 process managers           | —                  | —                  |
+| Mailers     | All 4                            | —                  | —                  |
 
-## 📊 The numbers
+Engines depend on the kernel. The kernel depends on no engine. Engines don't depend on each other. Separation by load path — the strongest boundary Ruby offers short of separate processes.
 
-| | Before (7B) | After (7C) |
-|---|---|---|
-| Files changed | — | 41 |
-| Net line change | — | +55 |
-| Behavioral test changes | — | 0 |
-| Rubycritic | 93.67 | 93.81 |
-| LOC | 1793 | 1818 |
+```mermaid
+flowchart TD
+    subgraph "Shared Kernel (host app)"
+        K["Domain models<br>Application bridge<br>Process managers<br>Mailers<br>Database schema"]
+    end
 
-Ten models change one line each (inheritance swap). Four new files: two abstract base records, two compensating services. Five process managers rewritten.
+    W["Web Engine<br><small>downstream consumer</small>"]
+    A["API Engine<br><small>downstream consumer</small>"]
 
-Rubycritic climbs +0.14 — the `Orchestrator` pattern replaces nested `ActiveRecord::Base.transaction` blocks with flat method sequences.
+    W -- "depends on" --> K
+    A -- "depends on" --> K
+    W ~~~ A
+
+    style K fill:#4a9,stroke:#333,color:#fff
+    style W fill:#e96,stroke:#333,color:#fff
+    style A fill:#369,stroke:#333,color:#fff
+```
 
 ---
 
 ## 🤔 The problem
 
-Three bounded contexts share one database. The boundaries are in the code but not in storage. Rails makes this invisible: `ApplicationRecord` connects to one database, `ActiveRecord::Base.transaction` wraps one connection, every model inherits the same base class.
+`ApplicationController` was a lie. It claimed shared behavior it never provided.
 
-7B's process managers wrap cross-domain operations in a single transaction:
+An audit of 7C revealed: eight method groups Web-only, two overridden with no shared body, one trivial one-liner. **Zero lines of shared implementation.**
 
-```ruby
-# 7B — single transaction wrapping three domains
-Manager = Struct.new(:user) do
-  def call(params)
-    ActiveRecord::Base.transaction do       # assumes shared database
-      register_user(params)                  # writes to User DB
-      setup_account_and_workspace if user.persisted?  # writes to Account DB + Workspace DB
-    end
-    # ...
-  end
-end
-```
+`Current` had the same problem. A single `CurrentAttributes` class hid two different authentication strategies — session-based for Web, token-based for API — behind one generalized `authorize!` method. Web never passes `user_token`. API never passes `user_id`. The generality masked two distinct contracts.
 
-If Account and Workspace had their own databases, this transaction would only wrap the primary (User) connection. A failure in `Workspace::Setup` after `Account::Setup` has committed leaves an Account without a matching Workspace.
-
-The single transaction also hides a design question: which steps share a transactional boundary? `AcceptInvitationProcess` accepts an invitation and adds a person (both Account DB), then adds a workspace member (Workspace DB) and notifies the inviter (User DB). In 7B, one transaction wraps all four identically. With separate databases, the first two should be a local transaction; the last two need different handling.
+The same conflation ran through `app/`: 62 view templates, helpers, CSS, JavaScript — all sharing a directory with domain models. Nothing structural prevented cross-contamination. The file system gave the illusion of sharing while silently coupling representation to domain.
 
 ---
 
 ## 🔬 The evidence
 
-**Pattern 1: Three databases, three base records**
+**Each engine owns its base controller.** `ApplicationController` is deleted. `Web::BaseController` inherits from `ActionController::Base` directly — brings session auth, `allow_browser`, view helpers. `API::V1::BaseController` does the same — brings token auth, `skip_forgery_protection`, JSON-only. Both expose `helper_method def current` pointing to their own `Current` class — one convention across controllers, views, and helpers.
 
-```ruby
-# app/models/application_record.rb — User domain (primary)
-class ApplicationRecord < ActiveRecord::Base
-  primary_abstract_class
-  connects_to database: { writing: :primary, reading: :primary }
-end
+**Each engine owns its `Current`.** The global `Current` becomes a plain namespace for shared POROs (`Resolver`, `Context`, `Scope`, `Workspace`). Each engine declares its own `CurrentAttributes` with only the delegates it needs. `Web::Current.authorize!` accepts `user_id:` and `account_id:`. `API::Current.authorize!` accepts `user_token:`. These aren't cosmetic differences — they're contract boundaries that change for different reasons.
 
-# app/models/abstract/account.rb — Account domain
-class Abstract::Account < ActiveRecord::Base
-  self.abstract_class = true
-  connects_to database: { writing: :account, reading: :account }
-end
+**Mailers cross the boundary correctly.** Mailers live in the kernel (triggered by process managers) but reference Web routes. The kernel defines an `inject_url_helpers` extension point; the Web engine fulfills it at boot. Dependency direction stays correct: engine → kernel, never kernel → engine.
 
-# app/models/abstract/workspace.rb — Workspace domain
-class Abstract::Workspace < ActiveRecord::Base
-  self.abstract_class = true
-  connects_to database: { writing: :workspace, reading: :workspace }
-end
-```
+**Engines load selectively.** `BOOT_*` ENV vars control whether an engine's code is loaded. `MOUNT_*` vars control whether its routes are exposed:
 
-Every Account model changes one line: `< ApplicationRecord` → `< Abstract::Account`. Same for Workspace. User models stay on `ApplicationRecord`.
-
-**Pattern 2: Orchestrator with revert**
-
-`Orchestrator.new(...)` is a Struct factory that includes a `Revertible` mixin:
-
-```ruby
-module Orchestrator
-  module Revertible
-    private
-
-    def undo(condition)
-      yield rescue ActiveRecord::ActiveRecordError if condition
-    end
-  end
-
-  def self.new(...) = Struct.new(...).tap { it.include(Revertible) }
-end
-```
-
-Eleven lines. The `undo` helper skips nil fields and rescues AR errors during compensation. The sign-up process becomes an orchestrator:
-
-```ruby
-class User::SignUpProcess < ApplicationJob
-  Manager = Orchestrator.new(:user, :account, :workspace) do
-    def call(params)
-      register_user(params)
-
-      return [:err, user] unless user.persisted?
-
-      setup_account(user:)
-      setup_workspace(user:)
-      send_email_confirmation
-
-      [:ok, user]
-    rescue ActiveRecord::ActiveRecordError => e
-      revert!
-
-      [:err, e]
-    end
-
-    private
-
-    def register_user(params)
-      self.user = User::Registration.call(params)
-    end
-
-    def setup_account(user:)
-      uuid, email, username = user.values_at(:uuid, :email, :username)
-      self.account = Account::Setup.call(uuid:, email:, username:)
-    end
-
-    def setup_workspace(user:)
-      uuid, email, username = user.values_at(:uuid, :email, :username)
-      self.workspace = Workspace::Setup.call(uuid:, email:, username:)
-    end
-
-    def send_email_confirmation
-      UserMailer.with(user:, token: user.generate_token_for(:email_confirmation))
-                .email_confirmation.deliver_later
-    end
-
-    def revert!
-      undo(workspace) { workspace.destroy! }
-      undo(account)   { Account::Teardown.call(uuid: user.uuid) }
-      user.destroy!
-    end
-  end
-
-  def perform(...) = Manager.new.call(...)
-end
-```
-
-No `ActiveRecord::Base.transaction`. Each domain service commits to its own database. If `Workspace::Setup` fails, `revert!` runs in reverse order. The struct fields track what was created. The `undo` guard skips uncreated steps.
+| Mode           | Config                             | Use case                      |
+| -------------- | ---------------------------------- | ----------------------------- |
+| Full monolith  | Both boot, both mount              | Development, staging          |
+| Web-only       | `BOOT_API=false`                   | Frontend nodes                |
+| API with email | Both boot, `MOUNT_WEB=false`       | API nodes needing mailer URLs |
+| Headless       | Both `BOOT_*=false`                | Console, migrations, seeds    |
 
 ```mermaid
 flowchart TD
-  R["register_user<br/>→ User DB ✓"] --> A["setup_account<br/>→ Account DB ✓"]
-  A --> W["setup_workspace<br/>→ Workspace DB ✗"]
-  W -->|"failure"| REV["revert!"]
-  REV --> RW["undo workspace<br/><small>nil → skip</small>"]
-  RW --> RA["Account::Teardown"]
-  RA --> RU["user.destroy!"]
-
-  style R fill:#e8f4fd
-  style A fill:#e8fde8
-  style W fill:#fde8e8
-  style REV fill:#fff3e0
-  style RW fill:#f5f5f5
-  style RA fill:#e8fde8
-  style RU fill:#e8f4fd
-```
-
-**The sharp knife.** `Revertible` is a synchronous, in-memory compensation mechanism — not an ACID transaction. If the Ruby process dies mid-revert (OOM, network drop), the compensation stack in RAM is gone. Orphaned records remain across databases with no automatic repair. This is not a flaw — it is the cost of replacing a database lock with application-level compensation. A Postgres transaction guarantees atomicity independent of process health. `Revertible` guarantees it only if the process survives the entire revert. The natural evolution is background reconciliation — a sweep job that detects inconsistent state and either completes or reverses interrupted processes. That job is not in 7C. Documenting this gap is the honest part.
-
-**The front-end cost.** Three physically separated databases make cross-database joins impossible. A view that shows a workspace task with its assigned member's email requires two separate queries — one to the workspace database, one to the account database — assembled in Ruby. The UUID that replaced the foreign key becomes the merge key in application code. SQL's optimizer can no longer help. Local identity copies (`Account::Person`, `Workspace::Member`) mitigate this for display — email and username are local — but any query that spans domains becomes application-layer assembly. This is the structural consequence of database-level isolation, paid once per cross-domain view.
-
-**Pattern 3: Local transactions within an orchestration**
-
-Steps sharing a database use local transactions:
-
-```ruby
-def accept(user:, account:, invitation:)
-  uuid, email, username = user.values_at(:uuid, :email, :username)
-
-  Account.transaction do
-    invitation.accept!
-    self.person = Account::Person::Add.new(account:).call(uuid:, email:, username:)
-  end
-end
-```
-
-`Account.transaction` wraps only Account DB steps. Workspace and User steps commit independently.
-
-**Pattern 4: Command-compensation pairs**
-
-| Forward | Compensation | Domain |
-|---|---|---|
-| `User::Registration.call(params)` | `user.destroy!` | User |
-| `Account::Setup.call(uuid:, ...)` | `Account::Teardown.call(uuid:)` | Account |
-| `Workspace::Setup.call(uuid:, ...)` | `workspace.destroy!` | Workspace |
-| `Account::Person::Add` | `Account::Person::Remove` | Account |
-| `Workspace::Member::Add` | `Workspace::Member::Remove` | Workspace |
-| `invitation.accept!` | `invitation.revert!` | Account |
-
-```mermaid
-flowchart TD
-  subgraph Before["7B: single transaction"]
-    TX["ActiveRecord::Base.transaction<br/>wraps User + Account + Workspace<br/>works only because shared DB"]
+  subgraph Kernel["Host App (Shared Kernel)"]
+    M["Models (35)"]
+    J["Process Jobs (7)"]
+    ML["Mailers (4)"]
+    DB["3 databases"]
   end
 
-  subgraph After["7C: per-domain databases + compensation"]
-    UDB["User DB<br/>ApplicationRecord"]
-    ADB["Account DB<br/>Abstract::Account"]
-    WDB["Workspace DB<br/>Abstract::Workspace"]
-    ORCH["Orchestrator::Manager<br/>per-step commit + revert! on failure"]
+  subgraph WebEng["Web Engine"]
+    WC["29 controllers + 48 views"]
+    WM["Web::Current"]
+    WA["Helpers, CSS, JS, images"]
   end
 
-  TX -.->|"replaced by"| ORCH
-  ORCH -->|"step 1"| UDB
-  ORCH -->|"step 2"| ADB
-  ORCH -->|"step 3"| WDB
+  subgraph APIEng["API Engine"]
+    AC["21 controllers + 22 templates"]
+    AM["API::Current"]
+  end
 
-  style Before fill:#fde8e8
-  style UDB fill:#e8f4fd
-  style ADB fill:#e8fde8
-  style WDB fill:#fff3e0
-  style ORCH fill:#f5f5f5
+  WebEng -->|"depends on"| Kernel
+  APIEng -->|"depends on"| Kernel
+
+  style Kernel fill:#f5f5f5
+  style WebEng fill:#e8f4fd
+  style APIEng fill:#e8fde8
 ```
 
 ---
 
-## ➡️ What comes next
+## 📊 The numbers
 
-7C gave each bounded context its own database. Process managers coordinate with explicit compensation. But all three domains are served by the same Web and API controllers in a single host application.
+|                         | Before (7C) | After (7D)                                   |
+| ----------------------- | ----------- | -------------------------------------------- |
+| Files changed           | —           | 183                                          |
+| Net line change         | —           | +142                                         |
+| Behavioral test changes | —           | 0                                            |
+| Rubycritic              | 93.81       | 94.55 (kernel 96.29 / web 92.06 / api 95.31) |
+| LOC                     | 1818        | 1832                                         |
 
-Branch `7D-shared-kernel` extracts the Web and API layers into mountable Rails engines. Each bounded context gets its own engine. The host application becomes a headless Shared Kernel: no controllers, no views, no routes — just configuration, initializers, and domain model loading. The domain boundaries that exist in data and in code finally extend to the delivery layer. ✌️
-
----
-
-## 🏛️ Thesis checkpoint
-
-Per-domain databases with explicit compensation — Principle 4 at the data isolation level. Rails multi-database support (standard since Rails 6) provides the mechanism. No external infrastructure. The framework's own tools achieve what microservice advocates typically require separate services to accomplish. The trade-off is explicit: `Revertible` replaces database-guaranteed atomicity with application-level best-effort compensation. The `Orchestrator` pattern is a starting point, not a destination.
+183 files touched, almost entirely moves. The +142 net lines come from engine scaffolding and engine-specific `Current` classes. Integration tests assert on HTTP status codes, redirects, and response bodies — none of which change when controllers move behind an engine mount point.
 
 ---
 
 ## 🤖 The agent's view
 
-In 7B, an agent could wrap everything in `ActiveRecord::Base.transaction` and be correct. After 7C, the same agent must answer: which database does this step write to? If it's a new domain, the agent adds a struct field, stores the result, adds an `undo` call in `revert!` in reverse order, and ensures the domain service uses a local transaction. The `Orchestrator` pattern makes this mechanical but the agent must understand the shape.
+The engine split shrinks the working set an agent needs to hold:
 
-Model inheritance changes are invisible. `< Abstract::Account` vs `< ApplicationRecord` doesn't change how an agent reads a model — associations, validations, scopes, and callbacks work identically. The cost of 7C is concentrated in the process managers. Everything else is the same.
+| Task                  | 7C context load           | 7D context load             | Reduction |
+| --------------------- | ------------------------- | --------------------------- | --------- |
+| Domain model change   | ~3000 LOC (all of `app/`) | ~1200 LOC (kernel only)     | −60%      |
+| Web controller change | ~3000 LOC (all of `app/`) | ~1700 LOC (web engine only) | −43%      |
+| API controller change | ~3000 LOC (all of `app/`) | ~700 LOC (api engine only)  | −77%      |
+
+Context windows are finite. Every irrelevant line loaded displaces reasoning about the actual change. Each engine's `Current` is self-describing — 25 LOC, full interface contract in one glance. An agent cannot pass `user_id:` to `API::Current.authorize!` because the parameter doesn't exist. The type error surfaces at generation time, not at runtime.
+
+**Where agents still pay:** all tests live in the host's `test/`, not inside the engines. An agent carrying only engine code will hallucinate test locations.
+
+---
+
+## 🏛️ Thesis checkpoint
+
+Twenty-eight versions. Seven design families. One codebase. From a single fat controller (1A, Rubycritic 79.48) to fully isolated engines (7D, Rubycritic 94.55) — using only controllers, models, concerns, callbacks, scopes, engines, and multi-database connections. No service objects or hexagonal layers.
+
+```mermaid
+quadrantChart
+  title Modularity vs. deployment units
+  x-axis "Single deployment" --> "Many deployments"
+  y-axis "Low modularity" --> "High modularity"
+
+  Monolithic big ball of mud: [0.25, 0.25]
+  Distributed big ball of mud: [0.8, 0.25]
+  Microservices: [0.8, 0.8]
+  "Modular monolith 🎯": [0.25, 0.8]
+```
+
+7D lands top-left: high modularity, single deployment. Three bounded contexts with independent databases. Two isolated engines with their own `Current`, controllers, and views. Selective boot via ENV. All within one process, one `bin/rails server`.
+
+The secret is not more infrastructure — it's fundamentals, orthogonality, and real modularity. Distributed-system isolation without distributed-system cost.
+
+Rubycritic: 79.48 → 94.55. LOC: 1310 → 1832. Quality climbed 15 points while the codebase grew 40%. The design gradient exists within Rails. 🦾
+
+---
+
+## ➡️ What comes next
+
+The gradient doesn't end here. See [What's Next](https://github.com/railswhey/app/blob/MAP/docs/branches/99-future.md) for two paths forward: incremental improvements to 7D (7E-7I) and a complete rethinking as Self-Contained Systems (Family 8).
 
 ---
 
@@ -311,8 +209,8 @@ Model inheritance changes are invisible. `< Abstract::Account` vs `< Application
 Prerequisites: [mise](https://mise.jdx.dev/) (manages Ruby, Node, Mailpit)
 
 ```sh
-git clone git@github.com:railswhey/app.git -b 7C-domain-databases 7C-domain-databases
-cd 7C-domain-databases
+git clone git@github.com:railswhey/app.git -b 7D-shared-kernel 7D-shared-kernel
+cd 7D-shared-kernel
 mise install                 # Ruby 4.0.1 + Node 22 + Mailpit 1.29.2
 bin/setup                    # bundle install, db:prepare, starts dev server
 ```

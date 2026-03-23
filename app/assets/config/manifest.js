@@ -1,5 +1,3 @@
-//= link_tree ../images
-//= link_directory ../stylesheets .css
-//= link_tree ../../javascript .js
-//= link_tree ../../../vendor/javascript .js
-//= link_tree ../../../vendor/stylesheets .css
+// Host app (Shared Kernel) has no web assets.
+// All CSS, JS, and images live in engines/web/.
+// This file exists because Rails expects app/assets/config/manifest.js.

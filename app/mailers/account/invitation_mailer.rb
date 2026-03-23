@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Account::InvitationMailer < ApplicationMailer
-  default template_path: "account/mailers/invitation"
+  default template_path: "mailers/account/invitation"
 
   def invite(invitation)
     @invitation = invitation

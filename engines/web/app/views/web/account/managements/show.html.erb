@@ -1,0 +1,99 @@
+<%= render("shared/header") %>
+
+<%= render("shared/topbar", title: "Account", back_path: user_settings_path, back_label: "Settings") %>
+
+<h2>Account Settings</h2>
+
+<%# General Settings %>
+<div class="card">
+  <h3>General</h3>
+  <%= form_with model: @account, url: account_management_path, method: :patch do |f| %>
+    <% if @account.errors.any? %>
+      <div class="notice warn">
+        <ul>
+          <% @account.errors.each do |e| %>
+            <li><%= e.full_message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+    <div>
+      <%= f.label :name, style: "display: block" %>
+      <%= f.text_field :name %>
+    </div>
+    <%= f.submit "Save" %>
+  <% end %>
+</div>
+
+<%# Members %>
+<div class="card">
+  <h3>Members</h3>
+  <div class="detail-card">
+    <% @memberships.each do |m| %>
+      <div class="detail-field member-row">
+        <span class="detail-value"><%= m.person.email %></span>
+        <span class="member-actions">
+          <mark class="role-<%= m.role %>"><%= m.role %></mark>
+          <% unless m.owner? || m.person == current.context.person %>
+            <%= button_to "Remove", account_membership_path(m), method: :delete,
+                data: { turbo_confirm: "Remove #{m.person.email}?" },
+                class: "button btn-danger" %>
+          <% end %>
+        </span>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<%# Invitations %>
+<div class="card">
+  <h3>Invitations</h3>
+  <%= form_with url: account_invitations_path, method: :post do |f| %>
+    <div>
+      <%= f.email_field :email, name: "invitation[email]", placeholder: "email@example.com" %>
+      <%= f.submit "Invite" %>
+    </div>
+  <% end %>
+  <% if @invitations.any? %>
+    <div class="detail-card">
+      <% @invitations.each do |inv| %>
+        <div class="detail-field member-row">
+          <span class="detail-value"><%= inv.email %></span>
+          <span class="member-actions">
+            <span class="chip <%= inv.accepted? ? "chip-success" : "chip-warn" %>">
+              <%= inv.accepted? ? "accepted" : "pending" %>
+            </span>
+            <% unless inv.accepted? %>
+              <%= button_to "Revoke", account_invitation_path(inv), method: :delete,
+                  data: { turbo_confirm: "Revoke invitation to #{inv.email}?" },
+                  class: "button btn-danger" %>
+            <% end %>
+          </span>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>
+
+<%# Incoming Transfers %>
+<% if @incoming_transfers.any? %>
+  <div class="card">
+    <h3>Incoming Transfer Requests</h3>
+    <% @incoming_transfers.each do |t| %>
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: var(--bg); border-radius: 6px; margin-bottom: 0.5rem;">
+        <div>
+          <div><strong><%= t.list.name %></strong></div>
+          <div class="text-muted">from <%= @transfer_accounts[t.from_workspace.uuid]&.name %> &middot; by <%= t.initiated_by.email %></div>
+        </div>
+        <div class="action-group">
+          <%= button_to "Accept", account_transfers_response_path(token: t.token), method: :patch,
+              params: { action_type: "accept" },
+              class: "button btn-secondary" %>
+          <%= button_to "Reject", account_transfers_response_path(token: t.token), method: :patch,
+              params: { action_type: "reject" },
+              class: "button btn-danger" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>

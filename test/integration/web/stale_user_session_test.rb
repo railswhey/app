@@ -26,7 +26,7 @@ class WebStaleUserSessionTest < ActionDispatch::IntegrationTest
     # Now session[:user_id] is set but user doesn't exist
     # authenticate_user! sees current_user_id present but Current.user? false
     # and redirects to home_path with an alert
-    get task_lists_url
+    get web_adapter.task__lists_url
 
     assert_response :redirect
   end

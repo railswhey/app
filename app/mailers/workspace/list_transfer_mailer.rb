@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Workspace::ListTransferMailer < ApplicationMailer
-  default template_path: "workspace/mailers/list_transfer"
+  default template_path: "mailers/workspace/list_transfer"
 
   def transfer_requested(transfer)
     @transfer        = transfer

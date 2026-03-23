@@ -78,7 +78,7 @@ class WebTaskListTransfersTest < ActionDispatch::IntegrationTest
 
   test "show transfer with invalid token redirects home" do
     get web_adapter.show_task__list_transfer_url("invalid-token-xyz-404")
-    assert_redirected_to task_lists_path
+    assert_redirected_to web_adapter.task__lists_url
   end
 
   test "unauthenticated user updating transfer is redirected to sign in" do

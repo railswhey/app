@@ -29,7 +29,7 @@ class WebUserSettingsAccountDeletionTest < ActionDispatch::IntegrationTest
       delete(web_adapter.user__registration_url)
     end
 
-    assert_redirected_to root_url
+    assert_redirected_to "/"
 
     follow_redirect!
 

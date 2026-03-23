@@ -26,6 +26,14 @@ gem "redcarpet"
 # CSV generation (stdlib bundled gem, explicit in Ruby 4+)
 gem "csv"
 
+# Engines — Web and API as isolated interfaces (7D: Shared Kernel)
+# BOOT_* controls whether the engine loads (code + initializers).
+# MOUNT_* controls whether its routes are exposed — see config/routes.rb.
+# API-only with email: boot both, mount only API (MOUNT_WEB=false).
+# Headless (console/seeds): boot neither (BOOT_WEB=false BOOT_API=false).
+gem "web", path: "engines/web" if ENV.fetch("BOOT_WEB", "true") == "true"
+gem "api", path: "engines/api" if ENV.fetch("BOOT_API", "true") == "true"
+
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]
 
